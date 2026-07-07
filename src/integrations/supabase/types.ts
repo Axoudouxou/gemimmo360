@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      biens: {
+        Row: {
+          adresse: string | null
+          bailleur_id: string | null
+          created_at: string
+          gestionnaire_id: string | null
+          id: string
+          notes: string | null
+          statut: string
+          surface: number | null
+          titre: string
+          type_bien: string | null
+          type_operation: string | null
+        }
+        Insert: {
+          adresse?: string | null
+          bailleur_id?: string | null
+          created_at?: string
+          gestionnaire_id?: string | null
+          id?: string
+          notes?: string | null
+          statut?: string
+          surface?: number | null
+          titre: string
+          type_bien?: string | null
+          type_operation?: string | null
+        }
+        Update: {
+          adresse?: string | null
+          bailleur_id?: string | null
+          created_at?: string
+          gestionnaire_id?: string | null
+          id?: string
+          notes?: string | null
+          statut?: string
+          surface?: number | null
+          titre?: string
+          type_bien?: string | null
+          type_operation?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "biens_bailleur_id_fkey"
+            columns: ["bailleur_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biens_gestionnaire_id_fkey"
+            columns: ["gestionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
