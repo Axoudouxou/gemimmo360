@@ -60,9 +60,19 @@ function Dashboard() {
             <Building2 className="h-5 w-5" />
             <span className="font-semibold">Agence Immobilière</span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" /> Déconnexion
-          </Button>
+          <div className="flex items-center gap-2">
+            {role === "admin" && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/users">
+                  <Users className="mr-2 h-4 w-4" /> Utilisateurs
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" /> Déconnexion
+            </Button>
+          </div>
+
         </div>
       </header>
 
