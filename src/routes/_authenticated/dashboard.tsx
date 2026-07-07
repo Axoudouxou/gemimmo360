@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, Users, Contact as ContactIcon, Home, FileText } from "lucide-react";
+import { Building2, LogOut, Users, Contact as ContactIcon, Home, FileText, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -75,6 +75,13 @@ function Dashboard() {
               <Button variant="outline" size="sm" asChild>
                 <Link to="/contrats">
                   <FileText className="mr-2 h-4 w-4" /> Contrats
+                </Link>
+              </Button>
+            )}
+            {["admin", "recouvrement"].includes(role) && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/impayes">
+                  <AlertTriangle className="mr-2 h-4 w-4" /> Impayés
                 </Link>
               </Button>
             )}

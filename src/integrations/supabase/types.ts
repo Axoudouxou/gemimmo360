@@ -169,6 +169,50 @@ export type Database = {
           },
         ]
       }
+      impayes: {
+        Row: {
+          contrat_id: string
+          created_at: string
+          date_derniere_relance: string | null
+          date_echeance: string
+          id: string
+          montant_du: number
+          montant_paye: number
+          notes: string | null
+          statut: string
+        }
+        Insert: {
+          contrat_id: string
+          created_at?: string
+          date_derniere_relance?: string | null
+          date_echeance: string
+          id?: string
+          montant_du: number
+          montant_paye?: number
+          notes?: string | null
+          statut?: string
+        }
+        Update: {
+          contrat_id?: string
+          created_at?: string
+          date_derniere_relance?: string | null
+          date_echeance?: string
+          id?: string
+          montant_du?: number
+          montant_paye?: number
+          notes?: string | null
+          statut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impayes_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
