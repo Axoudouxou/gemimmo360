@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, Users, Contact as ContactIcon } from "lucide-react";
+import { Building2, LogOut, Users, Contact as ContactIcon, Home } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -61,6 +61,11 @@ function Dashboard() {
             <span className="font-semibold">Agence Immobilière</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/biens">
+                <Home className="mr-2 h-4 w-4" /> Biens
+              </Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/contacts">
                 <ContactIcon className="mr-2 h-4 w-4" /> Contacts
