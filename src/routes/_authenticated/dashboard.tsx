@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, Users, Contact as ContactIcon, Home, FileText, AlertTriangle } from "lucide-react";
+import { Building2, LogOut, Users, Contact as ContactIcon, Home, FileText, AlertTriangle, Receipt, Hammer, MessageSquareWarning, ClipboardCheck, Handshake } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -82,6 +82,37 @@ function Dashboard() {
               <Button variant="outline" size="sm" asChild>
                 <Link to="/impayes">
                   <AlertTriangle className="mr-2 h-4 w-4" /> Impayés
+                </Link>
+              </Button>
+            )}
+            {["admin", "gestion_locative"].includes(role) && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/charges">
+                  <Receipt className="mr-2 h-4 w-4" /> Charges
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/travaux">
+                <Hammer className="mr-2 h-4 w-4" /> Travaux
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/reclamations">
+                <MessageSquareWarning className="mr-2 h-4 w-4" /> Réclamations
+              </Link>
+            </Button>
+            {["admin", "juridique", "gestion_locative"].includes(role) && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/etats-des-lieux">
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> États des lieux
+                </Link>
+              </Button>
+            )}
+            {["admin", "commercial"].includes(role) && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/transactions">
+                  <Handshake className="mr-2 h-4 w-4" /> Transactions
                 </Link>
               </Button>
             )}

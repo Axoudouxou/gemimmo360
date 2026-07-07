@@ -13,10 +13,15 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedTravauxRouteImport } from './routes/_authenticated/travaux'
+import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
+import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authenticated/reclamations'
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
+import { Route as AuthenticatedEtatsDesLieuxRouteImport } from './routes/_authenticated/etats-des-lieux'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedContratsRouteImport } from './routes/_authenticated/contrats'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
+import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedBiensRouteImport } from './routes/_authenticated/biens'
 
 const AuthRoute = AuthRouteImport.update({
@@ -38,11 +43,34 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTravauxRoute = AuthenticatedTravauxRouteImport.update({
+  id: '/travaux',
+  path: '/travaux',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTransactionsRoute =
+  AuthenticatedTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReclamationsRoute =
+  AuthenticatedReclamationsRouteImport.update({
+    id: '/reclamations',
+    path: '/reclamations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedImpayesRoute = AuthenticatedImpayesRouteImport.update({
   id: '/impayes',
   path: '/impayes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEtatsDesLieuxRoute =
+  AuthenticatedEtatsDesLieuxRouteImport.update({
+    id: '/etats-des-lieux',
+    path: '/etats-des-lieux',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -58,6 +86,11 @@ const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   path: '/contacts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
+  id: '/charges',
+  path: '/charges',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBiensRoute = AuthenticatedBiensRouteImport.update({
   id: '/biens',
   path: '/biens',
@@ -68,20 +101,30 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/biens': typeof AuthenticatedBiensRoute
+  '/charges': typeof AuthenticatedChargesRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/contrats': typeof AuthenticatedContratsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
+  '/reclamations': typeof AuthenticatedReclamationsRoute
+  '/transactions': typeof AuthenticatedTransactionsRoute
+  '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/biens': typeof AuthenticatedBiensRoute
+  '/charges': typeof AuthenticatedChargesRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/contrats': typeof AuthenticatedContratsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
+  '/reclamations': typeof AuthenticatedReclamationsRoute
+  '/transactions': typeof AuthenticatedTransactionsRoute
+  '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
 }
 export interface FileRoutesById {
@@ -90,10 +133,15 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/biens': typeof AuthenticatedBiensRoute
+  '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/contrats': typeof AuthenticatedContratsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
+  '/_authenticated/reclamations': typeof AuthenticatedReclamationsRoute
+  '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
+  '/_authenticated/travaux': typeof AuthenticatedTravauxRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
 }
 export interface FileRouteTypes {
@@ -102,20 +150,30 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/biens'
+    | '/charges'
     | '/contacts'
     | '/contrats'
     | '/dashboard'
+    | '/etats-des-lieux'
     | '/impayes'
+    | '/reclamations'
+    | '/transactions'
+    | '/travaux'
     | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/biens'
+    | '/charges'
     | '/contacts'
     | '/contrats'
     | '/dashboard'
+    | '/etats-des-lieux'
     | '/impayes'
+    | '/reclamations'
+    | '/transactions'
+    | '/travaux'
     | '/users'
   id:
     | '__root__'
@@ -123,10 +181,15 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/biens'
+    | '/_authenticated/charges'
     | '/_authenticated/contacts'
     | '/_authenticated/contrats'
     | '/_authenticated/dashboard'
+    | '/_authenticated/etats-des-lieux'
     | '/_authenticated/impayes'
+    | '/_authenticated/reclamations'
+    | '/_authenticated/transactions'
+    | '/_authenticated/travaux'
     | '/_authenticated/users'
   fileRoutesById: FileRoutesById
 }
@@ -166,11 +229,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/travaux': {
+      id: '/_authenticated/travaux'
+      path: '/travaux'
+      fullPath: '/travaux'
+      preLoaderRoute: typeof AuthenticatedTravauxRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/transactions': {
+      id: '/_authenticated/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reclamations': {
+      id: '/_authenticated/reclamations'
+      path: '/reclamations'
+      fullPath: '/reclamations'
+      preLoaderRoute: typeof AuthenticatedReclamationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/impayes': {
       id: '/_authenticated/impayes'
       path: '/impayes'
       fullPath: '/impayes'
       preLoaderRoute: typeof AuthenticatedImpayesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/etats-des-lieux': {
+      id: '/_authenticated/etats-des-lieux'
+      path: '/etats-des-lieux'
+      fullPath: '/etats-des-lieux'
+      preLoaderRoute: typeof AuthenticatedEtatsDesLieuxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -194,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContactsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/charges': {
+      id: '/_authenticated/charges'
+      path: '/charges'
+      fullPath: '/charges'
+      preLoaderRoute: typeof AuthenticatedChargesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/biens': {
       id: '/_authenticated/biens'
       path: '/biens'
@@ -206,19 +304,29 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBiensRoute: typeof AuthenticatedBiensRoute
+  AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedContratsRoute: typeof AuthenticatedContratsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEtatsDesLieuxRoute: typeof AuthenticatedEtatsDesLieuxRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
+  AuthenticatedReclamationsRoute: typeof AuthenticatedReclamationsRoute
+  AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
+  AuthenticatedTravauxRoute: typeof AuthenticatedTravauxRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBiensRoute: AuthenticatedBiensRoute,
+  AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedContratsRoute: AuthenticatedContratsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEtatsDesLieuxRoute: AuthenticatedEtatsDesLieuxRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
+  AuthenticatedReclamationsRoute: AuthenticatedReclamationsRoute,
+  AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
+  AuthenticatedTravauxRoute: AuthenticatedTravauxRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
 }
 
