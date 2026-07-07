@@ -32,11 +32,10 @@ export const Route = createFileRoute("/_authenticated/contacts")({
 });
 
 const TYPES = [
-  { value: "proprietaire", label: "Propriétaire" },
+  { value: "bailleur", label: "Bailleur" },
   { value: "locataire", label: "Locataire" },
   { value: "prospect", label: "Prospect" },
-  { value: "acheteur", label: "Acheteur" },
-  { value: "vendeur", label: "Vendeur" },
+  { value: "prestataire", label: "Prestataire" },
 ] as const;
 
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
