@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          gestionnaire_id: string | null
+          id: string
+          nom: string
+          notes: string | null
+          prenom: string | null
+          telephone: string | null
+          type_contact: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          gestionnaire_id?: string | null
+          id?: string
+          nom: string
+          notes?: string | null
+          prenom?: string | null
+          telephone?: string | null
+          type_contact?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          gestionnaire_id?: string | null
+          id?: string
+          nom?: string
+          notes?: string | null
+          prenom?: string | null
+          telephone?: string | null
+          type_contact?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_gestionnaire_id_fkey"
+            columns: ["gestionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
