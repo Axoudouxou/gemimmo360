@@ -115,6 +115,60 @@ export type Database = {
           },
         ]
       }
+      contrats: {
+        Row: {
+          bien_id: string
+          created_at: string
+          date_debut: string | null
+          date_fin: string | null
+          depot_garantie: number | null
+          id: string
+          locataire_id: string | null
+          loyer_mensuel: number | null
+          notes: string | null
+          statut: string
+        }
+        Insert: {
+          bien_id: string
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
+          depot_garantie?: number | null
+          id?: string
+          locataire_id?: string | null
+          loyer_mensuel?: number | null
+          notes?: string | null
+          statut?: string
+        }
+        Update: {
+          bien_id?: string
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
+          depot_garantie?: number | null
+          id?: string
+          locataire_id?: string | null
+          loyer_mensuel?: number | null
+          notes?: string | null
+          statut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrats_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrats_locataire_id_fkey"
+            columns: ["locataire_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
