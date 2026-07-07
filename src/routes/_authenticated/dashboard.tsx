@@ -1,17 +1,14 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, Users, Contact as ContactIcon, Home, FileText, AlertTriangle, Receipt, Hammer, MessageSquareWarning, ClipboardCheck, Handshake } from "lucide-react";
-import { toast } from "sonner";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Home, FileText, AlertTriangle, Contact as ContactIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Tableau de bord — Agence Immobilière" },
-      { name: "description", content: "Espace interne de gestion de l'agence." },
+      { title: "Tableau de bord — GEM Immobilier" },
+      { name: "description", content: "Vue d'ensemble de l'activité de l'agence." },
     ],
   }),
   component: Dashboard,
@@ -27,128 +24,77 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function Dashboard() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState<string>("");
-  const [role, setRole] = useState<string>("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [stats, setStats] = useState({
+    biens: 0,
+    contacts: 0,
+    contratsActifs: 0,
+    impayesRetard: 0,
+  });
 
   useEffect(() => {
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
       const user = userRes.user;
-      if (!user) return;
-      setEmail(user.email ?? "");
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (profile?.role) setRole(profile.role);
+      if (user) {
+        setEmail(user.email ?? "");
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profile?.role) setRole(profile.role);
+      }
+
+      const [biens, contacts, contrats, impayes] = await Promise.all([
+        supabase.from("biens").select("id", { count: "exact", head: true }),
+        supabase.from("contacts").select("id", { count: "exact", head: true }),
+        supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif"),
+        supabase.from("impayes").select("id", { count: "exact", head: true }).eq("statut", "en_retard"),
+      ]);
+
+      setStats({
+        biens: biens.count ?? 0,
+        contacts: contacts.count ?? 0,
+        contratsActifs: contrats.count ?? 0,
+        impayesRetard: impayes.count ?? 0,
+      });
     })();
   }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Déconnecté");
-    navigate({ to: "/auth", replace: true });
-  };
+  const cards = [
+    { label: "Biens", value: stats.biens, icon: Home },
+    { label: "Contrats actifs", value: stats.contratsActifs, icon: FileText },
+    { label: "Impayés en retard", value: stats.impayesRetard, icon: AlertTriangle },
+    { label: "Contacts", value: stats.contacts, icon: ContactIcon },
+  ];
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            <span className="font-semibold">Agence Immobilière</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/biens">
-                <Home className="mr-2 h-4 w-4" /> Biens
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/contacts">
-                <ContactIcon className="mr-2 h-4 w-4" /> Contacts
-              </Link>
-            </Button>
-            {["admin", "juridique", "gestion_locative"].includes(role) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/contrats">
-                  <FileText className="mr-2 h-4 w-4" /> Contrats
-                </Link>
-              </Button>
-            )}
-            {["admin", "recouvrement"].includes(role) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/impayes">
-                  <AlertTriangle className="mr-2 h-4 w-4" /> Impayés
-                </Link>
-              </Button>
-            )}
-            {["admin", "gestion_locative"].includes(role) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/charges">
-                  <Receipt className="mr-2 h-4 w-4" /> Charges
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/travaux">
-                <Hammer className="mr-2 h-4 w-4" /> Travaux
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/reclamations">
-                <MessageSquareWarning className="mr-2 h-4 w-4" /> Réclamations
-              </Link>
-            </Button>
-            {["admin", "juridique", "gestion_locative"].includes(role) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/etats-des-lieux">
-                  <ClipboardCheck className="mr-2 h-4 w-4" /> États des lieux
-                </Link>
-              </Button>
-            )}
-            {["admin", "commercial"].includes(role) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/transactions">
-                  <Handshake className="mr-2 h-4 w-4" /> Transactions
-                </Link>
-              </Button>
-            )}
-            {role === "admin" && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/users">
-                  <Users className="mr-2 h-4 w-4" /> Utilisateurs
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" /> Déconnexion
-            </Button>
-          </div>
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl">Tableau de bord</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {email ? `Connecté en tant que ${email}` : "Bienvenue"}
+          {role ? ` — ${ROLE_LABELS[role] ?? role}` : ""}
+        </p>
+      </div>
 
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Bienvenue{email ? `, ${email}` : ""} 👋</CardTitle>
-            <CardDescription>
-              {role
-                ? `Votre rôle : ${ROLE_LABELS[role] ?? role}`
-                : "Chargement de votre profil..."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Les modules métier (gestion locative, recouvrement, technique, juridique,
-              commercial) seront ajoutés progressivement.
-            </p>
-          </CardContent>
-        </Card>
-      </main>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((c) => (
+          <Card key={c.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-foreground">
+                {c.label}
+              </CardTitle>
+              <c.icon className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">{c.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
