@@ -61,6 +61,11 @@ function Dashboard() {
             <span className="font-semibold">Agence Immobilière</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/contacts">
+                <ContactIcon className="mr-2 h-4 w-4" /> Contacts
+              </Link>
+            </Button>
             {role === "admin" && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="/users">
