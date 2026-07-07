@@ -71,6 +71,44 @@ export type Database = {
           },
         ]
       }
+      charges: {
+        Row: {
+          bien_id: string
+          created_at: string
+          date: string
+          id: string
+          libelle: string
+          montant: number
+          recurrente: boolean
+        }
+        Insert: {
+          bien_id: string
+          created_at?: string
+          date: string
+          id?: string
+          libelle: string
+          montant: number
+          recurrente?: boolean
+        }
+        Update: {
+          bien_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          libelle?: string
+          montant?: number
+          recurrente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -169,6 +207,41 @@ export type Database = {
           },
         ]
       }
+      etats_des_lieux: {
+        Row: {
+          contrat_id: string
+          created_at: string
+          date_realisation: string
+          id: string
+          observations: string | null
+          type: string
+        }
+        Insert: {
+          contrat_id: string
+          created_at?: string
+          date_realisation: string
+          id?: string
+          observations?: string | null
+          type: string
+        }
+        Update: {
+          contrat_id?: string
+          created_at?: string
+          date_realisation?: string
+          id?: string
+          observations?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "etats_des_lieux_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impayes: {
         Row: {
           contrat_id: string
@@ -236,6 +309,149 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      reclamations: {
+        Row: {
+          bien_id: string
+          created_at: string
+          description: string | null
+          id: string
+          locataire_id: string | null
+          priorite: string
+          statut: string
+          titre: string
+        }
+        Insert: {
+          bien_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          locataire_id?: string | null
+          priorite?: string
+          statut?: string
+          titre: string
+        }
+        Update: {
+          bien_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          locataire_id?: string | null
+          priorite?: string
+          statut?: string
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reclamations_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reclamations_locataire_id_fkey"
+            columns: ["locataire_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions_commerciales: {
+        Row: {
+          bien_id: string | null
+          contact_id: string
+          created_at: string
+          date_visite: string | null
+          id: string
+          notes: string | null
+          statut_opportunite: string
+          type_transaction: string
+        }
+        Insert: {
+          bien_id?: string | null
+          contact_id: string
+          created_at?: string
+          date_visite?: string | null
+          id?: string
+          notes?: string | null
+          statut_opportunite?: string
+          type_transaction: string
+        }
+        Update: {
+          bien_id?: string | null
+          contact_id?: string
+          created_at?: string
+          date_visite?: string | null
+          id?: string
+          notes?: string | null
+          statut_opportunite?: string
+          type_transaction?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_commerciales_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_commerciales_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travaux: {
+        Row: {
+          bien_id: string
+          budget_depense: number
+          budget_prevu: number | null
+          created_at: string
+          date_debut: string | null
+          date_fin: string | null
+          description: string | null
+          id: string
+          statut: string
+          titre: string
+        }
+        Insert: {
+          bien_id: string
+          budget_depense?: number
+          budget_prevu?: number | null
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
+          description?: string | null
+          id?: string
+          statut?: string
+          titre: string
+        }
+        Update: {
+          bien_id?: string
+          budget_depense?: number
+          budget_prevu?: number | null
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
+          description?: string | null
+          id?: string
+          statut?: string
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travaux_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
