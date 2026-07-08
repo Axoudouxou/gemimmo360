@@ -266,7 +266,11 @@ function BiensPage() {
                   <TableBody>
                     {biens.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-medium">{b.titre}</TableCell>
+                        <TableCell className="font-medium">
+                          <Link to="/biens/$bienId" params={{ bienId: b.id }} className="hover:underline">
+                            {b.titre}
+                          </Link>
+                        </TableCell>
                         <TableCell>{b.adresse ?? "—"}</TableCell>
                         <TableCell>
                           {b.type_bien ? (
