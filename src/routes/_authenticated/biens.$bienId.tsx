@@ -12,13 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
   head: () => ({ meta: [{ title: "Fiche bien — Agence Immobilière" }] }),
   component: BienDetailPage,
 });
+
+const TYPES_BIEN = [
+  { value: "immeuble", label: "Immeuble" },
+  { value: "appartement", label: "Appartement" },
+  { value: "maison", label: "Maison" },
+  { value: "local_commercial", label: "Local commercial" },
+  { value: "terrain", label: "Terrain" },
+] as const;
+
+const STATUTS_BIEN = [
+  { value: "vacant", label: "Vacant" },
+  { value: "loue", label: "Loué" },
+  { value: "en_travaux", label: "En travaux" },
+] as const;
 
 const STATUTS_LOT = [
   { value: "vacant", label: "Vacant" },
@@ -31,6 +45,7 @@ type Bien = {
   id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
   surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
 };
+type Bailleur = { id: string; nom: string; prenom: string | null };
 type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
 type Contact = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
 type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statut: string };
@@ -50,22 +65,32 @@ function BienDetailPage() {
   const [activeContrats, setActiveContrats] = useState<Contrat[]>([]);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [reclamations, setReclamations] = useState<Reclamation[]>([]);
+  const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ label: "", type_lot: "", statut: "vacant", surface: "", notes: "" });
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    titre: "", adresse: "", type_bien: "", statut: "vacant", surface: "", bailleur_id: "", notes: "",
+  });
+
   const load = async () => {
     setLoading(true);
-    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }] = await Promise.all([
+    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }] = await Promise.all([
       supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
+      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").order("nom"),
     ]);
     if (bErr) toast.error(bErr.message);
+    if (bListErr) toast.error(bListErr.message);
     const b = (bData ?? null) as Bien | null;
     setBien(b);
+    setBailleurs((bDataList ?? []) as Bailleur[]);
     const lotsList = (lData ?? []) as Lot[];
     setLots(lotsList);
     setTravaux((tData ?? []) as Travail[]);
@@ -113,6 +138,41 @@ function BienDetailPage() {
     load();
   };
 
+  const resetEditForm = () => {
+    if (!bien) return;
+    setEditForm({
+      titre: bien.titre,
+      adresse: bien.adresse ?? "",
+      type_bien: bien.type_bien ?? "",
+      statut: bien.statut,
+      surface: bien.surface?.toString() ?? "",
+      bailleur_id: bien.bailleur_id ?? "",
+      notes: bien.notes ?? "",
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.titre.trim()) return toast.error("Le titre est obligatoire");
+    setEditSaving(true);
+    const { error } = await supabase.from("biens").update({
+      titre: editForm.titre.trim(),
+      adresse: editForm.adresse.trim() || null,
+      type_bien: editForm.type_bien || null,
+      statut: editForm.statut,
+      surface: editForm.surface ? Number(editForm.surface) : null,
+      bailleur_id: editForm.bailleur_id || null,
+      notes: editForm.notes.trim() || null,
+    }).eq("id", bienId);
+    setEditSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Bien mis à jour");
+    setEditOpen(false);
+    load();
+  };
+
+  useEffect(() => { resetEditForm(); }, [bien]);
+
   const rentByLot = new Map(activeContrats.map((c) => [c.lot_id, Number(c.loyer_mensuel ?? 0)]));
   const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
   const nbVacants = lots.length - nbLoues;
@@ -139,12 +199,86 @@ function BienDetailPage() {
         ) : (
           <>
             <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <CardTitle>{bien.titre}</CardTitle>
-                  <Badge variant="secondary">Immeuble</Badge>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <CardTitle>{bien.titre}</CardTitle>
+                    <Badge variant="secondary">Immeuble</Badge>
+                  </div>
+                  <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
-                <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
+                <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <form onSubmit={handleUpdate}>
+                      <DialogHeader>
+                        <DialogTitle>Modifier bien</DialogTitle>
+                        <DialogDescription>Modifier les informations de {bien.titre}.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-titre">Titre *</Label>
+                          <Input id="edit-titre" value={editForm.titre} onChange={(e) => setEditForm({ ...editForm, titre: e.target.value })} required />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-adresse">Adresse</Label>
+                          <Input id="edit-adresse" value={editForm.adresse} onChange={(e) => setEditForm({ ...editForm, adresse: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Type de bien</Label>
+                            <Select value={editForm.type_bien} onValueChange={(v) => setEditForm({ ...editForm, type_bien: v })}>
+                              <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                              <SelectContent>
+                                {TYPES_BIEN.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Statut</Label>
+                            <Select value={editForm.statut} onValueChange={(v) => setEditForm({ ...editForm, statut: v })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {STATUTS_BIEN.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="edit-surface">Surface (m²)</Label>
+                            <Input id="edit-surface" type="number" min="0" step="0.01" value={editForm.surface} onChange={(e) => setEditForm({ ...editForm, surface: e.target.value })} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Bailleur</Label>
+                            <Select value={editForm.bailleur_id} onValueChange={(v) => setEditForm({ ...editForm, bailleur_id: v })}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={bailleurs.length ? "Sélectionner un bailleur..." : "Aucun bailleur disponible"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {bailleurs.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.nom}{b.prenom ? ` ${b.prenom}` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-notes">Notes</Label>
+                          <Textarea id="edit-notes" rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Annuler</Button>
+                        <Button type="submit" disabled={editSaving}>{editSaving ? "Enregistrement..." : "Enregistrer"}</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
                 <div>
