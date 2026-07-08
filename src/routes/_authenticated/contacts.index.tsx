@@ -258,6 +258,9 @@ function ContactsPage() {
                             {c.type_entite === "entreprise" && (
                               <Badge variant="secondary">Entreprise</Badge>
                             )}
+                            {c.archive && (
+                              <Badge variant="outline" className="text-muted-foreground">Archivé</Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>{c.type_entite === "entreprise" ? (c.interlocuteur ?? "—") : (c.prenom ?? "—")}</TableCell>
