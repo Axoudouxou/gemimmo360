@@ -64,6 +64,7 @@ const OPS: NavItem[] = [
 
 const ADMIN: NavItem[] = [
   { title: "Import CSV", url: "/imports", icon: Upload, roles: ["admin"] },
+  { title: "Doublons", url: "/doublons", icon: Users2, roles: ["admin"] },
   { title: "Utilisateurs", url: "/users", icon: Users, roles: ["admin"] },
 ];
 
