@@ -236,10 +236,42 @@ function BienDetailPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle>{bien.titre}</CardTitle>
                     <Badge variant="secondary">Immeuble</Badge>
+                    {isStale(bien.updated_at) && (
+                      <Badge variant="outline" className="border-amber-500 text-amber-700">
+                        <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
+                      </Badge>
+                    )}
                   </div>
                   <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
-                <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {myRole === "admin" && (
+                    <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm"><UserCog className="mr-2 h-4 w-4" /> Gestionnaire</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Modifier le gestionnaire</DialogTitle>
+                          <DialogDescription>Réassigner ce bien à un autre gestionnaire.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-2 py-4">
+                          <Label>Gestionnaire</Label>
+                          <Select value={gestId} onValueChange={setGestId}>
+                            <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                            <SelectContent>
+                              {gestionnaires.map((g) => <SelectItem key={g.id} value={g.id}>{g.email ?? g.id} ({g.role})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setGestOpen(false)}>Annuler</Button>
+                          <Button onClick={handleGestionnaireSave} disabled={gestSaving}>{gestSaving ? "..." : "Enregistrer"}</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
                   </DialogTrigger>
