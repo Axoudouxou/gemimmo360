@@ -29,13 +29,13 @@ export const Route = createFileRoute("/_authenticated/imports")({
   head: () => ({
     meta: [
       { title: "Import CSV — GEM Immobilier" },
-      { name: "description", content: "Importer des contacts, biens ou contrats depuis un fichier CSV." },
+      { name: "description", content: "Importer des contacts, biens, lots ou contrats depuis un fichier CSV." },
     ],
   }),
   component: ImportsPage,
 });
 
-type ImportType = "contacts" | "biens" | "contrats";
+type ImportType = "contacts" | "biens" | "lots" | "contrats";
 
 const IGNORE = "__ignore__";
 
@@ -52,15 +52,22 @@ const TARGET_FIELDS: Record<ImportType, { key: string; label: string; required?:
   biens: [
     { key: "titre", label: "Titre", required: true },
     { key: "adresse", label: "Adresse" },
-    { key: "type_bien", label: "Type (appartement/maison/local_commercial/terrain)" },
+    { key: "type_bien", label: "Type (immeuble/appartement/maison/local_commercial/terrain)" },
     { key: "statut", label: "Statut (loue/vacant/en_travaux)" },
     { key: "type_operation", label: "Type d'opération (location/vente)" },
     { key: "surface", label: "Surface (m²)" },
     { key: "notes", label: "Notes" },
     { key: "id_externe", label: "Identifiant externe" },
   ],
+  lots: [
+    { key: "bien_titre", label: "Titre du bien", required: true },
+    { key: "label", label: "Label du lot", required: true },
+    { key: "type_lot", label: "Type de lot" },
+    { key: "statut", label: "Statut (loue/vacant/en_travaux)" },
+  ],
   contrats: [
     { key: "bien_titre", label: "Titre du bien", required: true },
+    { key: "lot_label", label: "Label du lot", required: true },
     { key: "locataire_nom", label: "Nom du locataire", required: true },
     { key: "loyer_mensuel", label: "Loyer mensuel", required: true },
     { key: "date_entree", label: "Date d'entrée (AAAA-MM-JJ)", required: true },
@@ -80,11 +87,23 @@ type ImportRow = {
 type ContratPreviewRow = {
   index: number;
   bien_titre: string;
+  lot_label: string;
   locataire_nom: string;
   loyer_mensuel: string;
   date_entree: string;
-  bien_id?: string;
+  lot_id?: string;
   locataire_id?: string;
+  ok: boolean;
+  motif?: string;
+};
+
+type LotPreviewRow = {
+  index: number;
+  bien_titre: string;
+  label: string;
+  type_lot: string;
+  statut: string;
+  bien_id?: string;
   ok: boolean;
   motif?: string;
 };
@@ -102,7 +121,8 @@ function ImportsPage() {
   const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState<ImportRow[]>([]);
   const [contratPreview, setContratPreview] = useState<ContratPreviewRow[]>([]);
-  const [resolvingContrats, setResolvingContrats] = useState(false);
+  const [lotPreview, setLotPreview] = useState<LotPreviewRow[]>([]);
+  const [resolving, setResolving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -143,12 +163,14 @@ function ImportsPage() {
     setRows([]);
     setMapping({});
     setContratPreview([]);
+    setLotPreview([]);
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleFile = (file: File) => {
     setFileName(file.name);
     setContratPreview([]);
+    setLotPreview([]);
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
@@ -177,33 +199,41 @@ function ImportsPage() {
 
   const preview = useMemo(() => rows.slice(0, 5), [rows]);
 
-  // Resolve contrats preview whenever mapping/rows change for the contrats type
+  const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+  // Contrats resolver
   useEffect(() => {
     if (type !== "contrats" || rows.length === 0) {
       setContratPreview([]);
       return;
     }
-    const required = ["bien_titre", "locataire_nom", "loyer_mensuel", "date_entree"];
+    const required = ["bien_titre", "lot_label", "locataire_nom", "loyer_mensuel", "date_entree"];
     if (required.some((k) => !mapping[k] || mapping[k] === IGNORE)) {
       setContratPreview([]);
       return;
     }
     let cancelled = false;
     (async () => {
-      setResolvingContrats(true);
+      setResolving(true);
       const bienTitres = new Set<string>();
+      const lotLabels = new Set<string>();
       const locataireNoms = new Set<string>();
       rows.forEach((r) => {
         const b = String(r[mapping.bien_titre] ?? "").trim();
+        const ll = String(r[mapping.lot_label] ?? "").trim();
         const l = String(r[mapping.locataire_nom] ?? "").trim();
         if (b) bienTitres.add(b);
+        if (ll) lotLabels.add(ll);
         if (l) locataireNoms.add(l);
       });
 
-      const [{ data: biens }, { data: contacts }] = await Promise.all([
+      const [{ data: biens }, { data: lots }, { data: contacts }] = await Promise.all([
         bienTitres.size > 0
           ? supabase.from("biens").select("id, titre").in("titre", Array.from(bienTitres))
           : Promise.resolve({ data: [] as { id: string; titre: string }[] }),
+        lotLabels.size > 0
+          ? supabase.from("lots").select("id, label, bien_id").in("label", Array.from(lotLabels))
+          : Promise.resolve({ data: [] as { id: string; label: string; bien_id: string }[] }),
         locataireNoms.size > 0
           ? supabase
               .from("contacts")
@@ -216,7 +246,10 @@ function ImportsPage() {
 
       const bienMap = new Map<string, string>();
       (biens ?? []).forEach((b) => bienMap.set(b.titre, b.id));
-      const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+      // key: `${bienId}::${label}` -> lotId
+      const lotMap = new Map<string, string>();
+      (lots ?? []).forEach((l) => lotMap.set(`${l.bien_id}::${l.label}`, l.id));
+
       const locataireMap = new Map<string, string>();
       (contacts ?? []).forEach((c) => {
         const full = `${c.nom ?? ""} ${c.prenom ?? ""}`;
@@ -225,34 +258,81 @@ function ImportsPage() {
 
       const result: ContratPreviewRow[] = rows.map((r, i) => {
         const bien_titre = String(r[mapping.bien_titre] ?? "").trim();
+        const lot_label = String(r[mapping.lot_label] ?? "").trim();
         const locataire_nom = String(r[mapping.locataire_nom] ?? "").trim();
         const loyer_mensuel = String(r[mapping.loyer_mensuel] ?? "").trim();
         const date_entree = String(r[mapping.date_entree] ?? "").trim();
         const bien_id = bienMap.get(bien_titre);
+        const lot_id = bien_id ? lotMap.get(`${bien_id}::${lot_label}`) : undefined;
         const locataire_id = locataireMap.get(normalize(locataire_nom));
         let ok = true;
         let motif: string | undefined;
-        if (!bien_id) {
-          ok = false;
-          motif = "bien non trouvé";
-        } else if (!locataire_id) {
-          ok = false;
-          motif = "locataire non trouvé";
-        }
-        return { index: i, bien_titre, locataire_nom, loyer_mensuel, date_entree, bien_id, locataire_id, ok, motif };
+        if (!bien_id) { ok = false; motif = "bien non trouvé"; }
+        else if (!lot_id) { ok = false; motif = "lot non trouvé"; }
+        else if (!locataire_id) { ok = false; motif = "locataire non trouvé"; }
+        return { index: i, bien_titre, lot_label, locataire_nom, loyer_mensuel, date_entree, lot_id, locataire_id, ok, motif };
       });
       setContratPreview(result);
-      setResolvingContrats(false);
+      setResolving(false);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  }, [type, rows, mapping]);
+
+  // Lots resolver
+  useEffect(() => {
+    if (type !== "lots" || rows.length === 0) {
+      setLotPreview([]);
+      return;
+    }
+    const required = ["bien_titre", "label"];
+    if (required.some((k) => !mapping[k] || mapping[k] === IGNORE)) {
+      setLotPreview([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setResolving(true);
+      const bienTitres = new Set<string>();
+      rows.forEach((r) => {
+        const b = String(r[mapping.bien_titre] ?? "").trim();
+        if (b) bienTitres.add(b);
+      });
+      const { data: biens } = bienTitres.size > 0
+        ? await supabase.from("biens").select("id, titre").in("titre", Array.from(bienTitres))
+        : { data: [] as { id: string; titre: string }[] };
+      if (cancelled) return;
+      const bienMap = new Map<string, string>();
+      (biens ?? []).forEach((b) => bienMap.set(b.titre, b.id));
+
+      const result: LotPreviewRow[] = rows.map((r, i) => {
+        const bien_titre = String(r[mapping.bien_titre] ?? "").trim();
+        const label = String(r[mapping.label] ?? "").trim();
+        const type_lot = mapping.type_lot && mapping.type_lot !== IGNORE
+          ? String(r[mapping.type_lot] ?? "").trim() : "";
+        const statut = mapping.statut && mapping.statut !== IGNORE
+          ? String(r[mapping.statut] ?? "").trim() : "";
+        const bien_id = bienMap.get(bien_titre);
+        let ok = true;
+        let motif: string | undefined;
+        if (!bien_id) { ok = false; motif = "bien non trouvé"; }
+        else if (!label) { ok = false; motif = "label manquant"; }
+        return { index: i, bien_titre, label, type_lot, statut, bien_id, ok, motif };
+      });
+      setLotPreview(result);
+      setResolving(false);
+    })();
+    return () => { cancelled = true; };
   }, [type, rows, mapping]);
 
   const contratStats = useMemo(() => {
     const ok = contratPreview.filter((r) => r.ok).length;
     return { ok, ko: contratPreview.length - ok };
   }, [contratPreview]);
+
+  const lotStats = useMemo(() => {
+    const ok = lotPreview.filter((r) => r.ok).length;
+    return { ok, ko: lotPreview.length - ok };
+  }, [lotPreview]);
 
   const handleImport = async () => {
     if (!userId) return;
@@ -274,7 +354,7 @@ function ImportsPage() {
         .map((r) => {
           const loyer = Number(r.loyer_mensuel.replace(",", "."));
           return {
-            bien_id: r.bien_id!,
+            lot_id: r.lot_id!,
             locataire_id: r.locataire_id!,
             loyer_mensuel: Number.isNaN(loyer) ? null : loyer,
             date_debut: r.date_entree || null,
@@ -288,11 +368,26 @@ function ImportsPage() {
         for (let i = 0; i < toInsert.length; i += chunkSize) {
           const chunk = toInsert.slice(i, i + chunkSize);
           const { error, data } = await supabase.from("contrats").insert(chunk).select("id");
-          if (error) {
-            errors += chunk.length;
-          } else {
-            succes += data?.length ?? chunk.length;
-          }
+          if (error) { errors += chunk.length; } else { succes += data?.length ?? chunk.length; }
+        }
+      }
+    } else if (type === "lots") {
+      const toInsert = lotPreview
+        .filter((r) => r.ok)
+        .map((r) => ({
+          bien_id: r.bien_id!,
+          label: r.label,
+          type_lot: r.type_lot || null,
+          statut: r.statut || "vacant",
+        }));
+      errors = lotPreview.filter((r) => !r.ok).length;
+
+      if (toInsert.length > 0) {
+        const chunkSize = 200;
+        for (let i = 0; i < toInsert.length; i += chunkSize) {
+          const chunk = toInsert.slice(i, i + chunkSize);
+          const { error, data } = await supabase.from("lots").insert(chunk).select("id");
+          if (error) { errors += chunk.length; } else { succes += data?.length ?? chunk.length; }
         }
       }
     } else {
@@ -308,10 +403,7 @@ function ImportsPage() {
           if (!col || col === IGNORE) continue;
           const raw = row[col];
           const val = raw == null ? "" : String(raw).trim();
-          if (t.required && !val) {
-            valid = false;
-            break;
-          }
+          if (t.required && !val) { valid = false; break; }
           if (!val) continue;
           if (t.key === "surface") {
             const n = Number(val.replace(",", "."));
@@ -332,11 +424,7 @@ function ImportsPage() {
             .from(type)
             .insert(chunk as never)
             .select("id");
-          if (error) {
-            errors += chunk.length;
-          } else {
-            succes += data?.length ?? chunk.length;
-          }
+          if (error) { errors += chunk.length; } else { succes += data?.length ?? chunk.length; }
         }
       }
     }
@@ -387,12 +475,14 @@ function ImportsPage() {
     );
   }
 
+  const isResolverType = type === "contrats" || type === "lots";
+
   return (
     <div className="mx-auto max-w-6xl px-8 py-10 space-y-6">
       <div>
         <h1 className="text-2xl">Import CSV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Importer des contacts, des biens ou des contrats à partir d'un fichier CSV.
+          Importer des contacts, des biens, des lots ou des contrats à partir d'un fichier CSV.
         </p>
       </div>
 
@@ -418,14 +508,22 @@ function ImportsPage() {
                 <SelectContent>
                   <SelectItem value="contacts">Contacts</SelectItem>
                   <SelectItem value="biens">Biens</SelectItem>
+                  <SelectItem value="lots">Lots</SelectItem>
                   <SelectItem value="contrats">Contrats</SelectItem>
                 </SelectContent>
               </Select>
               {type === "contrats" && (
                 <p className="text-xs text-muted-foreground">
-                  Colonnes attendues : <code>bien_titre</code>, <code>locataire_nom</code>,{" "}
-                  <code>loyer_mensuel</code>, <code>date_entree</code>. Les biens et locataires
-                  doivent déjà exister (correspondance exacte).
+                  Colonnes : <code>bien_titre</code>, <code>lot_label</code>,{" "}
+                  <code>locataire_nom</code>, <code>loyer_mensuel</code>, <code>date_entree</code>.
+                  Le lot est recherché par label pour le bien correspondant. Le locataire est
+                  recherché sur "nom prénom".
+                </p>
+              )}
+              {type === "lots" && (
+                <p className="text-xs text-muted-foreground">
+                  Colonnes : <code>bien_titre</code>, <code>label</code>, <code>type_lot</code>,{" "}
+                  <code>statut</code>. Le bien parent doit déjà exister.
                 </p>
               )}
             </div>
@@ -505,8 +603,8 @@ function ImportsPage() {
               <CardHeader>
                 <CardTitle className="text-base">3. Aperçu des correspondances</CardTitle>
                 <CardDescription>
-                  {resolvingContrats
-                    ? "Recherche des biens et locataires..."
+                  {resolving
+                    ? "Recherche des lots et locataires..."
                     : `${rows.length} ligne(s) — ${contratStats.ok} à importer, ${contratStats.ko} rejetée(s).`}
                 </CardDescription>
               </CardHeader>
@@ -517,6 +615,7 @@ function ImportsPage() {
                       <TableRow>
                         <TableHead className="w-10">#</TableHead>
                         <TableHead>Bien</TableHead>
+                        <TableHead>Lot</TableHead>
                         <TableHead>Locataire</TableHead>
                         <TableHead>Loyer</TableHead>
                         <TableHead>Date d'entrée</TableHead>
@@ -528,6 +627,7 @@ function ImportsPage() {
                         <TableRow key={r.index} className={r.ok ? "" : "bg-destructive/5"}>
                           <TableCell className="text-sm text-muted-foreground">{r.index + 1}</TableCell>
                           <TableCell className="text-sm">{r.bien_titre || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.lot_label || "—"}</TableCell>
                           <TableCell className="text-sm">{r.locataire_nom || "—"}</TableCell>
                           <TableCell className="text-sm">{r.loyer_mensuel || "—"}</TableCell>
                           <TableCell className="text-sm">{r.date_entree || "—"}</TableCell>
@@ -550,11 +650,66 @@ function ImportsPage() {
                 <div className="mt-4 flex justify-end">
                   <Button
                     onClick={handleImport}
-                    disabled={importing || resolvingContrats || contratStats.ok === 0}
+                    disabled={importing || resolving || contratStats.ok === 0}
                   >
-                    {importing
-                      ? "Import en cours..."
-                      : `Confirmer l'import (${contratStats.ok})`}
+                    {importing ? "Import en cours..." : `Confirmer l'import (${contratStats.ok})`}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : type === "lots" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">3. Aperçu des correspondances</CardTitle>
+                <CardDescription>
+                  {resolving
+                    ? "Recherche des biens parents..."
+                    : `${rows.length} ligne(s) — ${lotStats.ok} à importer, ${lotStats.ko} rejetée(s).`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">#</TableHead>
+                        <TableHead>Bien</TableHead>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>État</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lotPreview.map((r) => (
+                        <TableRow key={r.index} className={r.ok ? "" : "bg-destructive/5"}>
+                          <TableCell className="text-sm text-muted-foreground">{r.index + 1}</TableCell>
+                          <TableCell className="text-sm">{r.bien_titre || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.label || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.type_lot || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.statut || "vacant"}</TableCell>
+                          <TableCell>
+                            {r.ok ? (
+                              <span className="inline-flex items-center gap-1 text-primary text-sm">
+                                <CheckCircle2 className="h-4 w-4" /> À importer
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-destructive text-sm">
+                                <XCircle className="h-4 w-4" /> Rejetée — {r.motif}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    onClick={handleImport}
+                    disabled={importing || resolving || lotStats.ok === 0}
+                  >
+                    {importing ? "Import en cours..." : `Confirmer l'import (${lotStats.ok})`}
                   </Button>
                 </div>
               </CardContent>
@@ -591,7 +746,7 @@ function ImportsPage() {
                   </Table>
                 </div>
                 <div className="mt-4 flex justify-end">
-                  <Button onClick={handleImport} disabled={importing}>
+                  <Button onClick={handleImport} disabled={importing || isResolverType}>
                     {importing ? "Import en cours..." : "Confirmer l'import"}
                   </Button>
                 </div>

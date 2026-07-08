@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/biens")({
 });
 
 const TYPES_BIEN = [
+  { value: "immeuble", label: "Immeuble" },
   { value: "appartement", label: "Appartement" },
   { value: "maison", label: "Maison" },
   { value: "local_commercial", label: "Local commercial" },

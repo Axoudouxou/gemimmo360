@@ -22,7 +22,8 @@ const ALLOWED = ["admin", "juridique", "gestion_locative"] as const;
 const CAN_WRITE = ["admin", "juridique"] as const;
 
 type EDL = { id: string; contrat_id: string; type: string; date_realisation: string; observations: string | null };
-type Contrat = { id: string; bien_id: string; locataire_id: string | null };
+type Contrat = { id: string; lot_id: string; locataire_id: string | null };
+type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
 
@@ -32,6 +33,7 @@ function EDLPage() {
   const [checked, setChecked] = useState(false);
   const [items, setItems] = useState<EDL[]>([]);
   const [contrats, setContrats] = useState<Contrat[]>([]);
+  const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,15 +59,17 @@ function EDLPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: eData, error }, { data: cData }, { data: bData }, { data: coData }] = await Promise.all([
+    const [{ data: eData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
       supabase.from("etats_des_lieux").select("*").order("date_realisation", { ascending: false }),
-      supabase.from("contrats").select("id, bien_id, locataire_id"),
+      supabase.from("contrats").select("id, lot_id, locataire_id"),
+      supabase.from("lots").select("id, label, bien_id"),
       supabase.from("biens").select("id, titre"),
       supabase.from("contacts").select("id, nom, prenom"),
     ]);
     if (error) toast.error(error.message);
     else setItems((eData ?? []) as EDL[]);
     setContrats((cData ?? []) as Contrat[]);
+    setLots((lData ?? []) as Lot[]);
     setBiens((bData ?? []) as Bien[]);
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
@@ -74,10 +78,12 @@ function EDLPage() {
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id); if (!c) return "—";
-    const bien = biens.find((b) => b.id === c.bien_id)?.titre ?? "—";
+    const lot = lots.find((l) => l.id === c.lot_id);
+    const bienTitre = lot ? (biens.find((b) => b.id === lot.bien_id)?.titre ?? "—") : "—";
+    const lotLabel = lot ? lot.label : "—";
     const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
     const locStr = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
-    return `${bien} — ${locStr}`;
+    return `${bienTitre} — ${lotLabel} — ${locStr}`;
   };
 
   const resetForm = () => setForm({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });

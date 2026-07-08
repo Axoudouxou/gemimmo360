@@ -173,54 +173,54 @@ export type Database = {
       }
       contrats: {
         Row: {
-          bien_id: string
           created_at: string
           date_debut: string | null
           date_fin: string | null
           depot_garantie: number | null
           id: string
           locataire_id: string | null
+          lot_id: string
           loyer_mensuel: number | null
           notes: string | null
           statut: string
         }
         Insert: {
-          bien_id: string
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null
           depot_garantie?: number | null
           id?: string
           locataire_id?: string | null
+          lot_id: string
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
         }
         Update: {
-          bien_id?: string
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null
           depot_garantie?: number | null
           id?: string
           locataire_id?: string | null
+          lot_id?: string
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
         }
         Relationships: [
           {
-            foreignKeyName: "contrats_bien_id_fkey"
-            columns: ["bien_id"]
-            isOneToOne: false
-            referencedRelation: "biens"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "contrats_locataire_id_fkey"
             columns: ["locataire_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrats_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
         ]
@@ -341,6 +341,47 @@ export type Database = {
             columns: ["importe_par"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lots: {
+        Row: {
+          bien_id: string
+          created_at: string
+          id: string
+          label: string
+          notes: string | null
+          statut: string
+          surface: number | null
+          type_lot: string | null
+        }
+        Insert: {
+          bien_id: string
+          created_at?: string
+          id?: string
+          label: string
+          notes?: string | null
+          statut?: string
+          surface?: number | null
+          type_lot?: string | null
+        }
+        Update: {
+          bien_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          statut?: string
+          surface?: number | null
+          type_lot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lots_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
             referencedColumns: ["id"]
           },
         ]
