@@ -79,15 +79,18 @@ function BienDetailPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }] = await Promise.all([
+    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }] = await Promise.all([
       supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
+      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").order("nom"),
     ]);
     if (bErr) toast.error(bErr.message);
+    if (bListErr) toast.error(bListErr.message);
     const b = (bData ?? null) as Bien | null;
     setBien(b);
+    setBailleurs((bDataList ?? []) as Bailleur[]);
     const lotsList = (lData ?? []) as Lot[];
     setLots(lotsList);
     setTravaux((tData ?? []) as Travail[]);
