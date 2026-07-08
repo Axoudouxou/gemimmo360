@@ -20,6 +20,20 @@ export const Route = createFileRoute("/_authenticated/biens/$bienId")({
   component: BienDetailPage,
 });
 
+const TYPES_BIEN = [
+  { value: "immeuble", label: "Immeuble" },
+  { value: "appartement", label: "Appartement" },
+  { value: "maison", label: "Maison" },
+  { value: "local_commercial", label: "Local commercial" },
+  { value: "terrain", label: "Terrain" },
+] as const;
+
+const STATUTS_BIEN = [
+  { value: "vacant", label: "Vacant" },
+  { value: "loue", label: "Loué" },
+  { value: "en_travaux", label: "En travaux" },
+] as const;
+
 const STATUTS_LOT = [
   { value: "vacant", label: "Vacant" },
   { value: "loue", label: "Loué" },
