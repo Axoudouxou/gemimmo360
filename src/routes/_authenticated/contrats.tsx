@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +43,7 @@ const CAN_WRITE = ["admin", "juridique"] as const;
 
 type Contrat = {
   id: string;
-  bien_id: string;
+  lot_id: string;
   locataire_id: string | null;
   date_debut: string | null;
   date_fin: string | null;
@@ -53,6 +53,7 @@ type Contrat = {
   notes: string | null;
   created_at: string;
 };
+type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Locataire = { id: string; nom: string; prenom: string | null };
 
@@ -61,6 +62,7 @@ function ContratsPage() {
   const [role, setRole] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [contrats, setContrats] = useState<Contrat[]>([]);
+  const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [locataires, setLocataires] = useState<Locataire[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ function ContratsPage() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    bien_id: "",
+    lot_id: "",
     locataire_id: "",
     date_debut: "",
     date_fin: "",
@@ -98,15 +100,17 @@ function ContratsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cData, error }, { data: bData }, { data: lData }] = await Promise.all([
+    const [{ data: cData, error }, { data: lData }, { data: bData }, { data: locData }] = await Promise.all([
       supabase.from("contrats").select("*").order("created_at", { ascending: false }),
+      supabase.from("lots").select("id, label, bien_id").order("label"),
       supabase.from("biens").select("id, titre").order("titre"),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").order("nom"),
     ]);
     if (error) toast.error(error.message);
     else setContrats((cData ?? []) as Contrat[]);
+    setLots((lData ?? []) as Lot[]);
     setBiens((bData ?? []) as Bien[]);
-    setLocataires((lData ?? []) as Locataire[]);
+    setLocataires((locData ?? []) as Locataire[]);
     setLoading(false);
   };
 
@@ -115,14 +119,14 @@ function ContratsPage() {
   }, [role]);
 
   const resetForm = () =>
-    setForm({ bien_id: "", locataire_id: "", date_debut: "", date_fin: "", loyer_mensuel: "", depot_garantie: "", statut: "actif", notes: "" });
+    setForm({ lot_id: "", locataire_id: "", date_debut: "", date_fin: "", loyer_mensuel: "", depot_garantie: "", statut: "actif", notes: "" });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.bien_id) return toast.error("Le bien est obligatoire");
+    if (!form.lot_id) return toast.error("Le lot est obligatoire");
     setSaving(true);
     const { error } = await supabase.from("contrats").insert({
-      bien_id: form.bien_id,
+      lot_id: form.lot_id,
       locataire_id: form.locataire_id || null,
       date_debut: form.date_debut || null,
       date_fin: form.date_fin || null,
@@ -139,7 +143,15 @@ function ContratsPage() {
     load();
   };
 
-  const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
+  const bienById = useMemo(() => new Map(biens.map((b) => [b.id, b])), [biens]);
+  const lotById = useMemo(() => new Map(lots.map((l) => [l.id, l])), [lots]);
+
+  const lotLabel = (id: string) => {
+    const l = lotById.get(id);
+    if (!l) return "—";
+    const bien = bienById.get(l.bien_id)?.titre ?? "—";
+    return `${bien} — ${l.label}`;
+  };
   const locataireName = (id: string | null) => {
     if (!id) return "—";
     const l = locataires.find((x) => x.id === id);
@@ -190,14 +202,16 @@ function ContratsPage() {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
-                        <Label>Bien *</Label>
-                        <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
+                        <Label>Lot *</Label>
+                        <Select value={form.lot_id} onValueChange={(v) => setForm({ ...form, lot_id: v })}>
                           <SelectTrigger>
-                            <SelectValue placeholder={biens.length ? "Sélectionner un bien..." : "Aucun bien disponible"} />
+                            <SelectValue placeholder={lots.length ? "Sélectionner un lot..." : "Aucun lot disponible"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {biens.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>
+                            {lots.map((l) => (
+                              <SelectItem key={l.id} value={l.id}>
+                                {(bienById.get(l.bien_id)?.titre ?? "—")} — {l.label}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -272,7 +286,7 @@ function ContratsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bien</TableHead>
+                      <TableHead>Bien — Lot</TableHead>
                       <TableHead>Locataire</TableHead>
                       <TableHead>Début</TableHead>
                       <TableHead>Fin</TableHead>
@@ -283,7 +297,7 @@ function ContratsPage() {
                   <TableBody>
                     {contrats.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{bienTitre(c.bien_id)}</TableCell>
+                        <TableCell className="font-medium">{lotLabel(c.lot_id)}</TableCell>
                         <TableCell>{locataireName(c.locataire_id)}</TableCell>
                         <TableCell>{fmtDate(c.date_debut)}</TableCell>
                         <TableCell>{fmtDate(c.date_fin)}</TableCell>

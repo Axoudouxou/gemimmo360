@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/biens")({
 });
 
 const TYPES_BIEN = [
+  { value: "immeuble", label: "Immeuble" },
   { value: "appartement", label: "Appartement" },
   { value: "maison", label: "Maison" },
   { value: "local_commercial", label: "Local commercial" },
@@ -265,7 +266,11 @@ function BiensPage() {
                   <TableBody>
                     {biens.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-medium">{b.titre}</TableCell>
+                        <TableCell className="font-medium">
+                          <Link to="/biens/$bienId" params={{ bienId: b.id }} className="hover:underline">
+                            {b.titre}
+                          </Link>
+                        </TableCell>
                         <TableCell>{b.adresse ?? "—"}</TableCell>
                         <TableCell>
                           {b.type_bien ? (

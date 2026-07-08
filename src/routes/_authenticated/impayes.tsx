@@ -50,7 +50,8 @@ type Impaye = {
   date_derniere_relance: string | null;
   notes: string | null;
 };
-type Contrat = { id: string; bien_id: string; locataire_id: string | null; statut: string };
+type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
+type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
 
@@ -60,6 +61,7 @@ function ImpayesPage() {
   const [checked, setChecked] = useState(false);
   const [impayes, setImpayes] = useState<Impaye[]>([]);
   const [contrats, setContrats] = useState<Contrat[]>([]);
+  const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,15 +96,17 @@ function ImpayesPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: iData, error }, { data: cData }, { data: bData }, { data: coData }] = await Promise.all([
+    const [{ data: iData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
       supabase.from("impayes").select("*").order("date_echeance", { ascending: false }),
-      supabase.from("contrats").select("id, bien_id, locataire_id, statut"),
+      supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
+      supabase.from("lots").select("id, label, bien_id"),
       supabase.from("biens").select("id, titre"),
       supabase.from("contacts").select("id, nom, prenom"),
     ]);
     if (error) toast.error(error.message);
     else setImpayes((iData ?? []) as Impaye[]);
     setContrats((cData ?? []) as Contrat[]);
+    setLots((lData ?? []) as Lot[]);
     setBiens((bData ?? []) as Bien[]);
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
@@ -115,7 +119,9 @@ function ImpayesPage() {
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
     if (!c) return { bien: "—", locataire: "—" };
-    const bien = biens.find((b) => b.id === c.bien_id)?.titre ?? "—";
+    const lot = lots.find((l) => l.id === c.lot_id);
+    const bienTitre = lot ? (biens.find((b) => b.id === lot.bien_id)?.titre ?? "—") : "—";
+    const bien = lot ? `${bienTitre} — ${lot.label}` : bienTitre;
     const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
     const locataire = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
     return { bien, locataire };
