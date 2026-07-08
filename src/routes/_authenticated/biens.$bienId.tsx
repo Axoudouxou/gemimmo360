@@ -10,21 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
-  head: () => ({
-    meta: [{ title: "Fiche bien — Agence Immobilière" }],
-  }),
+  head: () => ({ meta: [{ title: "Fiche bien — Agence Immobilière" }] }),
   component: BienDetailPage,
 });
 
@@ -36,29 +28,28 @@ const STATUTS_LOT = [
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS_LOT.map((s) => [s.value, s.label]));
 
 type Bien = {
-  id: string;
-  titre: string;
-  adresse: string | null;
-  type_bien: string | null;
-  statut: string;
-  surface: number | null;
-  notes: string | null;
+  id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
+  surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
 };
-type Lot = {
-  id: string;
-  bien_id: string;
-  label: string;
-  type_lot: string | null;
-  statut: string;
-  surface: number | null;
-  notes: string | null;
-};
+type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
+type Contact = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
+type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statut: string };
+type Travail = { id: string; titre: string; statut: string; date_debut: string | null; date_fin: string | null; budget_prevu: number | null };
+type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
+
+const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F");
+const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
 
 function BienDetailPage() {
   const { bienId } = Route.useParams();
   const navigate = useNavigate();
   const [bien, setBien] = useState<Bien | null>(null);
+  const [bailleur, setBailleur] = useState<Contact | null>(null);
+  const [gestionnaireEmail, setGestionnaireEmail] = useState<string | null>(null);
   const [lots, setLots] = useState<Lot[]>([]);
+  const [activeContrats, setActiveContrats] = useState<Contrat[]>([]);
+  const [travaux, setTravaux] = useState<Travail[]>([]);
+  const [reclamations, setReclamations] = useState<Reclamation[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,14 +57,36 @@ function BienDetailPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: bData, error: bErr }, { data: lData, error: lErr }] = await Promise.all([
-      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes").eq("id", bienId).maybeSingle(),
+    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }] = await Promise.all([
+      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
+      supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
+      supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
     ]);
     if (bErr) toast.error(bErr.message);
-    setBien((bData ?? null) as Bien | null);
-    if (lErr) toast.error(lErr.message);
-    else setLots((lData ?? []) as Lot[]);
+    const b = (bData ?? null) as Bien | null;
+    setBien(b);
+    const lotsList = (lData ?? []) as Lot[];
+    setLots(lotsList);
+    setTravaux((tData ?? []) as Travail[]);
+    setReclamations((rData ?? []) as Reclamation[]);
+
+    if (b?.bailleur_id) {
+      const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("id", b.bailleur_id).maybeSingle();
+      setBailleur((data ?? null) as Contact | null);
+    } else setBailleur(null);
+    if (b?.gestionnaire_id) {
+      const { data } = await supabase.from("profiles").select("email").eq("id", b.gestionnaire_id).maybeSingle();
+      setGestionnaireEmail((data as any)?.email ?? null);
+    } else setGestionnaireEmail(null);
+
+    if (lotsList.length) {
+      const { data: cData } = await supabase
+        .from("contrats").select("id, lot_id, loyer_mensuel, statut")
+        .in("lot_id", lotsList.map((l) => l.id)).eq("statut", "actif");
+      setActiveContrats((cData ?? []) as Contrat[]);
+    } else setActiveContrats([]);
+
     setLoading(false);
   };
   useEffect(() => { load(); }, [bienId]);
@@ -100,6 +113,11 @@ function BienDetailPage() {
     load();
   };
 
+  const rentByLot = new Map(activeContrats.map((c) => [c.lot_id, Number(c.loyer_mensuel ?? 0)]));
+  const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
+  const nbVacants = lots.length - nbLoues;
+  const revenu = Array.from(rentByLot.values()).reduce((a, b) => a + b, 0);
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
@@ -122,16 +140,33 @@ function BienDetailPage() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle>{bien.titre}</CardTitle>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <CardTitle>{bien.titre}</CardTitle>
+                  <Badge variant="secondary">Immeuble</Badge>
+                </div>
                 <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
-                <div><span className="text-muted-foreground">Type : </span>{bien.type_bien ?? "—"}</div>
-                <div><span className="text-muted-foreground">Statut : </span>{bien.statut}</div>
+                <div>
+                  <span className="text-muted-foreground">Bailleur : </span>
+                  {bailleur ? (
+                    <Link to="/contacts/$contactId" params={{ contactId: bailleur.id }} className="underline">
+                      {contactName(bailleur)}
+                    </Link>
+                  ) : "—"}
+                </div>
+                <div><span className="text-muted-foreground">Gestionnaire : </span>{gestionnaireEmail ?? "—"}</div>
                 <div><span className="text-muted-foreground">Surface : </span>{bien.surface ?? "—"}</div>
                 {bien.notes && <div className="sm:col-span-3"><span className="text-muted-foreground">Notes : </span>{bien.notes}</div>}
               </CardContent>
             </Card>
+
+            <div className="grid gap-4 sm:grid-cols-4">
+              <Card><CardHeader><CardDescription>Nombre de lots</CardDescription><CardTitle className="text-2xl">{lots.length}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Loués</CardDescription><CardTitle className="text-2xl">{nbLoues}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Vacants</CardDescription><CardTitle className="text-2xl">{nbVacants}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Revenu mensuel</CardDescription><CardTitle className="text-2xl">{fmtMoney(revenu)}</CardTitle></CardHeader></Card>
+            </div>
 
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -197,22 +232,88 @@ function BienDetailPage() {
                           <TableHead>Label</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Statut</TableHead>
-                          <TableHead>Surface</TableHead>
-                          <TableHead></TableHead>
+                          <TableHead>Loyer actuel</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {lots.map((l) => (
-                          <TableRow key={l.id}>
+                          <TableRow key={l.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/lots/$lotId", params: { lotId: l.id } })}>
                             <TableCell className="font-medium">{l.label}</TableCell>
                             <TableCell>{l.type_lot ?? "—"}</TableCell>
                             <TableCell><Badge>{STATUT_LABEL[l.statut] ?? l.statut}</Badge></TableCell>
-                            <TableCell>{l.surface ?? "—"}</TableCell>
-                            <TableCell className="text-right">
-                              <Button asChild variant="ghost" size="sm">
-                                <Link to="/lots/$lotId" params={{ lotId: l.id }}>Ouvrir</Link>
-                              </Button>
-                            </TableCell>
+                            <TableCell>{rentByLot.has(l.id) ? fmtMoney(rentByLot.get(l.id)!) : "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Travaux</CardTitle>
+                <CardDescription>Travaux planifiés ou réalisés sur ce bien.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {travaux.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun travail.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Titre</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Début</TableHead>
+                          <TableHead>Fin</TableHead>
+                          <TableHead>Budget prévu</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {travaux.map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="font-medium">{t.titre}</TableCell>
+                            <TableCell><Badge>{t.statut}</Badge></TableCell>
+                            <TableCell>{t.date_debut ? new Date(t.date_debut).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                            <TableCell>{t.date_fin ? new Date(t.date_fin).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                            <TableCell>{fmtMoney(t.budget_prevu)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Réclamations</CardTitle>
+                <CardDescription>Réclamations liées à ce bien.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {reclamations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucune réclamation.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Titre</TableHead>
+                          <TableHead>Priorité</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Créée le</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reclamations.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">{r.titre}</TableCell>
+                            <TableCell><Badge variant="outline">{r.priorite}</Badge></TableCell>
+                            <TableCell><Badge>{r.statut}</Badge></TableCell>
+                            <TableCell>{new Date(r.created_at).toLocaleDateString("fr-FR")}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

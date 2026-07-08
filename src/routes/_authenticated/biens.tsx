@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,7 @@ type Bien = {
 type Bailleur = { id: string; nom: string; prenom: string | null };
 
 function BiensPage() {
+  const navigate = useNavigate();
   const [biens, setBiens] = useState<Bien[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,12 +266,8 @@ function BiensPage() {
                   </TableHeader>
                   <TableBody>
                     {biens.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">
-                          <Link to="/biens/$bienId" params={{ bienId: b.id }} className="hover:underline">
-                            {b.titre}
-                          </Link>
-                        </TableCell>
+                      <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/biens/$bienId", params: { bienId: b.id } })}>
+                        <TableCell className="font-medium">{b.titre}</TableCell>
                         <TableCell>{b.adresse ?? "—"}</TableCell>
                         <TableCell>
                           {b.type_bien ? (

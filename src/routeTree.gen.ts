@@ -25,6 +25,8 @@ import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedBiensRouteImport } from './routes/_authenticated/biens'
 import { Route as AuthenticatedLotsLotIdRouteImport } from './routes/_authenticated/lots.$lotId'
+import { Route as AuthenticatedContratsContratIdRouteImport } from './routes/_authenticated/contrats.$contratId'
+import { Route as AuthenticatedContactsContactIdRouteImport } from './routes/_authenticated/contacts.$contactId'
 import { Route as AuthenticatedBiensBienIdRouteImport } from './routes/_authenticated/biens.$bienId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -109,6 +111,18 @@ const AuthenticatedLotsLotIdRoute = AuthenticatedLotsLotIdRouteImport.update({
   path: '/lots/$lotId',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContratsContratIdRoute =
+  AuthenticatedContratsContratIdRouteImport.update({
+    id: '/$contratId',
+    path: '/$contratId',
+    getParentRoute: () => AuthenticatedContratsRoute,
+  } as any)
+const AuthenticatedContactsContactIdRoute =
+  AuthenticatedContactsContactIdRouteImport.update({
+    id: '/$contactId',
+    path: '/$contactId',
+    getParentRoute: () => AuthenticatedContactsRoute,
+  } as any)
 const AuthenticatedBiensBienIdRoute =
   AuthenticatedBiensBienIdRouteImport.update({
     id: '/$bienId',
@@ -121,8 +135,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/biens': typeof AuthenticatedBiensRouteWithChildren
   '/charges': typeof AuthenticatedChargesRoute
-  '/contacts': typeof AuthenticatedContactsRoute
-  '/contrats': typeof AuthenticatedContratsRoute
+  '/contacts': typeof AuthenticatedContactsRouteWithChildren
+  '/contrats': typeof AuthenticatedContratsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
@@ -132,6 +146,8 @@ export interface FileRoutesByFullPath {
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
   '/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/contacts/$contactId': typeof AuthenticatedContactsContactIdRoute
+  '/contrats/$contratId': typeof AuthenticatedContratsContratIdRoute
   '/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRoutesByTo {
@@ -139,8 +155,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/biens': typeof AuthenticatedBiensRouteWithChildren
   '/charges': typeof AuthenticatedChargesRoute
-  '/contacts': typeof AuthenticatedContactsRoute
-  '/contrats': typeof AuthenticatedContratsRoute
+  '/contacts': typeof AuthenticatedContactsRouteWithChildren
+  '/contrats': typeof AuthenticatedContratsRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
@@ -150,6 +166,8 @@ export interface FileRoutesByTo {
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
   '/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/contacts/$contactId': typeof AuthenticatedContactsContactIdRoute
+  '/contrats/$contratId': typeof AuthenticatedContratsContratIdRoute
   '/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRoutesById {
@@ -159,8 +177,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/biens': typeof AuthenticatedBiensRouteWithChildren
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
-  '/_authenticated/contacts': typeof AuthenticatedContactsRoute
-  '/_authenticated/contrats': typeof AuthenticatedContratsRoute
+  '/_authenticated/contacts': typeof AuthenticatedContactsRouteWithChildren
+  '/_authenticated/contrats': typeof AuthenticatedContratsRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
@@ -170,6 +188,8 @@ export interface FileRoutesById {
   '/_authenticated/travaux': typeof AuthenticatedTravauxRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/_authenticated/contacts/$contactId': typeof AuthenticatedContactsContactIdRoute
+  '/_authenticated/contrats/$contratId': typeof AuthenticatedContratsContratIdRoute
   '/_authenticated/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +210,8 @@ export interface FileRouteTypes {
     | '/travaux'
     | '/users'
     | '/biens/$bienId'
+    | '/contacts/$contactId'
+    | '/contrats/$contratId'
     | '/lots/$lotId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -208,6 +230,8 @@ export interface FileRouteTypes {
     | '/travaux'
     | '/users'
     | '/biens/$bienId'
+    | '/contacts/$contactId'
+    | '/contrats/$contratId'
     | '/lots/$lotId'
   id:
     | '__root__'
@@ -227,6 +251,8 @@ export interface FileRouteTypes {
     | '/_authenticated/travaux'
     | '/_authenticated/users'
     | '/_authenticated/biens/$bienId'
+    | '/_authenticated/contacts/$contactId'
+    | '/_authenticated/contrats/$contratId'
     | '/_authenticated/lots/$lotId'
   fileRoutesById: FileRoutesById
 }
@@ -350,6 +376,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLotsLotIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contrats/$contratId': {
+      id: '/_authenticated/contrats/$contratId'
+      path: '/$contratId'
+      fullPath: '/contrats/$contratId'
+      preLoaderRoute: typeof AuthenticatedContratsContratIdRouteImport
+      parentRoute: typeof AuthenticatedContratsRoute
+    }
+    '/_authenticated/contacts/$contactId': {
+      id: '/_authenticated/contacts/$contactId'
+      path: '/$contactId'
+      fullPath: '/contacts/$contactId'
+      preLoaderRoute: typeof AuthenticatedContactsContactIdRouteImport
+      parentRoute: typeof AuthenticatedContactsRoute
+    }
     '/_authenticated/biens/$bienId': {
       id: '/_authenticated/biens/$bienId'
       path: '/$bienId'
@@ -371,11 +411,37 @@ const AuthenticatedBiensRouteChildren: AuthenticatedBiensRouteChildren = {
 const AuthenticatedBiensRouteWithChildren =
   AuthenticatedBiensRoute._addFileChildren(AuthenticatedBiensRouteChildren)
 
+interface AuthenticatedContactsRouteChildren {
+  AuthenticatedContactsContactIdRoute: typeof AuthenticatedContactsContactIdRoute
+}
+
+const AuthenticatedContactsRouteChildren: AuthenticatedContactsRouteChildren = {
+  AuthenticatedContactsContactIdRoute: AuthenticatedContactsContactIdRoute,
+}
+
+const AuthenticatedContactsRouteWithChildren =
+  AuthenticatedContactsRoute._addFileChildren(
+    AuthenticatedContactsRouteChildren,
+  )
+
+interface AuthenticatedContratsRouteChildren {
+  AuthenticatedContratsContratIdRoute: typeof AuthenticatedContratsContratIdRoute
+}
+
+const AuthenticatedContratsRouteChildren: AuthenticatedContratsRouteChildren = {
+  AuthenticatedContratsContratIdRoute: AuthenticatedContratsContratIdRoute,
+}
+
+const AuthenticatedContratsRouteWithChildren =
+  AuthenticatedContratsRoute._addFileChildren(
+    AuthenticatedContratsRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBiensRoute: typeof AuthenticatedBiensRouteWithChildren
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
-  AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
-  AuthenticatedContratsRoute: typeof AuthenticatedContratsRoute
+  AuthenticatedContactsRoute: typeof AuthenticatedContactsRouteWithChildren
+  AuthenticatedContratsRoute: typeof AuthenticatedContratsRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEtatsDesLieuxRoute: typeof AuthenticatedEtatsDesLieuxRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
@@ -390,8 +456,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBiensRoute: AuthenticatedBiensRouteWithChildren,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
-  AuthenticatedContactsRoute: AuthenticatedContactsRoute,
-  AuthenticatedContratsRoute: AuthenticatedContratsRoute,
+  AuthenticatedContactsRoute: AuthenticatedContactsRouteWithChildren,
+  AuthenticatedContratsRoute: AuthenticatedContratsRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEtatsDesLieuxRoute: AuthenticatedEtatsDesLieuxRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
