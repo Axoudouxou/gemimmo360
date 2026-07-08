@@ -50,6 +50,8 @@ type Contact = {
   gestionnaire_id: string | null;
   notes: string | null;
   created_at: string;
+  type_entite: string | null;
+  interlocuteur: string | null;
 };
 
 function ContactsPage() {
