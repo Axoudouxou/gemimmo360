@@ -511,11 +511,15 @@ export type Database = {
           bien_id: string
           budget_depense: number
           budget_prevu: number | null
+          charge_financiere: string | null
           created_at: string
           date_debut: string | null
           date_fin: string | null
           description: string | null
+          etat_des_lieux_id: string | null
           id: string
+          notes: string | null
+          origine: string | null
           statut: string
           titre: string
         }
@@ -523,11 +527,15 @@ export type Database = {
           bien_id: string
           budget_depense?: number
           budget_prevu?: number | null
+          charge_financiere?: string | null
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
+          etat_des_lieux_id?: string | null
           id?: string
+          notes?: string | null
+          origine?: string | null
           statut?: string
           titre: string
         }
@@ -535,11 +543,15 @@ export type Database = {
           bien_id?: string
           budget_depense?: number
           budget_prevu?: number | null
+          charge_financiere?: string | null
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
+          etat_des_lieux_id?: string | null
           id?: string
+          notes?: string | null
+          origine?: string | null
           statut?: string
           titre?: string
         }
@@ -549,6 +561,13 @@ export type Database = {
             columns: ["bien_id"]
             isOneToOne: false
             referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travaux_etat_des_lieux_id_fkey"
+            columns: ["etat_des_lieux_id"]
+            isOneToOne: false
+            referencedRelation: "etats_des_lieux"
             referencedColumns: ["id"]
           },
         ]
