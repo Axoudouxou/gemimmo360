@@ -53,6 +53,8 @@ type Contact = {
   created_at: string;
   type_entite: string | null;
   interlocuteur: string | null;
+  archive: boolean;
+  fusionne_avec_id: string | null;
 };
 
 function ContactsPage() {
@@ -60,6 +62,8 @@ function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string>("");
+  const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
