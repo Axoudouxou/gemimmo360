@@ -59,6 +59,9 @@ function AuthenticatedLayout() {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
             </div>
+            <div className="flex-1 flex justify-center px-4">
+              <GlobalSearch />
+            </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col items-end leading-tight">
                 <span className="text-sm font-medium text-foreground truncate max-w-[220px]">
