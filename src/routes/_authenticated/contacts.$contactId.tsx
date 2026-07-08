@@ -168,7 +168,7 @@ function ContactDetailPage() {
       telephone: editForm.telephone.trim() || null,
       email: editForm.email.trim() || null,
       type_contact: editForm.type_contact || null,
-      type_entite: editForm.type_entite || null,
+      type_entite: editForm.type_entite || "personne",
       interlocuteur: editForm.interlocuteur.trim() || null,
       notes: editForm.notes.trim() || null,
     }).eq("id", contactId);
