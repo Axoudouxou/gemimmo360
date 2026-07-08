@@ -90,7 +90,7 @@ function ContactsPage() {
   }, []);
 
   const resetForm = () =>
-    setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "" });
+    setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "", type_entite: "personne", interlocuteur: "" });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
