@@ -343,6 +343,7 @@ function BienDetailPage() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
                 <div>
