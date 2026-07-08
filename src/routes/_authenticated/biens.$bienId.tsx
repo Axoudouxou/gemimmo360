@@ -65,10 +65,17 @@ function BienDetailPage() {
   const [activeContrats, setActiveContrats] = useState<Contrat[]>([]);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [reclamations, setReclamations] = useState<Reclamation[]>([]);
+  const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ label: "", type_lot: "", statut: "vacant", surface: "", notes: "" });
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    titre: "", adresse: "", type_bien: "", statut: "vacant", surface: "", bailleur_id: "", notes: "",
+  });
 
   const load = async () => {
     setLoading(true);
