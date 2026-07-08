@@ -122,12 +122,14 @@ export type Database = {
           gestionnaire_id: string | null
           id: string
           id_externe: string | null
+          interlocuteur: string | null
           nom: string
           notes: string | null
           prenom: string | null
           source: string
           telephone: string | null
           type_contact: string | null
+          type_entite: string
         }
         Insert: {
           created_at?: string
@@ -135,12 +137,14 @@ export type Database = {
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
+          interlocuteur?: string | null
           nom: string
           notes?: string | null
           prenom?: string | null
           source?: string
           telephone?: string | null
           type_contact?: string | null
+          type_entite?: string
         }
         Update: {
           created_at?: string
@@ -148,12 +152,14 @@ export type Database = {
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
+          interlocuteur?: string | null
           nom?: string
           notes?: string | null
           prenom?: string | null
           source?: string
           telephone?: string | null
           type_contact?: string | null
+          type_entite?: string
         }
         Relationships: [
           {

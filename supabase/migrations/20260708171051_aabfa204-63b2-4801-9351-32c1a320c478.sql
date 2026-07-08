@@ -1,0 +1,1 @@
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS type_entite text NOT NULL DEFAULT 'personne', ADD COLUMN IF NOT EXISTS interlocuteur text;
