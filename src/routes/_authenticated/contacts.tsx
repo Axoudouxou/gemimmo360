@@ -234,8 +234,15 @@ function ContactsPage() {
                   <TableBody>
                     {contacts.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.nom}</TableCell>
-                        <TableCell>{c.prenom ?? "—"}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{c.nom}</span>
+                            {c.type_entite === "entreprise" && (
+                              <Badge variant="secondary">Entreprise</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{c.type_entite === "entreprise" ? (c.interlocuteur ?? "—") : (c.prenom ?? "—")}</TableCell>
                         <TableCell>
                           {c.type_contact ? (
                             <Badge variant="outline">{TYPE_LABEL[c.type_contact] ?? c.type_contact}</Badge>
