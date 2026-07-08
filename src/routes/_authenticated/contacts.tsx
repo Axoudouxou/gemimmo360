@@ -68,6 +68,8 @@ function ContactsPage() {
     email: "",
     type_contact: "",
     notes: "",
+    type_entite: "personne",
+    interlocuteur: "",
   });
 
   const load = async () => {
