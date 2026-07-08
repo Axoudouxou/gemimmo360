@@ -83,7 +83,7 @@ function LotDetailPage() {
   const openDialog = async () => {
     setOpen(true);
     if (locataireList.length === 0) {
-      const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("type_contact", "locataire").order("nom");
+      const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("type_contact", "locataire").eq("archive", false).order("nom");
       setLocataireList((data ?? []) as Locataire[]);
     }
   };

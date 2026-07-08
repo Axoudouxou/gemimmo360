@@ -63,7 +63,7 @@ function ReclamationsPage() {
     const [{ data: rData, error }, { data: bData }, { data: lData }] = await Promise.all([
       supabase.from("reclamations").select("*").order("created_at", { ascending: false }),
       supabase.from("biens").select("id, titre").order("titre"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").order("nom"),
+      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").eq("archive", false).order("nom"),
     ]);
     if (error) toast.error(error.message);
     else setItems((rData ?? []) as Reclamation[]);
