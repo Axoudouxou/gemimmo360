@@ -21,7 +21,9 @@ export type Database = {
           created_at: string
           gestionnaire_id: string | null
           id: string
+          id_externe: string | null
           notes: string | null
+          source: string
           statut: string
           surface: number | null
           titre: string
@@ -34,7 +36,9 @@ export type Database = {
           created_at?: string
           gestionnaire_id?: string | null
           id?: string
+          id_externe?: string | null
           notes?: string | null
+          source?: string
           statut?: string
           surface?: number | null
           titre: string
@@ -47,7 +51,9 @@ export type Database = {
           created_at?: string
           gestionnaire_id?: string | null
           id?: string
+          id_externe?: string | null
           notes?: string | null
+          source?: string
           statut?: string
           surface?: number | null
           titre?: string
@@ -115,9 +121,11 @@ export type Database = {
           email: string | null
           gestionnaire_id: string | null
           id: string
+          id_externe: string | null
           nom: string
           notes: string | null
           prenom: string | null
+          source: string
           telephone: string | null
           type_contact: string | null
         }
@@ -126,9 +134,11 @@ export type Database = {
           email?: string | null
           gestionnaire_id?: string | null
           id?: string
+          id_externe?: string | null
           nom: string
           notes?: string | null
           prenom?: string | null
+          source?: string
           telephone?: string | null
           type_contact?: string | null
         }
@@ -137,9 +147,11 @@ export type Database = {
           email?: string | null
           gestionnaire_id?: string | null
           id?: string
+          id_externe?: string | null
           nom?: string
           notes?: string | null
           prenom?: string | null
+          source?: string
           telephone?: string | null
           type_contact?: string | null
         }
@@ -282,6 +294,47 @@ export type Database = {
             columns: ["contrat_id"]
             isOneToOne: false
             referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imports: {
+        Row: {
+          created_at: string
+          id: string
+          importe_par: string | null
+          nom_fichier: string
+          nombre_erreurs: number
+          nombre_lignes: number
+          nombre_succes: number
+          type_import: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          importe_par?: string | null
+          nom_fichier: string
+          nombre_erreurs?: number
+          nombre_lignes?: number
+          nombre_succes?: number
+          type_import: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          importe_par?: string | null
+          nom_fichier?: string
+          nombre_erreurs?: number
+          nombre_lignes?: number
+          nombre_succes?: number
+          type_import?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imports_importe_par_fkey"
+            columns: ["importe_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
