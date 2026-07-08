@@ -185,7 +185,25 @@ function BienDetailPage() {
     load();
   };
 
-  useEffect(() => { resetEditForm(); }, [bien]);
+  useEffect(() => { resetEditForm(); setGestId(bien?.gestionnaire_id ?? ""); }, [bien]);
+
+  const openGestionnaire = async () => {
+    setGestOpen(true);
+    if (gestionnaires.length === 0) {
+      const { data } = await supabase.from("profiles").select("id, email, role").in("role", ["gestion_locative", "commercial", "admin"]).order("email");
+      setGestionnaires((data ?? []) as Gestionnaire[]);
+    }
+  };
+
+  const handleGestionnaireSave = async () => {
+    setGestSaving(true);
+    const { error } = await supabase.from("biens").update({ gestionnaire_id: gestId || null }).eq("id", bienId);
+    setGestSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Gestionnaire mis à jour");
+    setGestOpen(false);
+    load();
+  };
 
   const rentByLot = new Map(activeContrats.map((c) => [c.lot_id, Number(c.loyer_mensuel ?? 0)]));
   const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
