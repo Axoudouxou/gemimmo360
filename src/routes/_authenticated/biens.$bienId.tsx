@@ -98,7 +98,7 @@ function BienDetailPage() {
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").order("nom"),
+      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
     ]);
     if (bErr) toast.error(bErr.message);
     if (bListErr) toast.error(bListErr.message);

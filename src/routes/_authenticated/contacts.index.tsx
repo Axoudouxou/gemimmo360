@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,8 @@ type Contact = {
   created_at: string;
   type_entite: string | null;
   interlocuteur: string | null;
+  archive: boolean;
+  fusionne_avec_id: string | null;
 };
 
 function ContactsPage() {
@@ -59,6 +62,8 @@ function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string>("");
+  const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -77,10 +82,13 @@ function ContactsPage() {
     setLoading(true);
     const { data: userRes } = await supabase.auth.getUser();
     setUserId(userRes.user?.id ?? null);
-    const { data, error } = await supabase
-      .from("contacts")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (userRes.user) {
+      const { data: prof } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      if (prof?.role) setRole(prof.role);
+    }
+    let query = supabase.from("contacts").select("*").order("created_at", { ascending: false });
+    if (!showArchived) query = query.eq("archive", false);
+    const { data, error } = await query;
     if (error) toast.error(error.message);
     else setContacts((data ?? []) as Contact[]);
     setLoading(false);
@@ -88,7 +96,8 @@ function ContactsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchived]);
 
   const resetForm = () =>
     setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "", type_entite: "personne", interlocuteur: "" });
@@ -141,6 +150,14 @@ function ContactsPage() {
               <CardDescription>
                 Liste des contacts visibles selon votre rôle.
               </CardDescription>
+              {role === "admin" && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Switch id="show-archived" checked={showArchived} onCheckedChange={setShowArchived} />
+                  <Label htmlFor="show-archived" className="text-xs text-muted-foreground cursor-pointer">
+                    Afficher les archivés
+                  </Label>
+                </div>
+              )}
             </div>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
@@ -240,6 +257,9 @@ function ContactsPage() {
                             <span>{c.nom}</span>
                             {c.type_entite === "entreprise" && (
                               <Badge variant="secondary">Entreprise</Badge>
+                            )}
+                            {c.archive && (
+                              <Badge variant="outline" className="text-muted-foreground">Archivé</Badge>
                             )}
                           </div>
                         </TableCell>

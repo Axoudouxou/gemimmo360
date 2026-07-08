@@ -159,8 +159,10 @@ export type Database = {
       }
       contacts: {
         Row: {
+          archive: boolean
           created_at: string
           email: string | null
+          fusionne_avec_id: string | null
           gestionnaire_id: string | null
           id: string
           id_externe: string | null
@@ -175,8 +177,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive?: boolean
           created_at?: string
           email?: string | null
+          fusionne_avec_id?: string | null
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
@@ -191,8 +195,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive?: boolean
           created_at?: string
           email?: string | null
+          fusionne_avec_id?: string | null
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
@@ -207,6 +213,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "contacts_fusionne_avec_id_fkey"
+            columns: ["fusionne_avec_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contacts_gestionnaire_id_fkey"
             columns: ["gestionnaire_id"]

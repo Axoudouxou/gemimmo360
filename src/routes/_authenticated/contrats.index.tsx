@@ -104,7 +104,7 @@ function ContratsPage() {
       supabase.from("contrats").select("*").order("created_at", { ascending: false }),
       supabase.from("lots").select("id, label, bien_id").order("label"),
       supabase.from("biens").select("id, titre").order("titre"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").order("nom"),
+      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").eq("archive", false).order("nom"),
     ]);
     if (error) toast.error(error.message);
     else setContrats((cData ?? []) as Contrat[]);
