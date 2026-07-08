@@ -144,14 +144,6 @@ function ContactDetailPage() {
       email: contact.email ?? "",
       type_contact: contact.type_contact ?? "",
       type_entite: contact.type_entite ?? "personne",
-    } as any);
-    setEditForm((f) => ({ ...f,
-      nom: contact.nom,
-      prenom: contact.prenom ?? "",
-      telephone: contact.telephone ?? "",
-      email: contact.email ?? "",
-      type_contact: contact.type_contact ?? "",
-      type_entite: contact.type_entite ?? "personne",
       interlocuteur: contact.interlocuteur ?? "",
       notes: contact.notes ?? "",
     });
