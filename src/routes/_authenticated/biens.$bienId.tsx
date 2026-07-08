@@ -44,6 +44,7 @@ const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS_LOT.map(
 type Bien = {
   id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
   surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
+  updated_at: string | null;
 };
 type Bailleur = { id: string; nom: string; prenom: string | null };
 type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
@@ -51,9 +52,11 @@ type Contact = { id: string; nom: string; prenom: string | null; type_entite: st
 type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statut: string };
 type Travail = { id: string; titre: string; statut: string; date_debut: string | null; date_fin: string | null; budget_prevu: number | null };
 type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
+type Gestionnaire = { id: string; email: string | null; role: string };
 
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F");
 const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
+const isStale = (d?: string | null) => !!d && Date.now() - new Date(d).getTime() > 1000 * 60 * 60 * 24 * 30 * 6;
 
 function BienDetailPage() {
   const { bienId } = Route.useParams();
