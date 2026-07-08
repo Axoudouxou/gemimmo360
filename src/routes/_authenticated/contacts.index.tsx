@@ -82,10 +82,13 @@ function ContactsPage() {
     setLoading(true);
     const { data: userRes } = await supabase.auth.getUser();
     setUserId(userRes.user?.id ?? null);
-    const { data, error } = await supabase
-      .from("contacts")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (userRes.user) {
+      const { data: prof } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      if (prof?.role) setRole(prof.role);
+    }
+    let query = supabase.from("contacts").select("*").order("created_at", { ascending: false });
+    if (!showArchived) query = query.eq("archive", false);
+    const { data, error } = await query;
     if (error) toast.error(error.message);
     else setContacts((data ?? []) as Contact[]);
     setLoading(false);
@@ -93,7 +96,8 @@ function ContactsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchived]);
 
   const resetForm = () =>
     setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "", type_entite: "personne", interlocuteur: "" });
