@@ -104,6 +104,8 @@ function ContactsPage() {
       email: form.email.trim() || null,
       type_contact: form.type_contact || null,
       notes: form.notes.trim() || null,
+      type_entite: form.type_entite || "personne",
+      interlocuteur: form.type_entite === "entreprise" ? (form.interlocuteur.trim() || null) : null,
       gestionnaire_id: userId,
     });
     setSaving(false);
