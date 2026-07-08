@@ -80,10 +80,21 @@ function BienDetailPage() {
     titre: "", adresse: "", type_bien: "", statut: "vacant", surface: "", bailleur_id: "", notes: "",
   });
 
+  const [myRole, setMyRole] = useState<string>("");
+  const [gestOpen, setGestOpen] = useState(false);
+  const [gestSaving, setGestSaving] = useState(false);
+  const [gestionnaires, setGestionnaires] = useState<Gestionnaire[]>([]);
+  const [gestId, setGestId] = useState("");
+
   const load = async () => {
     setLoading(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    if (userRes.user) {
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      setMyRole(p?.role ?? "");
+    }
     const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }] = await Promise.all([
-      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id").eq("id", bienId).maybeSingle(),
+      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id, updated_at").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
