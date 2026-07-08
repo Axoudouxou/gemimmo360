@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GlobalSearch } from "@/components/global-search";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -57,6 +58,9 @@ function AuthenticatedLayout() {
           <header className="h-14 flex items-center justify-between border-b bg-card px-4 gap-3">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+            </div>
+            <div className="flex-1 flex justify-center px-4">
+              <GlobalSearch />
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col items-end leading-tight">
