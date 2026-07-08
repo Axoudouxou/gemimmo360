@@ -138,6 +138,41 @@ function BienDetailPage() {
     load();
   };
 
+  const resetEditForm = () => {
+    if (!bien) return;
+    setEditForm({
+      titre: bien.titre,
+      adresse: bien.adresse ?? "",
+      type_bien: bien.type_bien ?? "",
+      statut: bien.statut,
+      surface: bien.surface?.toString() ?? "",
+      bailleur_id: bien.bailleur_id ?? "",
+      notes: bien.notes ?? "",
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.titre.trim()) return toast.error("Le titre est obligatoire");
+    setEditSaving(true);
+    const { error } = await supabase.from("biens").update({
+      titre: editForm.titre.trim(),
+      adresse: editForm.adresse.trim() || null,
+      type_bien: editForm.type_bien || null,
+      statut: editForm.statut,
+      surface: editForm.surface ? Number(editForm.surface) : null,
+      bailleur_id: editForm.bailleur_id || null,
+      notes: editForm.notes.trim() || null,
+    }).eq("id", bienId);
+    setEditSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Bien mis à jour");
+    setEditOpen(false);
+    load();
+  };
+
+  useEffect(() => { resetEditForm(); }, [bien]);
+
   const rentByLot = new Map(activeContrats.map((c) => [c.lot_id, Number(c.loyer_mensuel ?? 0)]));
   const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
   const nbVacants = lots.length - nbLoues;
