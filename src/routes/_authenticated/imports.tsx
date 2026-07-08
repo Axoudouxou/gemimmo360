@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,13 +29,13 @@ export const Route = createFileRoute("/_authenticated/imports")({
   head: () => ({
     meta: [
       { title: "Import CSV — GEM Immobilier" },
-      { name: "description", content: "Importer des contacts ou des biens depuis un fichier CSV." },
+      { name: "description", content: "Importer des contacts, biens ou contrats depuis un fichier CSV." },
     ],
   }),
   component: ImportsPage,
 });
 
-type ImportType = "contacts" | "biens";
+type ImportType = "contacts" | "biens" | "contrats";
 
 const IGNORE = "__ignore__";
 
@@ -59,6 +59,12 @@ const TARGET_FIELDS: Record<ImportType, { key: string; label: string; required?:
     { key: "notes", label: "Notes" },
     { key: "id_externe", label: "Identifiant externe" },
   ],
+  contrats: [
+    { key: "bien_titre", label: "Titre du bien", required: true },
+    { key: "locataire_nom", label: "Nom du locataire", required: true },
+    { key: "loyer_mensuel", label: "Loyer mensuel", required: true },
+    { key: "date_entree", label: "Date d'entrée (AAAA-MM-JJ)", required: true },
+  ],
 };
 
 type ImportRow = {
@@ -69,6 +75,18 @@ type ImportRow = {
   nombre_succes: number;
   nombre_erreurs: number;
   created_at: string;
+};
+
+type ContratPreviewRow = {
+  index: number;
+  bien_titre: string;
+  locataire_nom: string;
+  loyer_mensuel: string;
+  date_entree: string;
+  bien_id?: string;
+  locataire_id?: string;
+  ok: boolean;
+  motif?: string;
 };
 
 function ImportsPage() {
@@ -83,6 +101,8 @@ function ImportsPage() {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState<ImportRow[]>([]);
+  const [contratPreview, setContratPreview] = useState<ContratPreviewRow[]>([]);
+  const [resolvingContrats, setResolvingContrats] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -122,11 +142,13 @@ function ImportsPage() {
     setHeaders([]);
     setRows([]);
     setMapping({});
+    setContratPreview([]);
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleFile = (file: File) => {
     setFileName(file.name);
+    setContratPreview([]);
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
@@ -137,7 +159,6 @@ function ImportsPage() {
         const hdrs = result.meta.fields ?? [];
         setHeaders(hdrs);
         setRows(parsedRows);
-        // Auto-map by name match
         const initial: Record<string, string> = {};
         targets.forEach((t) => {
           const match = hdrs.find(
@@ -156,6 +177,80 @@ function ImportsPage() {
 
   const preview = useMemo(() => rows.slice(0, 5), [rows]);
 
+  // Resolve contrats preview whenever mapping/rows change for the contrats type
+  useEffect(() => {
+    if (type !== "contrats" || rows.length === 0) {
+      setContratPreview([]);
+      return;
+    }
+    const required = ["bien_titre", "locataire_nom", "loyer_mensuel", "date_entree"];
+    if (required.some((k) => !mapping[k] || mapping[k] === IGNORE)) {
+      setContratPreview([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setResolvingContrats(true);
+      const bienTitres = new Set<string>();
+      const locataireNoms = new Set<string>();
+      rows.forEach((r) => {
+        const b = String(r[mapping.bien_titre] ?? "").trim();
+        const l = String(r[mapping.locataire_nom] ?? "").trim();
+        if (b) bienTitres.add(b);
+        if (l) locataireNoms.add(l);
+      });
+
+      const [{ data: biens }, { data: contacts }] = await Promise.all([
+        bienTitres.size > 0
+          ? supabase.from("biens").select("id, titre").in("titre", Array.from(bienTitres))
+          : Promise.resolve({ data: [] as { id: string; titre: string }[] }),
+        locataireNoms.size > 0
+          ? supabase
+              .from("contacts")
+              .select("id, nom, type_contact")
+              .eq("type_contact", "locataire")
+              .in("nom", Array.from(locataireNoms))
+          : Promise.resolve({ data: [] as { id: string; nom: string; type_contact: string }[] }),
+      ]);
+
+      if (cancelled) return;
+
+      const bienMap = new Map<string, string>();
+      (biens ?? []).forEach((b) => bienMap.set(b.titre, b.id));
+      const locataireMap = new Map<string, string>();
+      (contacts ?? []).forEach((c) => locataireMap.set(c.nom, c.id));
+
+      const result: ContratPreviewRow[] = rows.map((r, i) => {
+        const bien_titre = String(r[mapping.bien_titre] ?? "").trim();
+        const locataire_nom = String(r[mapping.locataire_nom] ?? "").trim();
+        const loyer_mensuel = String(r[mapping.loyer_mensuel] ?? "").trim();
+        const date_entree = String(r[mapping.date_entree] ?? "").trim();
+        const bien_id = bienMap.get(bien_titre);
+        const locataire_id = locataireMap.get(locataire_nom);
+        let ok = true;
+        let motif: string | undefined;
+        if (!bien_id) {
+          ok = false;
+          motif = "bien non trouvé";
+        } else if (!locataire_id) {
+          ok = false;
+          motif = "locataire non trouvé";
+        }
+        return { index: i, bien_titre, locataire_nom, loyer_mensuel, date_entree, bien_id, locataire_id, ok, motif };
+      });
+      setContratPreview(result);
+      setResolvingContrats(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [type, rows, mapping]);
+
+  const contratStats = useMemo(() => {
+    const ok = contratPreview.filter((r) => r.ok).length;
+    return { ok, ko: contratPreview.length - ok };
+  }, [contratPreview]);
+
   const handleImport = async () => {
     if (!userId) return;
     if (rows.length === 0) return toast.error("Aucune ligne à importer.");
@@ -167,50 +262,78 @@ function ImportsPage() {
     }
 
     setImporting(true);
-    const payload: Record<string, unknown>[] = [];
+    let succes = 0;
     let errors = 0;
 
-    for (const row of rows) {
-      const record: Record<string, unknown> = {
-        source: "import_manuel",
-        gestionnaire_id: userId,
-      };
-      let valid = true;
-      for (const t of targets) {
-        const col = mapping[t.key];
-        if (!col || col === IGNORE) continue;
-        const raw = row[col];
-        const val = raw == null ? "" : String(raw).trim();
-        if (t.required && !val) {
-          valid = false;
-          break;
-        }
-        if (!val) continue;
-        if (t.key === "surface") {
-          const n = Number(val.replace(",", "."));
-          if (!Number.isNaN(n)) record[t.key] = n;
-        } else {
-          record[t.key] = val;
+    if (type === "contrats") {
+      const toInsert = contratPreview
+        .filter((r) => r.ok)
+        .map((r) => {
+          const loyer = Number(r.loyer_mensuel.replace(",", "."));
+          return {
+            bien_id: r.bien_id!,
+            locataire_id: r.locataire_id!,
+            loyer_mensuel: Number.isNaN(loyer) ? null : loyer,
+            date_debut: r.date_entree || null,
+            statut: "actif",
+          };
+        });
+      errors = contratPreview.filter((r) => !r.ok).length;
+
+      if (toInsert.length > 0) {
+        const chunkSize = 200;
+        for (let i = 0; i < toInsert.length; i += chunkSize) {
+          const chunk = toInsert.slice(i, i + chunkSize);
+          const { error, data } = await supabase.from("contrats").insert(chunk).select("id");
+          if (error) {
+            errors += chunk.length;
+          } else {
+            succes += data?.length ?? chunk.length;
+          }
         }
       }
-      if (valid) payload.push(record);
-      else errors++;
-    }
+    } else {
+      const payload: Record<string, unknown>[] = [];
+      for (const row of rows) {
+        const record: Record<string, unknown> = {
+          source: "import_manuel",
+          gestionnaire_id: userId,
+        };
+        let valid = true;
+        for (const t of targets) {
+          const col = mapping[t.key];
+          if (!col || col === IGNORE) continue;
+          const raw = row[col];
+          const val = raw == null ? "" : String(raw).trim();
+          if (t.required && !val) {
+            valid = false;
+            break;
+          }
+          if (!val) continue;
+          if (t.key === "surface") {
+            const n = Number(val.replace(",", "."));
+            if (!Number.isNaN(n)) record[t.key] = n;
+          } else {
+            record[t.key] = val;
+          }
+        }
+        if (valid) payload.push(record);
+        else errors++;
+      }
 
-    let succes = 0;
-    if (payload.length > 0) {
-      // Insert in chunks of 200
-      const chunkSize = 200;
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        const chunk = payload.slice(i, i + chunkSize);
-        const { error, data } = await supabase
-          .from(type)
-          .insert(chunk as never)
-          .select("id");
-        if (error) {
-          errors += chunk.length;
-        } else {
-          succes += data?.length ?? chunk.length;
+      if (payload.length > 0) {
+        const chunkSize = 200;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          const chunk = payload.slice(i, i + chunkSize);
+          const { error, data } = await supabase
+            .from(type)
+            .insert(chunk as never)
+            .select("id");
+          if (error) {
+            errors += chunk.length;
+          } else {
+            succes += data?.length ?? chunk.length;
+          }
         }
       }
     }
@@ -266,7 +389,7 @@ function ImportsPage() {
       <div>
         <h1 className="text-2xl">Import CSV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Importer des contacts ou des biens à partir d'un fichier CSV.
+          Importer des contacts, des biens ou des contrats à partir d'un fichier CSV.
         </p>
       </div>
 
@@ -292,8 +415,16 @@ function ImportsPage() {
                 <SelectContent>
                   <SelectItem value="contacts">Contacts</SelectItem>
                   <SelectItem value="biens">Biens</SelectItem>
+                  <SelectItem value="contrats">Contrats</SelectItem>
                 </SelectContent>
               </Select>
+              {type === "contrats" && (
+                <p className="text-xs text-muted-foreground">
+                  Colonnes attendues : <code>bien_titre</code>, <code>locataire_nom</code>,{" "}
+                  <code>loyer_mensuel</code>, <code>date_entree</code>. Les biens et locataires
+                  doivent déjà exister (correspondance exacte).
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label>Fichier CSV</Label>
@@ -366,43 +497,104 @@ function ImportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">3. Aperçu (5 premières lignes)</CardTitle>
-              <CardDescription>
-                {rows.length} ligne(s) détectée(s) dans le fichier.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {headers.map((h) => (
-                        <TableHead key={h}>{h}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.map((r, i) => (
-                      <TableRow key={i}>
-                        {headers.map((h) => (
-                          <TableCell key={h} className="text-sm">
-                            {r[h] ?? ""}
+          {type === "contrats" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">3. Aperçu des correspondances</CardTitle>
+                <CardDescription>
+                  {resolvingContrats
+                    ? "Recherche des biens et locataires..."
+                    : `${rows.length} ligne(s) — ${contratStats.ok} à importer, ${contratStats.ko} rejetée(s).`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">#</TableHead>
+                        <TableHead>Bien</TableHead>
+                        <TableHead>Locataire</TableHead>
+                        <TableHead>Loyer</TableHead>
+                        <TableHead>Date d'entrée</TableHead>
+                        <TableHead>Statut</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {contratPreview.map((r) => (
+                        <TableRow key={r.index} className={r.ok ? "" : "bg-destructive/5"}>
+                          <TableCell className="text-sm text-muted-foreground">{r.index + 1}</TableCell>
+                          <TableCell className="text-sm">{r.bien_titre || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.locataire_nom || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.loyer_mensuel || "—"}</TableCell>
+                          <TableCell className="text-sm">{r.date_entree || "—"}</TableCell>
+                          <TableCell>
+                            {r.ok ? (
+                              <span className="inline-flex items-center gap-1 text-primary text-sm">
+                                <CheckCircle2 className="h-4 w-4" /> À importer
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-destructive text-sm">
+                                <XCircle className="h-4 w-4" /> Rejetée — {r.motif}
+                              </span>
+                            )}
                           </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    onClick={handleImport}
+                    disabled={importing || resolvingContrats || contratStats.ok === 0}
+                  >
+                    {importing
+                      ? "Import en cours..."
+                      : `Confirmer l'import (${contratStats.ok})`}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">3. Aperçu (5 premières lignes)</CardTitle>
+                <CardDescription>
+                  {rows.length} ligne(s) détectée(s) dans le fichier.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {headers.map((h) => (
+                          <TableHead key={h}>{h}</TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Button onClick={handleImport} disabled={importing}>
-                  {importing ? "Import en cours..." : "Confirmer l'import"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {preview.map((r, i) => (
+                        <TableRow key={i}>
+                          {headers.map((h) => (
+                            <TableCell key={h} className="text-sm">
+                              {r[h] ?? ""}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={handleImport} disabled={importing}>
+                    {importing ? "Import en cours..." : "Confirmer l'import"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
