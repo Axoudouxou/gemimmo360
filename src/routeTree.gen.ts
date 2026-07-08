@@ -24,6 +24,7 @@ import { Route as AuthenticatedContratsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedBiensRouteImport } from './routes/_authenticated/biens'
+import { Route as AuthenticatedLotsLotIdRouteImport } from './routes/_authenticated/lots.$lotId'
 import { Route as AuthenticatedBiensBienIdRouteImport } from './routes/_authenticated/biens.$bienId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -103,6 +104,11 @@ const AuthenticatedBiensRoute = AuthenticatedBiensRouteImport.update({
   path: '/biens',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLotsLotIdRoute = AuthenticatedLotsLotIdRouteImport.update({
+  id: '/lots/$lotId',
+  path: '/lots/$lotId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBiensBienIdRoute =
   AuthenticatedBiensBienIdRouteImport.update({
     id: '/$bienId',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
   '/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
   '/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/_authenticated/travaux': typeof AuthenticatedTravauxRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/biens/$bienId': typeof AuthenticatedBiensBienIdRoute
+  '/_authenticated/lots/$lotId': typeof AuthenticatedLotsLotIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/travaux'
     | '/users'
     | '/biens/$bienId'
+    | '/lots/$lotId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/travaux'
     | '/users'
     | '/biens/$bienId'
+    | '/lots/$lotId'
   id:
     | '__root__'
     | '/'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/travaux'
     | '/_authenticated/users'
     | '/_authenticated/biens/$bienId'
+    | '/_authenticated/lots/$lotId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBiensRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/lots/$lotId': {
+      id: '/_authenticated/lots/$lotId'
+      path: '/lots/$lotId'
+      fullPath: '/lots/$lotId'
+      preLoaderRoute: typeof AuthenticatedLotsLotIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/biens/$bienId': {
       id: '/_authenticated/biens/$bienId'
       path: '/$bienId'
@@ -365,6 +384,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
   AuthenticatedTravauxRoute: typeof AuthenticatedTravauxRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedLotsLotIdRoute: typeof AuthenticatedLotsLotIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -380,6 +400,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
   AuthenticatedTravauxRoute: AuthenticatedTravauxRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedLotsLotIdRoute: AuthenticatedLotsLotIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
