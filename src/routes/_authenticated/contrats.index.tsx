@@ -21,7 +21,7 @@ import {
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/contrats")({
+export const Route = createFileRoute("/_authenticated/contrats/")({
   head: () => ({
     meta: [
       { title: "Contrats — Agence Immobilière" },
