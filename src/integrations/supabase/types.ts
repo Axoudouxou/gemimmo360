@@ -29,6 +29,7 @@ export type Database = {
           titre: string
           type_bien: string | null
           type_operation: string | null
+          updated_at: string
         }
         Insert: {
           adresse?: string | null
@@ -44,6 +45,7 @@ export type Database = {
           titre: string
           type_bien?: string | null
           type_operation?: string | null
+          updated_at?: string
         }
         Update: {
           adresse?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           titre?: string
           type_bien?: string | null
           type_operation?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -115,6 +118,45 @@ export type Database = {
           },
         ]
       }
+      contact_doublons_ignores: {
+        Row: {
+          contact_a_id: string
+          contact_b_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          contact_a_id: string
+          contact_b_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          contact_a_id?: string
+          contact_b_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_doublons_ignores_contact_a_id_fkey"
+            columns: ["contact_a_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_doublons_ignores_contact_b_id_fkey"
+            columns: ["contact_b_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -130,6 +172,7 @@ export type Database = {
           telephone: string | null
           type_contact: string | null
           type_entite: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -145,6 +188,7 @@ export type Database = {
           telephone?: string | null
           type_contact?: string | null
           type_entite?: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -160,6 +204,7 @@ export type Database = {
           telephone?: string | null
           type_contact?: string | null
           type_entite?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -183,6 +228,7 @@ export type Database = {
           loyer_mensuel: number | null
           notes: string | null
           statut: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -195,6 +241,7 @@ export type Database = {
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -207,6 +254,7 @@ export type Database = {
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -355,6 +403,7 @@ export type Database = {
           statut: string
           surface: number | null
           type_lot: string | null
+          updated_at: string
         }
         Insert: {
           bien_id: string
@@ -365,6 +414,7 @@ export type Database = {
           statut?: string
           surface?: number | null
           type_lot?: string | null
+          updated_at?: string
         }
         Update: {
           bien_id?: string
@@ -375,6 +425,7 @@ export type Database = {
           statut?: string
           surface?: number | null
           type_lot?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
