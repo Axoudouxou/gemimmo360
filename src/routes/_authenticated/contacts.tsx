@@ -183,6 +183,24 @@ function ContactsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Type d'entité</Label>
+                        <Select value={form.type_entite} onValueChange={(v) => setForm({ ...form, type_entite: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="personne">Personne</SelectItem>
+                            <SelectItem value="entreprise">Entreprise</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {form.type_entite === "entreprise" && (
+                        <div className="grid gap-2">
+                          <Label htmlFor="interlocuteur">Interlocuteur</Label>
+                          <Input id="interlocuteur" value={form.interlocuteur} onChange={(e) => setForm({ ...form, interlocuteur: e.target.value })} />
+                        </div>
+                      )}
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="notes">Notes</Label>
                       <Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
