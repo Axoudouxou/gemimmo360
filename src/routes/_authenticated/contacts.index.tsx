@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
