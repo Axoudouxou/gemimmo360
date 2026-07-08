@@ -199,12 +199,86 @@ function BienDetailPage() {
         ) : (
           <>
             <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <CardTitle>{bien.titre}</CardTitle>
-                  <Badge variant="secondary">Immeuble</Badge>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <CardTitle>{bien.titre}</CardTitle>
+                    <Badge variant="secondary">Immeuble</Badge>
+                  </div>
+                  <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
-                <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
+                <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <form onSubmit={handleUpdate}>
+                      <DialogHeader>
+                        <DialogTitle>Modifier bien</DialogTitle>
+                        <DialogDescription>Modifier les informations de {bien.titre}.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-titre">Titre *</Label>
+                          <Input id="edit-titre" value={editForm.titre} onChange={(e) => setEditForm({ ...editForm, titre: e.target.value })} required />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-adresse">Adresse</Label>
+                          <Input id="edit-adresse" value={editForm.adresse} onChange={(e) => setEditForm({ ...editForm, adresse: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Type de bien</Label>
+                            <Select value={editForm.type_bien} onValueChange={(v) => setEditForm({ ...editForm, type_bien: v })}>
+                              <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                              <SelectContent>
+                                {TYPES_BIEN.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Statut</Label>
+                            <Select value={editForm.statut} onValueChange={(v) => setEditForm({ ...editForm, statut: v })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {STATUTS_BIEN.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="edit-surface">Surface (m²)</Label>
+                            <Input id="edit-surface" type="number" min="0" step="0.01" value={editForm.surface} onChange={(e) => setEditForm({ ...editForm, surface: e.target.value })} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Bailleur</Label>
+                            <Select value={editForm.bailleur_id} onValueChange={(v) => setEditForm({ ...editForm, bailleur_id: v })}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={bailleurs.length ? "Sélectionner un bailleur..." : "Aucun bailleur disponible"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {bailleurs.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.nom}{b.prenom ? ` ${b.prenom}` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-notes">Notes</Label>
+                          <Textarea id="edit-notes" rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Annuler</Button>
+                        <Button type="submit" disabled={editSaving}>{editSaving ? "Enregistrement..." : "Enregistrer"}</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
                 <div>
