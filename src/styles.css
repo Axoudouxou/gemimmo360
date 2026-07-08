@@ -62,8 +62,8 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: #FFFFFF;
+  --radius: 0.625rem;
+  --background: #F7F8F7;
   --foreground: #4A4A4A;
   --card: #FFFFFF;
   --card-foreground: #4A4A4A;
@@ -71,16 +71,16 @@
   --popover-foreground: #4A4A4A;
   --primary: #8AB334;
   --primary-foreground: #FFFFFF;
-  --secondary: #F5F5F5;
+  --secondary: #F1F3F1;
   --secondary-foreground: #4A4A4A;
-  --muted: #F5F5F5;
+  --muted: #F1F3F1;
   --muted-foreground: #808080;
-  --accent: #F1F6E4;
-  --accent-foreground: #4A4A4A;
+  --accent: #EEF6DC;
+  --accent-foreground: #5E7A22;
   --destructive: #B04A3A;
   --destructive-foreground: #FFFFFF;
-  --border: #E5E5E5;
-  --input: #E5E5E5;
+  --border: #ECEEEC;
+  --input: #E2E5E2;
   --ring: #8AB334;
   --chart-1: #8AB334;
   --chart-2: #4A4A4A;
@@ -91,9 +91,9 @@
   --sidebar-foreground: #4A4A4A;
   --sidebar-primary: #8AB334;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F6E4;
-  --sidebar-accent-foreground: #4A4A4A;
-  --sidebar-border: #E5E5E5;
+  --sidebar-accent: #EEF6DC;
+  --sidebar-accent-foreground: #5E7A22;
+  --sidebar-border: #ECEEEC;
   --sidebar-ring: #8AB334;
 }
 
@@ -139,14 +139,56 @@
   }
 
   html, body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    color: var(--color-primary);
-    font-weight: 700;
-  }
+  h1 { font-weight: 700; letter-spacing: -0.02em; color: var(--color-foreground); }
+  h2, h3 { font-weight: 600; letter-spacing: -0.015em; color: var(--color-foreground); }
+  h4, h5, h6 { font-weight: 600; color: var(--color-foreground); }
+  label { font-weight: 500; }
 }
+
+@layer components {
+  /* Soft, layered card feel */
+  [data-slot="card"] {
+    box-shadow:
+      0 1px 2px 0 rgb(16 24 40 / 0.04),
+      0 1px 3px 0 rgb(16 24 40 / 0.03);
+    border-color: var(--color-border);
+  }
+
+  /* Comfortable, hoverable data rows without hard borders */
+  table tbody tr {
+    transition: background-color 120ms ease;
+  }
+  table tbody tr:hover {
+    background-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+  }
+  table th {
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Inputs: subtle border, green focus ring */
+  input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [data-slot="select-trigger"]:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 20%, transparent);
+  }
+
+  /* Smooth interactive transitions */
+  button, a { transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease, border-color 140ms ease; }
+}
+
+
 

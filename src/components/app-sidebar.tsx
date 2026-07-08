@@ -23,6 +23,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -37,17 +38,29 @@ type NavItem = {
   roles?: string[];
 };
 
-const ITEMS: NavItem[] = [
+const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+];
+
+const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
   { title: "Contacts", url: "/contacts", icon: ContactIcon },
   { title: "Contrats", url: "/contrats", icon: FileText, roles: ["admin", "juridique", "gestion_locative"] },
+  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: ["admin", "juridique", "gestion_locative"] },
+];
+
+const FINANCE: NavItem[] = [
   { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "recouvrement"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "gestion_locative"] },
+  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "commercial"] },
+];
+
+const OPS: NavItem[] = [
   { title: "Travaux", url: "/travaux", icon: Hammer },
   { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning },
-  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: ["admin", "juridique", "gestion_locative"] },
-  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "commercial"] },
+];
+
+const ADMIN: NavItem[] = [
   { title: "Utilisateurs", url: "/users", icon: Users, roles: ["admin"] },
 ];
 
@@ -76,48 +89,72 @@ export function AppSidebar() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const visible = ITEMS.filter((i) => !i.roles || i.roles.includes(role));
+  const filter = (items: NavItem[]) => items.filter((i) => !i.roles || i.roles.includes(role));
+
+  const renderGroup = (label: string, items: NavItem[]) => {
+    const visible = filter(items);
+    if (visible.length === 0) return null;
+    return (
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {visible.map((item) => {
+              const active = pathname === item.url;
+              return (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={active}
+                    className={
+                      active
+                        ? "relative bg-accent text-accent-foreground font-medium before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-primary hover:bg-accent"
+                        : "text-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
+                    }
+                  >
+                    <Link to={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-3">
-          <Building2 className="h-6 w-6 text-primary" />
-          <span className="font-bold text-primary">GEM Immobilier</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+            <Building2 className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-semibold text-foreground">GEM Immobilier</span>
+            <span className="text-[11px] text-muted-foreground">Espace interne</span>
+          </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visible.map((item) => {
-                const active = pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <Link
-                        to={item.url}
-                        className={
-                          active
-                            ? "font-semibold text-primary"
-                            : "text-foreground"
-                        }
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="gap-1">
+        {renderGroup("Aperçu", OVERVIEW)}
+        {renderGroup("Gestion", GESTION)}
+        {renderGroup("Finance", FINANCE)}
+        {renderGroup("Opérations", OPS)}
+        {renderGroup("Administration", ADMIN)}
       </SidebarContent>
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleSignOut} className="text-foreground">
+            <SidebarMenuButton
+              onClick={handleSignOut}
+              className="text-foreground/80 hover:text-foreground transition-colors"
+            >
               <LogOut className="h-4 w-4" />
               <span>Déconnexion</span>
             </SidebarMenuButton>
