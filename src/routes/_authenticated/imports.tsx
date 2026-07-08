@@ -207,18 +207,21 @@ function ImportsPage() {
         locataireNoms.size > 0
           ? supabase
               .from("contacts")
-              .select("id, nom, type_contact")
+              .select("id, nom, prenom, type_contact")
               .eq("type_contact", "locataire")
-              .in("nom", Array.from(locataireNoms))
-          : Promise.resolve({ data: [] as { id: string; nom: string; type_contact: string }[] }),
+          : Promise.resolve({ data: [] as { id: string; nom: string; prenom: string | null; type_contact: string }[] }),
       ]);
 
       if (cancelled) return;
 
       const bienMap = new Map<string, string>();
       (biens ?? []).forEach((b) => bienMap.set(b.titre, b.id));
+      const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
       const locataireMap = new Map<string, string>();
-      (contacts ?? []).forEach((c) => locataireMap.set(c.nom, c.id));
+      (contacts ?? []).forEach((c) => {
+        const full = `${c.nom ?? ""} ${c.prenom ?? ""}`;
+        locataireMap.set(normalize(full), c.id);
+      });
 
       const result: ContratPreviewRow[] = rows.map((r, i) => {
         const bien_titre = String(r[mapping.bien_titre] ?? "").trim();
