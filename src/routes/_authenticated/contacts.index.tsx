@@ -150,6 +150,14 @@ function ContactsPage() {
               <CardDescription>
                 Liste des contacts visibles selon votre rôle.
               </CardDescription>
+              {role === "admin" && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Switch id="show-archived" checked={showArchived} onCheckedChange={setShowArchived} />
+                  <Label htmlFor="show-archived" className="text-xs text-muted-foreground cursor-pointer">
+                    Afficher les archivés
+                  </Label>
+                </div>
+              )}
             </div>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
