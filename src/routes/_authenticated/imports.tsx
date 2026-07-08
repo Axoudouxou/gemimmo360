@@ -207,18 +207,21 @@ function ImportsPage() {
         locataireNoms.size > 0
           ? supabase
               .from("contacts")
-              .select("id, nom, type_contact")
+              .select("id, nom, prenom, type_contact")
               .eq("type_contact", "locataire")
-              .in("nom", Array.from(locataireNoms))
-          : Promise.resolve({ data: [] as { id: string; nom: string; type_contact: string }[] }),
+          : Promise.resolve({ data: [] as { id: string; nom: string; prenom: string | null; type_contact: string }[] }),
       ]);
 
       if (cancelled) return;
 
       const bienMap = new Map<string, string>();
       (biens ?? []).forEach((b) => bienMap.set(b.titre, b.id));
+      const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
       const locataireMap = new Map<string, string>();
-      (contacts ?? []).forEach((c) => locataireMap.set(c.nom, c.id));
+      (contacts ?? []).forEach((c) => {
+        const full = `${c.nom ?? ""} ${c.prenom ?? ""}`;
+        locataireMap.set(normalize(full), c.id);
+      });
 
       const result: ContratPreviewRow[] = rows.map((r, i) => {
         const bien_titre = String(r[mapping.bien_titre] ?? "").trim();
@@ -226,7 +229,7 @@ function ImportsPage() {
         const loyer_mensuel = String(r[mapping.loyer_mensuel] ?? "").trim();
         const date_entree = String(r[mapping.date_entree] ?? "").trim();
         const bien_id = bienMap.get(bien_titre);
-        const locataire_id = locataireMap.get(locataire_nom);
+        const locataire_id = locataireMap.get(normalize(locataire_nom));
         let ok = true;
         let motif: string | undefined;
         if (!bien_id) {
