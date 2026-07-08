@@ -296,7 +296,7 @@ function ContratsPage() {
                   </TableHeader>
                   <TableBody>
                     {contrats.map((c) => (
-                      <TableRow key={c.id}>
+                      <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/contrats/$contratId", params: { contratId: c.id } })}>
                         <TableCell className="font-medium">{lotLabel(c.lot_id)}</TableCell>
                         <TableCell>{locataireName(c.locataire_id)}</TableCell>
                         <TableCell>{fmtDate(c.date_debut)}</TableCell>
