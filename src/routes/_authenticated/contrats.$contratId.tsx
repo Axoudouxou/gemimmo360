@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
@@ -14,15 +19,10 @@ export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
 });
 
 type Contrat = {
-  id: string;
-  lot_id: string;
-  locataire_id: string | null;
-  date_debut: string | null;
-  date_fin: string | null;
-  loyer_mensuel: number | null;
-  depot_garantie: number | null;
-  statut: string;
-  notes: string | null;
+  id: string; lot_id: string; locataire_id: string | null;
+  date_debut: string | null; date_fin: string | null;
+  loyer_mensuel: number | null; depot_garantie: number | null;
+  statut: string; notes: string | null; updated_at: string | null;
 };
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
@@ -30,8 +30,16 @@ type Locataire = { id: string; nom: string; prenom: string | null; type_entite: 
 type Impaye = { id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string };
 type Edl = { id: string; type: string; date_realisation: string; observations: string | null };
 
+const STATUTS = [
+  { value: "actif", label: "Actif" },
+  { value: "termine", label: "Terminé" },
+  { value: "resilié", label: "Résilié" },
+  { value: "brouillon", label: "Brouillon" },
+] as const;
+
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F");
+const isStale = (d?: string | null) => !!d && Date.now() - new Date(d).getTime() > 1000 * 60 * 60 * 24 * 30 * 6;
 
 function ContratDetailPage() {
   const { contratId } = Route.useParams();
@@ -43,34 +51,97 @@ function ContratDetailPage() {
   const [impayes, setImpayes] = useState<Impaye[]>([]);
   const [edls, setEdls] = useState<Edl[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myRole, setMyRole] = useState<string>("");
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    loyer_mensuel: "", depot_garantie: "", date_debut: "", date_fin: "", statut: "actif", notes: "",
+  });
+
+  const [endOpen, setEndOpen] = useState(false);
+  const [endSaving, setEndSaving] = useState(false);
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const canEdit = myRole === "admin" || myRole === "juridique";
+
+  const load = async () => {
+    setLoading(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    if (userRes.user) {
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      setMyRole(p?.role ?? "");
+    }
+    const { data: c, error } = await supabase.from("contrats").select("*").eq("id", contratId).maybeSingle();
+    if (error) toast.error(error.message);
+    setContrat((c ?? null) as Contrat | null);
+    if (c) {
+      const [{ data: l }, { data: iData }, { data: eData }] = await Promise.all([
+        supabase.from("lots").select("id, label, bien_id").eq("id", c.lot_id).maybeSingle(),
+        supabase.from("impayes").select("id, montant_du, montant_paye, date_echeance, statut").eq("contrat_id", contratId).order("date_echeance", { ascending: false }),
+        supabase.from("etats_des_lieux").select("id, type, date_realisation, observations").eq("contrat_id", contratId).order("date_realisation", { ascending: false }),
+      ]);
+      setLot((l ?? null) as Lot | null);
+      setImpayes((iData ?? []) as Impaye[]);
+      setEdls((eData ?? []) as Edl[]);
+      if (l) {
+        const { data: b } = await supabase.from("biens").select("id, titre").eq("id", l.bien_id).maybeSingle();
+        setBien((b ?? null) as Bien | null);
+      }
+      if (c.locataire_id) {
+        const { data: loc } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("id", c.locataire_id).maybeSingle();
+        setLocataire((loc ?? null) as Locataire | null);
+      }
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [contratId]);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data: c, error } = await supabase.from("contrats").select("*").eq("id", contratId).maybeSingle();
-      if (error) toast.error(error.message);
-      setContrat((c ?? null) as Contrat | null);
-      if (c) {
-        const [{ data: l }, { data: iData }, { data: eData }] = await Promise.all([
-          supabase.from("lots").select("id, label, bien_id").eq("id", c.lot_id).maybeSingle(),
-          supabase.from("impayes").select("id, montant_du, montant_paye, date_echeance, statut").eq("contrat_id", contratId).order("date_echeance", { ascending: false }),
-          supabase.from("etats_des_lieux").select("id, type, date_realisation, observations").eq("contrat_id", contratId).order("date_realisation", { ascending: false }),
-        ]);
-        setLot((l ?? null) as Lot | null);
-        setImpayes((iData ?? []) as Impaye[]);
-        setEdls((eData ?? []) as Edl[]);
-        if (l) {
-          const { data: b } = await supabase.from("biens").select("id, titre").eq("id", l.bien_id).maybeSingle();
-          setBien((b ?? null) as Bien | null);
-        }
-        if (c.locataire_id) {
-          const { data: loc } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("id", c.locataire_id).maybeSingle();
-          setLocataire((loc ?? null) as Locataire | null);
-        }
-      }
-      setLoading(false);
-    })();
-  }, [contratId]);
+    if (!contrat) return;
+    setEditForm({
+      loyer_mensuel: contrat.loyer_mensuel?.toString() ?? "",
+      depot_garantie: contrat.depot_garantie?.toString() ?? "",
+      date_debut: contrat.date_debut ?? "",
+      date_fin: contrat.date_fin ?? "",
+      statut: contrat.statut,
+      notes: contrat.notes ?? "",
+    });
+  }, [contrat]);
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditSaving(true);
+    const { error } = await supabase.from("contrats").update({
+      loyer_mensuel: editForm.loyer_mensuel ? Number(editForm.loyer_mensuel) : null,
+      depot_garantie: editForm.depot_garantie ? Number(editForm.depot_garantie) : null,
+      date_debut: editForm.date_debut || null,
+      date_fin: editForm.date_fin || null,
+      statut: editForm.statut,
+      notes: editForm.notes.trim() || null,
+    }).eq("id", contratId);
+    setEditSaving(false);
+    if (error) {
+      if ((error as any).code === "23505") return toast.error("Ce lot a déjà un contrat actif en cours — mettez-y fin avant d'en créer un nouveau.");
+      return toast.error(error.message);
+    }
+    toast.success("Contrat mis à jour");
+    setEditOpen(false);
+    load();
+  };
+
+  const handleEnd = async () => {
+    if (!contrat || !lot) return;
+    setEndSaving(true);
+    const { error } = await supabase.from("contrats").update({ statut: "termine", date_fin: endDate }).eq("id", contratId);
+    if (!error) await supabase.from("lots").update({ statut: "vacant" }).eq("id", lot.id);
+    setEndSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Contrat terminé, lot repassé en vacant");
+    setEndOpen(false);
+    load();
+  };
 
   const locName = (l: Locataire) => l.type_entite === "entreprise" ? l.nom : `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}`;
 
@@ -98,18 +169,109 @@ function ContratDetailPage() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <CardTitle>Contrat</CardTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle>Contrat</CardTitle>
+                      <Badge>{contrat.statut}</Badge>
+                      {isStale(contrat.updated_at) && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-700">
+                          <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription>
                       {lot && bien ? (
-                        <>Lot{" "}
-                          <Link to="/lots/$lotId" params={{ lotId: lot.id }} className="underline">{lot.label}</Link>
+                        <>Lot <Link to="/lots/$lotId" params={{ lotId: lot.id }} className="underline">{lot.label}</Link>
                           {" "}dans{" "}
                           <Link to="/biens/$bienId" params={{ bienId: bien.id }} className="underline">{bien.titre}</Link>
                         </>
                       ) : "—"}
                     </CardDescription>
                   </div>
-                  <Badge>{contrat.statut}</Badge>
+                  {canEdit && (
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {contrat.statut === "actif" && (
+                        <Dialog open={endOpen} onOpenChange={setEndOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm"><Ban className="mr-2 h-4 w-4" /> Mettre fin</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Mettre fin au contrat</DialogTitle>
+                              <DialogDescription>
+                                Confirmer la fin du contrat. Le lot associé repassera automatiquement en "vacant".
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-2 py-4">
+                              <Label htmlFor="end-date">Date de fin</Label>
+                              <Input id="end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setEndOpen(false)}>Annuler</Button>
+                              <Button onClick={handleEnd} disabled={endSaving}>{endSaving ? "..." : "Confirmer"}</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                          <form onSubmit={handleEdit}>
+                            <DialogHeader>
+                              <DialogTitle>Modifier contrat</DialogTitle>
+                              <DialogDescription>
+                                Le lot et le locataire ne peuvent pas être modifiés depuis ce formulaire.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid gap-2 text-sm p-3 rounded-md bg-muted/50">
+                                <div><span className="text-muted-foreground">Lot : </span>{lot?.label ?? "—"} ({bien?.titre ?? "—"})</div>
+                                <div><span className="text-muted-foreground">Locataire : </span>{locataire ? locName(locataire) : "—"}</div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                  <Label>Loyer mensuel</Label>
+                                  <Input type="number" min="0" step="0.01" value={editForm.loyer_mensuel} onChange={(e) => setEditForm({ ...editForm, loyer_mensuel: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>Dépôt de garantie</Label>
+                                  <Input type="number" min="0" step="0.01" value={editForm.depot_garantie} onChange={(e) => setEditForm({ ...editForm, depot_garantie: e.target.value })} />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                  <Label>Date début</Label>
+                                  <Input type="date" value={editForm.date_debut} onChange={(e) => setEditForm({ ...editForm, date_debut: e.target.value })} />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>Date fin</Label>
+                                  <Input type="date" value={editForm.date_fin} onChange={(e) => setEditForm({ ...editForm, date_fin: e.target.value })} />
+                                </div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Statut</Label>
+                                <Select value={editForm.statut} onValueChange={(v) => setEditForm({ ...editForm, statut: v })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Notes</Label>
+                                <Textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Annuler</Button>
+                              <Button type="submit" disabled={editSaving}>{editSaving ? "..." : "Enregistrer"}</Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-2 text-sm">
