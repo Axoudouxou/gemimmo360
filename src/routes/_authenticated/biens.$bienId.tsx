@@ -31,6 +31,7 @@ type Bien = {
   id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
   surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
 };
+type Bailleur = { id: string; nom: string; prenom: string | null };
 type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
 type Contact = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
 type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statut: string };
