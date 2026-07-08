@@ -229,7 +229,7 @@ function ImportsPage() {
         const loyer_mensuel = String(r[mapping.loyer_mensuel] ?? "").trim();
         const date_entree = String(r[mapping.date_entree] ?? "").trim();
         const bien_id = bienMap.get(bien_titre);
-        const locataire_id = locataireMap.get(locataire_nom);
+        const locataire_id = locataireMap.get(normalize(locataire_nom));
         let ok = true;
         let motif: string | undefined;
         if (!bien_id) {
