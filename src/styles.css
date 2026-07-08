@@ -152,4 +152,43 @@
   label { font-weight: 500; }
 }
 
+@layer components {
+  /* Soft, layered card feel */
+  [data-slot="card"] {
+    box-shadow:
+      0 1px 2px 0 rgb(16 24 40 / 0.04),
+      0 1px 3px 0 rgb(16 24 40 / 0.03);
+    border-color: var(--color-border);
+  }
+
+  /* Comfortable, hoverable data rows without hard borders */
+  table tbody tr {
+    transition: background-color 120ms ease;
+  }
+  table tbody tr:hover {
+    background-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+  }
+  table th {
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Inputs: subtle border, green focus ring */
+  input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [data-slot="select-trigger"]:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 20%, transparent);
+  }
+
+  /* Smooth interactive transitions */
+  button, a { transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease, border-color 140ms ease; }
+}
+
+
 
