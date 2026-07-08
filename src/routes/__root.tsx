@@ -87,6 +87,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
 
+      { name: "twitter:title", content: "Agence Immobilière — Espace interne" },
+      { name: "twitter:description", content: "Outil interne de gestion immobilière pour l'agence." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2aeccfd0-3543-4619-a681-6ea22f4101c8/id-preview-7009a986--d282cfee-7f93-495f-91a5-188898c60920.lovable.app-1783521297906.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2aeccfd0-3543-4619-a681-6ea22f4101c8/id-preview-7009a986--d282cfee-7f93-495f-91a5-188898c60920.lovable.app-1783521297906.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
