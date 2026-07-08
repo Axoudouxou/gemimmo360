@@ -50,6 +50,8 @@ type Contact = {
   gestionnaire_id: string | null;
   notes: string | null;
   created_at: string;
+  type_entite: string | null;
+  interlocuteur: string | null;
 };
 
 function ContactsPage() {
@@ -66,6 +68,8 @@ function ContactsPage() {
     email: "",
     type_contact: "",
     notes: "",
+    type_entite: "personne",
+    interlocuteur: "",
   });
 
   const load = async () => {
@@ -86,7 +90,7 @@ function ContactsPage() {
   }, []);
 
   const resetForm = () =>
-    setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "" });
+    setForm({ nom: "", prenom: "", telephone: "", email: "", type_contact: "", notes: "", type_entite: "personne", interlocuteur: "" });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +104,8 @@ function ContactsPage() {
       email: form.email.trim() || null,
       type_contact: form.type_contact || null,
       notes: form.notes.trim() || null,
+      type_entite: form.type_entite || "personne",
+      interlocuteur: form.type_entite === "entreprise" ? (form.interlocuteur.trim() || null) : null,
       gestionnaire_id: userId,
     });
     setSaving(false);
@@ -177,6 +183,24 @@ function ContactsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Type d'entité</Label>
+                        <Select value={form.type_entite} onValueChange={(v) => setForm({ ...form, type_entite: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="personne">Personne</SelectItem>
+                            <SelectItem value="entreprise">Entreprise</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {form.type_entite === "entreprise" && (
+                        <div className="grid gap-2">
+                          <Label htmlFor="interlocuteur">Interlocuteur</Label>
+                          <Input id="interlocuteur" value={form.interlocuteur} onChange={(e) => setForm({ ...form, interlocuteur: e.target.value })} />
+                        </div>
+                      )}
+                    </div>
                     <div className="grid gap-2">
                       <Label htmlFor="notes">Notes</Label>
                       <Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -210,8 +234,15 @@ function ContactsPage() {
                   <TableBody>
                     {contacts.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.nom}</TableCell>
-                        <TableCell>{c.prenom ?? "—"}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{c.nom}</span>
+                            {c.type_entite === "entreprise" && (
+                              <Badge variant="secondary">Entreprise</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{c.type_entite === "entreprise" ? (c.interlocuteur ?? "—") : (c.prenom ?? "—")}</TableCell>
                         <TableCell>
                           {c.type_contact ? (
                             <Badge variant="outline">{TYPE_LABEL[c.type_contact] ?? c.type_contact}</Badge>
