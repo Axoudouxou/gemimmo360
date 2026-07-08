@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Pencil } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
@@ -44,6 +44,7 @@ const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS_LOT.map(
 type Bien = {
   id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
   surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
+  updated_at: string | null;
 };
 type Bailleur = { id: string; nom: string; prenom: string | null };
 type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
@@ -51,9 +52,11 @@ type Contact = { id: string; nom: string; prenom: string | null; type_entite: st
 type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statut: string };
 type Travail = { id: string; titre: string; statut: string; date_debut: string | null; date_fin: string | null; budget_prevu: number | null };
 type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
+type Gestionnaire = { id: string; email: string | null; role: string };
 
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F");
 const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
+const isStale = (d?: string | null) => !!d && Date.now() - new Date(d).getTime() > 1000 * 60 * 60 * 24 * 30 * 6;
 
 function BienDetailPage() {
   const { bienId } = Route.useParams();
@@ -77,10 +80,21 @@ function BienDetailPage() {
     titre: "", adresse: "", type_bien: "", statut: "vacant", surface: "", bailleur_id: "", notes: "",
   });
 
+  const [myRole, setMyRole] = useState<string>("");
+  const [gestOpen, setGestOpen] = useState(false);
+  const [gestSaving, setGestSaving] = useState(false);
+  const [gestionnaires, setGestionnaires] = useState<Gestionnaire[]>([]);
+  const [gestId, setGestId] = useState("");
+
   const load = async () => {
     setLoading(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    if (userRes.user) {
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      setMyRole(p?.role ?? "");
+    }
     const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }] = await Promise.all([
-      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id").eq("id", bienId).maybeSingle(),
+      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id, updated_at").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
@@ -171,7 +185,25 @@ function BienDetailPage() {
     load();
   };
 
-  useEffect(() => { resetEditForm(); }, [bien]);
+  useEffect(() => { resetEditForm(); setGestId(bien?.gestionnaire_id ?? ""); }, [bien]);
+
+  const openGestionnaire = async () => {
+    setGestOpen(true);
+    if (gestionnaires.length === 0) {
+      const { data } = await supabase.from("profiles").select("id, email, role").in("role", ["gestion_locative", "commercial", "admin"]).order("email");
+      setGestionnaires((data ?? []) as Gestionnaire[]);
+    }
+  };
+
+  const handleGestionnaireSave = async () => {
+    setGestSaving(true);
+    const { error } = await supabase.from("biens").update({ gestionnaire_id: gestId || null }).eq("id", bienId);
+    setGestSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Gestionnaire mis à jour");
+    setGestOpen(false);
+    load();
+  };
 
   const rentByLot = new Map(activeContrats.map((c) => [c.lot_id, Number(c.loyer_mensuel ?? 0)]));
   const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
@@ -204,10 +236,42 @@ function BienDetailPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle>{bien.titre}</CardTitle>
                     <Badge variant="secondary">Immeuble</Badge>
+                    {isStale(bien.updated_at) && (
+                      <Badge variant="outline" className="border-amber-500 text-amber-700">
+                        <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
+                      </Badge>
+                    )}
                   </div>
                   <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
-                <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {myRole === "admin" && (
+                    <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm"><UserCog className="mr-2 h-4 w-4" /> Gestionnaire</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Modifier le gestionnaire</DialogTitle>
+                          <DialogDescription>Réassigner ce bien à un autre gestionnaire.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-2 py-4">
+                          <Label>Gestionnaire</Label>
+                          <Select value={gestId} onValueChange={setGestId}>
+                            <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                            <SelectContent>
+                              {gestionnaires.map((g) => <SelectItem key={g.id} value={g.id}>{g.email ?? g.id} ({g.role})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setGestOpen(false)}>Annuler</Button>
+                          <Button onClick={handleGestionnaireSave} disabled={gestSaving}>{gestSaving ? "..." : "Enregistrer"}</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) resetEditForm(); }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
                   </DialogTrigger>
@@ -279,6 +343,7 @@ function BienDetailPage() {
                     </form>
                   </DialogContent>
                 </Dialog>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
                 <div>
