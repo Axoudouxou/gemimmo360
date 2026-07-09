@@ -112,40 +112,42 @@ function ChargesPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Charges</CardTitle><CardDescription>Charges liées aux biens.</CardDescription></div>
-            <div className="flex gap-2">
-              <Select value={filterBien} onValueChange={setFilterBien}>
-                <SelectTrigger className="w-56"><SelectValue placeholder="Filtrer par bien" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les biens</SelectItem>
-                  {biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}
-                </SelectContent>
-              </Select>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle charge</Button></DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvelle charge</DialogTitle><DialogDescription>Ajouter une charge sur un bien.</DialogDescription></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2"><Label>Bien *</Label>
-                        <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
-                          <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
-                          <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2"><Label htmlFor="libelle">Libellé *</Label><Input id="libelle" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required /></div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2"><Label htmlFor="montant">Montant *</Label><Input id="montant" type="number" min="0" step="0.01" required value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} /></div>
-                        <div className="grid gap-2"><Label htmlFor="date">Date *</Label><Input id="date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                      </div>
-                      <div className="flex items-center gap-2"><Checkbox id="recurrente" checked={form.recurrente} onCheckedChange={(v) => setForm({ ...form, recurrente: v === true })} /><Label htmlFor="recurrente">Charge récurrente</Label></div>
+              <DialogContent>
+                <form onSubmit={handleCreate}>
+                  <DialogHeader><DialogTitle>Nouvelle charge</DialogTitle><DialogDescription>Ajouter une charge sur un bien.</DialogDescription></DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2"><Label>Bien *</Label>
+                      <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
+                        <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
+                        <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
-                    <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                    <div className="grid gap-2"><Label htmlFor="libelle">Libellé *</Label><Input id="libelle" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2"><Label htmlFor="montant">Montant *</Label><Input id="montant" type="number" min="0" step="0.01" required value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} /></div>
+                      <div className="grid gap-2"><Label htmlFor="date">Date *</Label><Input id="date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                    </div>
+                    <div className="flex items-center gap-2"><Checkbox id="recurrente" checked={form.recurrente} onCheckedChange={(v) => setForm({ ...form, recurrente: v === true })} /><Label htmlFor="recurrente">Charge récurrente</Label></div>
+                  </div>
+                  <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Libellé ou bien..."
+              selects={[
+                { key: "bien", label: "Bien", value: filterBien, onChange: setFilterBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+                { key: "rec", label: "Récurrente", value: fRec, onChange: setFRec, options: [{ value: "oui", label: "Oui" }, { value: "non", label: "Non" }] },
+              ]}
+              dateRange={{ label: "Date", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFilterBien("all"); setFRec("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune charge.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Libellé</TableHead><TableHead>Montant</TableHead><TableHead>Date</TableHead><TableHead>Récurrente</TableHead></TableRow></TableHeader>
