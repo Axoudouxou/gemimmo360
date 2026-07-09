@@ -54,7 +54,7 @@ const NON_RECOUVREMENT = ["admin", "direction", "juridique", "gestion_locative",
 const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
   { title: "Contacts", url: "/contacts", icon: ContactIcon },
-  { title: "Contrats", url: "/contrats", icon: FileText, roles: ["admin", "direction", "juridique", "gestion_locative"] },
+  { title: "Contrats", url: "/contrats", icon: FileText },
   { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: NON_RECOUVREMENT },
 ];
 
