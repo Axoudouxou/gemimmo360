@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
