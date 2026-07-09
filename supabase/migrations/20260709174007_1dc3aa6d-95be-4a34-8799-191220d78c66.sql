@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.contrats TO authenticated; GRANT ALL ON public.contrats TO service_role;
