@@ -190,9 +190,9 @@ function Dashboard() {
     stats.lotsTotal > 0 ? Math.round((stats.lotsLoues / stats.lotsTotal) * 100) : 0;
 
   // Quick actions permissions
-  const canCreateContact = ["admin", "commercial", "gestion_locative"].includes(role);
-  const canCreateBien = ["admin", "commercial", "gestion_locative"].includes(role);
-  const canCreateContrat = ["admin", "juridique", "gestion_locative"].includes(role);
+  const canCreateContact = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
+  const canCreateBien = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
+  const canCreateContrat = ["admin", "direction", "juridique", "gestion_locative"].includes(role);
 
   const base: StatCard[] = [
     { key: "biens", label: "Biens", value: stats.biens, icon: Home, to: "/biens" },
