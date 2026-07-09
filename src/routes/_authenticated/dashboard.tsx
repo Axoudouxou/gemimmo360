@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Plus,
 } from "lucide-react";
+import { MesTachesSemaine, MesActivitesEnCours } from "@/components/activites-widgets";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
