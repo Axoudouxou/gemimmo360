@@ -51,7 +51,7 @@ function ReclamationsPage() {
   const [fPrio, setFPrio] = useState("all");
   const [fBien, setFBien] = useState("all");
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = role ? !(NO_WRITE as readonly string[]).includes(role) : false;
 
   useEffect(() => {
     (async () => {
