@@ -26,7 +26,7 @@ const STATUTS = [
   { value: "termine", label: "Terminé" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
+const NO_WRITE = ["recouvrement", "en_attente"] as const;
 
 type Travail = {
   id: string; bien_id: string; titre: string; description: string | null;
@@ -49,7 +49,7 @@ function TravauxPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = role ? !(NO_WRITE as readonly string[]).includes(role) : false;
 
   useEffect(() => {
     (async () => {
