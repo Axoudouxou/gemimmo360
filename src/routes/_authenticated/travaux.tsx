@@ -182,3 +182,19 @@ function TravauxPage() {
     </div>
   );
 }
+
+function DocsButton({ travailId, canWrite }: { travailId: string; canWrite: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline"><FileText className="mr-1 h-3 w-3" /> Documents</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Documents des travaux</DialogTitle></DialogHeader>
+        <DocumentsSection bucket="travaux-documents" recordId={travailId} canWrite={canWrite} description="Devis, factures et pièces jointes (PDF)." />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
