@@ -74,6 +74,7 @@ function BiensPage() {
   const navigate = useNavigate();
   const [biens, setBiens] = useState<Bien[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
+  const [gestionnaires, setGestionnaires] = useState<{ id: string; email: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -82,6 +83,7 @@ function BiensPage() {
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
   const [fOp, setFOp] = useState("all");
+  const [fGest, setFGest] = useState("all");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -90,9 +92,10 @@ function BiensPage() {
       if (fType !== "all" && b.type_bien !== fType) return false;
       if (fStatut !== "all" && b.statut !== fStatut) return false;
       if (fOp !== "all" && b.type_operation !== fOp) return false;
+      if (fGest !== "all" && b.gestionnaire_id !== fGest) return false;
       return true;
     });
-  }, [biens, search, fType, fStatut, fOp]);
+  }, [biens, search, fType, fStatut, fOp, fGest]);
 
   const [form, setForm] = useState({
     titre: "",
