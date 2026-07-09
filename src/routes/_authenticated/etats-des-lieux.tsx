@@ -109,6 +109,18 @@ function EDLPage() {
     return `${bienTitre} — ${lotLabel} — ${locStr}`;
   };
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((e) => {
+      if (fType !== "all" && e.type !== fType) return false;
+      if (dFrom && e.date_realisation < dFrom) return false;
+      if (dTo && e.date_realisation > dTo) return false;
+      if (q && !contratLabel(e.contrat_id).toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fType, dFrom, dTo, contrats, lots, biens, contacts]);
+
   const resetForm = () => {
     setForm({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
     setAnomalies([newAnomalie()]);
