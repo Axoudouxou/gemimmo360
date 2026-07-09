@@ -67,6 +67,22 @@ function ContactsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [fEntite, setFEntite] = useState("all");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return contacts.filter((c) => {
+      if (q) {
+        const hay = `${c.nom} ${c.prenom ?? ""} ${c.email ?? ""} ${c.telephone ?? ""} ${c.interlocuteur ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (fType !== "all" && c.type_contact !== fType) return false;
+      if (fEntite !== "all" && (c.type_entite ?? "personne") !== fEntite) return false;
+      return true;
+    });
+  }, [contacts, search, fType, fEntite]);
 
   const [form, setForm] = useState({
     nom: "",
