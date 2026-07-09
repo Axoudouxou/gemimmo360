@@ -52,6 +52,7 @@ type StatCard = {
 
 function Dashboard() {
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState("");
   const [stats, setStats] = useState({
     biens: 0,
@@ -74,6 +75,7 @@ function Dashboard() {
       const user = userRes.user;
       if (!user) return;
       setEmail(user.email ?? "");
+      setUserId(user.id);
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
