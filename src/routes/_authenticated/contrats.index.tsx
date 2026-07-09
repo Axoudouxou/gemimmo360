@@ -236,10 +236,10 @@ function ContratsPage() {
                         <Label>Lot *</Label>
                         <Select value={form.lot_id} onValueChange={(v) => setForm({ ...form, lot_id: v })}>
                           <SelectTrigger>
-                            <SelectValue placeholder={availableLots.length ? "Sélectionner un lot..." : "Aucun lot disponible (tous ont un contrat actif)"} />
+                            <SelectValue placeholder={lots.length ? "Sélectionner un lot..." : "Aucun lot disponible"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableLots.map((l) => (
+                            {lots.map((l) => (
                               <SelectItem key={l.id} value={l.id}>
                                 {(bienById.get(l.bien_id)?.titre ?? "—")} — {l.label}
                               </SelectItem>
