@@ -265,9 +265,20 @@ function BiensPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Titre ou adresse..."
+              selects={[
+                { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES_BIEN.map((t) => ({ value: t.value, label: t.label })) },
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "op", label: "Opération", value: fOp, onChange: setFOp, options: OPERATIONS.map((o) => ({ value: o.value, label: o.label })) },
+              ]}
+              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setFOp("all"); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : biens.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun bien.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -281,7 +292,7 @@ function BiensPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {biens.map((b) => (
+                    {filtered.map((b) => (
                       <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/biens/$bienId", params: { bienId: b.id } })}>
                         <TableCell className="font-medium">{b.titre}</TableCell>
                         <TableCell>{b.adresse ?? "—"}</TableCell>
