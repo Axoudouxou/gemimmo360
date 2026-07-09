@@ -122,7 +122,7 @@ function ContratsPage() {
   };
 
   useEffect(() => {
-    if (role && (ALLOWED as readonly string[]).includes(role)) load();
+    if (role) load();
   }, [role]);
 
   const resetForm = () =>
