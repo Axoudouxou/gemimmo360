@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, UserCog } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contacts/$contactId")({
@@ -227,6 +228,7 @@ function ContactDetailPage() {
                   <CardDescription>Coordonnées et informations du contact.</CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <ActivitesLiees contactId={contactId} />
                   {myRole === "admin" && (
                     <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
                       <DialogTrigger asChild>

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, AlertCircle, Pencil } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/lots/$lotId")({
@@ -50,6 +51,7 @@ function LotDetailPage() {
     date_debut: new Date().toISOString().slice(0, 10), statut: "actif",
   });
 
+  <ActivitesLiees lotId={lotId} />
   const canCreate = myRole === "admin" || myRole === "juridique";
   const canEditLot = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
 

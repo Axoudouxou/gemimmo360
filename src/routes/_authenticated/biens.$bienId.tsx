@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
@@ -246,6 +247,7 @@ function BienDetailPage() {
                   <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <ActivitesLiees bienId={bienId} />
                   {myRole === "admin" && (
                     <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
                       <DialogTrigger asChild>

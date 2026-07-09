@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Plus,
 } from "lucide-react";
+import { MesTachesSemaine, MesActivitesEnCours } from "@/components/activites-widgets";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrateur",
+  direction: "Direction",
   gestion_locative: "Gestion locative",
   recouvrement: "Recouvrement",
   technique: "Technique",
@@ -50,6 +52,7 @@ type StatCard = {
 
 function Dashboard() {
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState("");
   const [stats, setStats] = useState({
     biens: 0,
@@ -72,6 +75,7 @@ function Dashboard() {
       const user = userRes.user;
       if (!user) return;
       setEmail(user.email ?? "");
+      setUserId(user.id);
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -186,9 +190,9 @@ function Dashboard() {
     stats.lotsTotal > 0 ? Math.round((stats.lotsLoues / stats.lotsTotal) * 100) : 0;
 
   // Quick actions permissions
-  const canCreateContact = ["admin", "commercial", "gestion_locative"].includes(role);
-  const canCreateBien = ["admin", "commercial", "gestion_locative"].includes(role);
-  const canCreateContrat = ["admin", "juridique", "gestion_locative"].includes(role);
+  const canCreateContact = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
+  const canCreateBien = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
+  const canCreateContrat = ["admin", "direction", "juridique", "gestion_locative"].includes(role);
 
   const base: StatCard[] = [
     { key: "biens", label: "Biens", value: stats.biens, icon: Home, to: "/biens" },
@@ -318,6 +322,11 @@ function Dashboard() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <MesTachesSemaine userId={userId} />
+        <MesActivitesEnCours userId={userId} />
       </div>
     </div>
   );
