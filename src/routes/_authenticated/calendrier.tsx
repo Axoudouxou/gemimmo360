@@ -285,12 +285,16 @@ function TaskColumn({
   items,
   readonly,
   onToggle,
+  onEdit,
+  onDelete,
   done = false,
 }: {
   title: string;
   items: Activite[];
   readonly: boolean;
   onToggle: (id: string, done: boolean) => void;
+  onEdit: (a: Activite) => void;
+  onDelete: (id: string) => void;
   done?: boolean;
 }) {
   return (
@@ -320,6 +324,16 @@ function TaskColumn({
                 {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
               </div>
             </div>
+            {!readonly && (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a.id)} aria-label="Supprimer">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </CardContent>
