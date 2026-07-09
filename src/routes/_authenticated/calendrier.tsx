@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   addMonths,
@@ -59,6 +59,7 @@ function CalendrierPage() {
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
   const [openNew, setOpenNew] = useState(false);
+  const [editing, setEditing] = useState<Activite | null>(null);
 
   // Load me + profiles
   useEffect(() => {
@@ -137,6 +138,15 @@ function CalendrierPage() {
     if (isReadOnly) return;
     const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", id);
     if (error) toast.error(error.message);
+    load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (isReadOnly) return;
+    if (!confirm("Supprimer cette tâche ?")) return;
+    const { error } = await supabase.from("activites").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Tâche supprimée");
     load();
   };
 
@@ -248,12 +258,24 @@ function CalendrierPage() {
 
         <TabsContent value="tasks" className="mt-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} />
-            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} />
-            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} done />
+            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
           </div>
         </TabsContent>
       </Tabs>
+
+      {editing && (
+        <ActiviteDialog
+          open={!!editing}
+          setOpen={(o) => { if (!o) setEditing(null); }}
+          profiles={profiles}
+          defaultAssignee={editing.assigne_a}
+          defaults={{}}
+          initial={editing}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
     </div>
   );
 }
@@ -263,12 +285,16 @@ function TaskColumn({
   items,
   readonly,
   onToggle,
+  onEdit,
+  onDelete,
   done = false,
 }: {
   title: string;
   items: Activite[];
   readonly: boolean;
   onToggle: (id: string, done: boolean) => void;
+  onEdit: (a: Activite) => void;
+  onDelete: (id: string) => void;
   done?: boolean;
 }) {
   return (
@@ -298,6 +324,16 @@ function TaskColumn({
                 {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
               </div>
             </div>
+            {!readonly && (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a.id)} aria-label="Supprimer">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </CardContent>
@@ -305,13 +341,18 @@ function TaskColumn({
   );
 }
 
-function NewActiviteDialog({
+function NewActiviteDialog(props: Omit<React.ComponentProps<typeof ActiviteDialog>, "initial">) {
+  return <ActiviteDialog {...props} />;
+}
+
+function ActiviteDialog({
   open,
   setOpen,
   defaultAssignee,
   defaults,
   profiles,
   onSaved,
+  initial,
 }: {
   open: boolean;
   setOpen: (b: boolean) => void;
@@ -319,18 +360,22 @@ function NewActiviteDialog({
   defaults: { bien_id?: string; lot_id?: string; contrat_id?: string; contact_id?: string };
   profiles: Profile[];
   onSaved: () => void;
+  initial?: Activite;
 }) {
-  const [titre, setTitre] = useState("");
-  const [type, setType] = useState("tache");
-  const [dateDebut, setDateDebut] = useState("");
-  const [dateFin, setDateFin] = useState("");
-  const [assigne, setAssigne] = useState(defaultAssignee);
-  const [lieu, setLieu] = useState("");
-  const [priorite, setPriorite] = useState("normale");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!initial;
+  const toLocal = (iso: string | null) => (iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "");
+  const [titre, setTitre] = useState(initial?.titre ?? "");
+  const [type, setType] = useState(initial?.type_activite ?? "tache");
+  const [dateDebut, setDateDebut] = useState(toLocal(initial?.date_debut ?? null));
+  const [dateFin, setDateFin] = useState(toLocal(initial?.date_fin ?? null));
+  const [assigne, setAssigne] = useState(initial?.assigne_a ?? defaultAssignee);
+  const [lieu, setLieu] = useState(initial?.lieu ?? "");
+  const [priorite, setPriorite] = useState(initial?.priorite ?? "normale");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [statut, setStatut] = useState(initial?.statut ?? "a_faire");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) setAssigne(defaultAssignee); }, [open, defaultAssignee]);
+  useEffect(() => { if (open && !isEdit) setAssigne(defaultAssignee); }, [open, defaultAssignee, isEdit]);
 
   const save = async () => {
     if (!titre.trim() || !assigne) {
@@ -338,8 +383,7 @@ function NewActiviteDialog({
       return;
     }
     setSaving(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("activites").insert({
+    const payload = {
       titre: titre.trim(),
       type_activite: type,
       date_debut: dateDebut ? new Date(dateDebut).toISOString() : null,
@@ -348,28 +392,41 @@ function NewActiviteDialog({
       lieu: lieu.trim() || null,
       priorite,
       notes: notes.trim() || null,
-      created_by: u.user?.id ?? null,
-      bien_id: defaults.bien_id ?? null,
-      lot_id: defaults.lot_id ?? null,
-      contrat_id: defaults.contrat_id ?? null,
-      contact_id: defaults.contact_id ?? null,
-      statut: type === "tache" ? "a_faire" : "planifiee",
-    });
+    };
+    let error;
+    if (isEdit && initial) {
+      ({ error } = await supabase.from("activites").update({ ...payload, statut }).eq("id", initial.id));
+    } else {
+      const { data: u } = await supabase.auth.getUser();
+      ({ error } = await supabase.from("activites").insert({
+        ...payload,
+        created_by: u.user?.id ?? null,
+        bien_id: defaults.bien_id ?? null,
+        lot_id: defaults.lot_id ?? null,
+        contrat_id: defaults.contrat_id ?? null,
+        contact_id: defaults.contact_id ?? null,
+        statut: type === "tache" ? "a_faire" : "planifiee",
+      }));
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Activité créée");
-    setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache");
+    toast.success(isEdit ? "Tâche mise à jour" : "Activité créée");
+    if (!isEdit) {
+      setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache");
+    }
     setOpen(false);
     onSaved();
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle activité</Button>
-      </DialogTrigger>
+      {!isEdit && (
+        <DialogTrigger asChild>
+          <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle activité</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Nouvelle activité / tâche</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? "Modifier la tâche" : "Nouvelle activité / tâche"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
             <Label>Titre</Label>
@@ -406,14 +463,27 @@ function NewActiviteDialog({
               <Input type="datetime-local" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
             </div>
           </div>
-          <div>
-            <Label>Assigné à</Label>
-            <Select value={assigne} onValueChange={setAssigne}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.email ?? p.id}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Assigné à</Label>
+              <Select value={assigne} onValueChange={setAssigne}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.email ?? p.id}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {isEdit && (
+              <div>
+                <Label>Statut</Label>
+                <Select value={statut} onValueChange={setStatut}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div>
             <Label>Lieu</Label>
