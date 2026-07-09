@@ -97,6 +97,18 @@ function ReclamationsPage() {
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const prioVariant = (p: string) => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((r) => {
+      if (fStatut !== "all" && r.statut !== fStatut) return false;
+      if (fPrio !== "all" && r.priorite !== fPrio) return false;
+      if (fBien !== "all" && r.bien_id !== fBien) return false;
+      if (q && !`${r.titre} ${bienTitre(r.bien_id)} ${locataireName(r.locataire_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fStatut, fPrio, fBien, biens, locataires]);
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
