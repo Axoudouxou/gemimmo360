@@ -309,9 +309,19 @@ function ImpayesPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Bien ou locataire..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+              ]}
+              dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : impayes.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun impayé.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -327,7 +337,7 @@ function ImpayesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {impayes.map((i) => {
+                    {filtered.map((i) => {
                       const { bien, locataire } = contratLabel(i.contrat_id);
                       return (
                         <TableRow key={i.id}>
