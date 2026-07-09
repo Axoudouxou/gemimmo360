@@ -258,12 +258,24 @@ function CalendrierPage() {
 
         <TabsContent value="tasks" className="mt-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} />
-            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} />
-            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} done />
+            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
           </div>
         </TabsContent>
       </Tabs>
+
+      {editing && (
+        <ActiviteDialog
+          open={!!editing}
+          setOpen={(o) => { if (!o) setEditing(null); }}
+          profiles={profiles}
+          defaultAssignee={editing.assigne_a}
+          defaults={{}}
+          initial={editing}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
     </div>
   );
 }
