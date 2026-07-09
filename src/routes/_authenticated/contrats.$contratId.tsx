@@ -68,7 +68,7 @@ function ContratDetailPage() {
   const [endSaving, setEndSaving] = useState(false);
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const canEdit = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
+  const canEdit = !!myRole;
 
   const load = async () => {
     setLoading(true);
