@@ -142,7 +142,12 @@ function ContratsPage() {
       notes: form.notes.trim() || null,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if ((error as any).code === "23505") {
+        return toast.error("Ce lot a déjà un contrat actif — mettez-y fin avant d'en créer un nouveau.");
+      }
+      return toast.error(error.message);
+    }
     toast.success("Contrat ajouté");
     setOpen(false);
     resetForm();
