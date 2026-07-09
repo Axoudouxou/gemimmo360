@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/charges")({
   component: ChargesPage,
 });
 
-const ALLOWED = ["admin", "gestion_locative"] as const;
+const ALLOWED = ["admin", "direction", "gestion_locative"] as const;
 
 type Charge = { id: string; bien_id: string; libelle: string; montant: number; date: string; recurrente: boolean };
 type Bien = { id: string; titre: string };

@@ -39,7 +39,7 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "recouvrement"] as const;
+const ALLOWED = ["admin", "direction", "recouvrement"] as const;
 
 type Impaye = {
   id: string;
