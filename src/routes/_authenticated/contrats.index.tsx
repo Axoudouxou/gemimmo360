@@ -190,9 +190,6 @@ function ContratsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contrats, search, fStatut, fBien, dFrom, dTo, lotById, bienById, locataires]);
 
-  const lotsWithActive = useMemo(() => new Set(contrats.filter((c) => c.statut === "actif").map((c) => c.lot_id)), [contrats]);
-  const availableLots = useMemo(() => lots.filter((l) => !lotsWithActive.has(l.id) || l.id === form.lot_id), [lots, lotsWithActive, form.lot_id]);
-
 
   if (!checked) return null;
 
@@ -239,10 +236,10 @@ function ContratsPage() {
                         <Label>Lot *</Label>
                         <Select value={form.lot_id} onValueChange={(v) => setForm({ ...form, lot_id: v })}>
                           <SelectTrigger>
-                            <SelectValue placeholder={availableLots.length ? "Sélectionner un lot..." : "Aucun lot disponible (tous ont un contrat actif)"} />
+                            <SelectValue placeholder={lots.length ? "Sélectionner un lot..." : "Aucun lot disponible"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableLots.map((l) => (
+                            {lots.map((l) => (
                               <SelectItem key={l.id} value={l.id}>
                                 {(bienById.get(l.bien_id)?.titre ?? "—")} — {l.label}
                               </SelectItem>
