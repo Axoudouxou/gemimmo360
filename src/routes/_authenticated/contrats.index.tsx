@@ -190,9 +190,6 @@ function ContratsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contrats, search, fStatut, fBien, dFrom, dTo, lotById, bienById, locataires]);
 
-  const lotsWithActive = useMemo(() => new Set(contrats.filter((c) => c.statut === "actif").map((c) => c.lot_id)), [contrats]);
-  const availableLots = useMemo(() => lots.filter((l) => !lotsWithActive.has(l.id) || l.id === form.lot_id), [lots, lotsWithActive, form.lot_id]);
-
 
   if (!checked) return null;
 
