@@ -46,6 +46,7 @@ function ReclamationsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", locataire_id: "", titre: "", description: "", statut: "ouverte", priorite: "normale" });
+  const [editing, setEditing] = useState<Reclamation | null>(null);
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
   const [fPrio, setFPrio] = useState("all");
