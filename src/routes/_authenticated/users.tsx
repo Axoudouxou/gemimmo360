@@ -1,13 +1,25 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Building2, ArrowLeft, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import { adminSetUserPassword } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({
@@ -48,6 +60,84 @@ type Profile = {
   role: string;
   created_at: string;
 };
+
+function PasswordDialog({
+  profile,
+  onDone,
+}: {
+  profile: Profile;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const setPwd = useServerFn(adminSetUserPassword);
+
+  const submit = async () => {
+    if (password.length < 8) {
+      toast.error("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await setPwd({ data: { userId: profile.id, password } });
+      toast.success("Mot de passe défini");
+      setPassword("");
+      setOpen(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <KeyRound className="mr-2 h-4 w-4" /> Mot de passe
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Définir un mot de passe temporaire</DialogTitle>
+          <DialogDescription>
+            Pour {profile.email}. Communiquez-le à l'utilisateur en toute sécurité ; il pourra le
+            modifier ensuite depuis son compte.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Input
+            type="text"
+            placeholder="Nouveau mot de passe (min. 8 caractères)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setPassword("Gem2026Temp!")}
+            >
+              Utiliser « Gem2026Temp! »
+            </Button>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+            Annuler
+          </Button>
+          <Button onClick={submit} disabled={busy || password.length < 8}>
+            {busy ? "Enregistrement..." : "Définir"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function UsersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -102,7 +192,7 @@ function UsersPage() {
           <CardHeader>
             <CardTitle>Gestion des utilisateurs</CardTitle>
             <CardDescription>
-              Consultez les comptes et modifiez leur rôle. Seuls les administrateurs y ont accès.
+              Consultez les comptes, modifiez leur rôle ou définissez un mot de passe temporaire.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -117,7 +207,8 @@ function UsersPage() {
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Rôle actuel</TableHead>
-                      <TableHead className="w-[260px]">Modifier le rôle</TableHead>
+                      <TableHead className="w-[240px]">Modifier le rôle</TableHead>
+                      <TableHead className="w-[180px]">Mot de passe</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -153,6 +244,9 @@ function UsersPage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </TableCell>
+                          <TableCell>
+                            <PasswordDialog profile={p} onDone={load} />
                           </TableCell>
                         </TableRow>
                       );
