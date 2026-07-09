@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Trash2, FileText } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Trash2, FileText, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
@@ -21,8 +21,7 @@ export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   component: EDLPage,
 });
 
-const ALLOWED = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
+const NO_ACCESS = ["recouvrement", "en_attente"] as const;
 
 const RESPONSABLES = [
   { value: "bailleur", label: "Bailleur" },
@@ -58,6 +57,7 @@ function EDLPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
+  const [editing, setEditing] = useState<EDL | null>(null);
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
   const [search, setSearch] = useState("");
@@ -65,7 +65,7 @@ function EDLPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = role ? !(NO_ACCESS as readonly string[]).includes(role) : false;
 
   useEffect(() => {
     (async () => {
@@ -75,7 +75,7 @@ function EDLPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r || (NO_ACCESS as readonly string[]).includes(r)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
@@ -98,7 +98,7 @@ function EDLPage() {
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { if (role && !(NO_ACCESS as readonly string[]).includes(role)) load(); }, [role]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id); if (!c) return "—";
