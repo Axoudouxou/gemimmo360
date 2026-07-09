@@ -74,6 +74,7 @@ function BiensPage() {
   const navigate = useNavigate();
   const [biens, setBiens] = useState<Bien[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
+  const [gestionnaires, setGestionnaires] = useState<{ id: string; email: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -82,6 +83,7 @@ function BiensPage() {
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
   const [fOp, setFOp] = useState("all");
+  const [fGest, setFGest] = useState("all");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -90,9 +92,10 @@ function BiensPage() {
       if (fType !== "all" && b.type_bien !== fType) return false;
       if (fStatut !== "all" && b.statut !== fStatut) return false;
       if (fOp !== "all" && b.type_operation !== fOp) return false;
+      if (fGest !== "all" && b.gestionnaire_id !== fGest) return false;
       return true;
     });
-  }, [biens, search, fType, fStatut, fOp]);
+  }, [biens, search, fType, fStatut, fOp, fGest]);
 
   const [form, setForm] = useState({
     titre: "",
@@ -109,14 +112,16 @@ function BiensPage() {
     setLoading(true);
     const { data: userRes } = await supabase.auth.getUser();
     setUserId(userRes.user?.id ?? null);
-    const [{ data: biensData, error }, { data: bData, error: bErr }] = await Promise.all([
+    const [{ data: biensData, error }, { data: bData, error: bErr }, { data: gData }] = await Promise.all([
       supabase.from("biens").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
+      supabase.from("profiles").select("id, email").in("role", ["gestion_locative", "commercial", "admin", "direction"]).order("email"),
     ]);
     if (error) toast.error(error.message);
     else setBiens((biensData ?? []) as Bien[]);
     if (bErr) toast.error(bErr.message);
     else setBailleurs((bData ?? []) as Bailleur[]);
+    setGestionnaires((gData ?? []) as { id: string; email: string | null }[]);
     setLoading(false);
   };
 
@@ -273,8 +278,9 @@ function BiensPage() {
                 { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES_BIEN.map((t) => ({ value: t.value, label: t.label })) },
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
                 { key: "op", label: "Opération", value: fOp, onChange: setFOp, options: OPERATIONS.map((o) => ({ value: o.value, label: o.label })) },
+                { key: "gest", label: "Gestionnaire", value: fGest, onChange: setFGest, width: "w-56", options: gestionnaires.map((g) => ({ value: g.id, label: g.email ?? g.id })) },
               ]}
-              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setFOp("all"); }}
+              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setFOp("all"); setFGest("all"); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
