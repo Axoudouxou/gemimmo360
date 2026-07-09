@@ -32,7 +32,7 @@ const STATUTS = [
 ] as const;
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((s) => [s.value, s.label]));
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const ALLOWED = ["admin", "commercial"] as const;
+const ALLOWED = ["admin", "direction", "commercial"] as const;
 const COMMERCIAL_TYPES = ["prospect", "acheteur", "vendeur"];
 
 type Tx = { id: string; contact_id: string; bien_id: string | null; type_transaction: string; statut_opportunite: string; date_visite: string | null; notes: string | null };
