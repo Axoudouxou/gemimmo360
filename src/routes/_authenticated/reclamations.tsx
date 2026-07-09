@@ -31,7 +31,7 @@ const PRIORITES = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 const PRIO_LABEL: Record<string, string> = Object.fromEntries(PRIORITES.map((s) => [s.value, s.label]));
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
+const NO_WRITE = ["recouvrement", "en_attente"] as const;
 
 type Reclamation = { id: string; bien_id: string; locataire_id: string | null; titre: string; description: string | null; statut: string; priorite: string };
 type Bien = { id: string; titre: string };
