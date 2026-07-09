@@ -58,14 +58,15 @@ function ContratDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState({
-    loyer_mensuel: "", depot_garantie: "", date_debut: "", date_fin: "", statut: "actif", notes: "",
+    loyer_mensuel: "", depot_garantie: "", date_debut: "", date_fin: "", statut: "actif", notes: "", locataire_id: "",
   });
+  const [locataireList, setLocataireList] = useState<Locataire[]>([]);
 
   const [endOpen, setEndOpen] = useState(false);
   const [endSaving, setEndSaving] = useState(false);
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const canEdit = myRole === "admin" || myRole === "juridique";
+  const canEdit = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
 
   const load = async () => {
     setLoading(true);
