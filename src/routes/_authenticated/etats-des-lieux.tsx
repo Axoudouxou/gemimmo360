@@ -193,6 +193,26 @@ function EDLPage() {
     toast.success(`État des lieux enregistré, ${created.length} travaux créés`);
   };
 
+  const openEdit = (e: EDL) => {
+    setEditing(e);
+    setForm({ contrat_id: e.contrat_id, type: e.type, date_realisation: e.date_realisation, observations: e.observations ?? "" });
+    setAnomalies([newAnomalie()]);
+    setOpen(true);
+  };
+  const handleUpdate = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editing) return;
+    if (!form.contrat_id || !form.date_realisation) return toast.error("Contrat et date obligatoires");
+    setSaving(true);
+    const { error } = await supabase.from("etats_des_lieux").update({
+      contrat_id: form.contrat_id, type: form.type,
+      date_realisation: form.date_realisation, observations: form.observations.trim() || null,
+    }).eq("id", editing.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("État des lieux modifié"); setOpen(false); setEditing(null); resetForm(); load();
+  };
+
   if (!checked) return null;
 
   return (
