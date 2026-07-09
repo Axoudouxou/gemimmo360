@@ -196,21 +196,89 @@ function LotDetailPage() {
           <>
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <CardTitle>{lot.label}</CardTitle>
-                  <Badge>{lot.statut}</Badge>
-                  {isStale(lot.updated_at) && (
-                    <Badge variant="outline" className="border-amber-500 text-amber-700">
-                      <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
-                    </Badge>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <CardTitle>{lot.label}</CardTitle>
+                      <Badge>{lot.statut}</Badge>
+                      {isStale(lot.updated_at) && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-700">
+                          <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
+                        </Badge>
+                      )}
+                    </div>
+                    <CardDescription>
+                      {bien ? (
+                        <>Rattaché à <Link to="/biens/$bienId" params={{ bienId: bien.id }} className="underline">{bien.titre}</Link></>
+                      ) : "Bien parent inconnu"}
+                    </CardDescription>
+                  </div>
+                  {canEditLot && (
+                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <form onSubmit={handleEditLot}>
+                          <DialogHeader>
+                            <DialogTitle>Modifier le lot</DialogTitle>
+                            <DialogDescription>Mettre à jour les informations du lot.</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="lot-label">Libellé *</Label>
+                              <Input id="lot-label" value={editForm.label} onChange={(e) => setEditForm({ ...editForm, label: e.target.value })} required />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="lot-type">Type</Label>
+                                <Input id="lot-type" value={editForm.type_lot} onChange={(e) => setEditForm({ ...editForm, type_lot: e.target.value })} />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="lot-surface">Surface (m²)</Label>
+                                <Input id="lot-surface" type="number" min="0" step="0.01" value={editForm.surface} onChange={(e) => setEditForm({ ...editForm, surface: e.target.value })} />
+                              </div>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label>Statut</Label>
+                              <Select value={editForm.statut} onValueChange={(v) => setEditForm({ ...editForm, statut: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="vacant">Vacant</SelectItem>
+                                  <SelectItem value="loue">Loué</SelectItem>
+                                  <SelectItem value="indisponible">Indisponible</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="lot-notes">Notes</Label>
+                              <Textarea id="lot-notes" rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Annuler</Button>
+                            <Button type="submit" disabled={editSaving}>{editSaving ? "..." : "Enregistrer"}</Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
-                <CardDescription>
-                  {bien ? (
-                    <>Rattaché à <Link to="/biens/$bienId" params={{ bienId: bien.id }} className="underline">{bien.titre}</Link></>
-                  ) : "Bien parent inconnu"}
-                </CardDescription>
               </CardHeader>
+              <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
+                <div><span className="text-muted-foreground">Type : </span>{lot.type_lot ?? "—"}</div>
+                <div><span className="text-muted-foreground">Surface : </span>{lot.surface ?? "—"}</div>
+                {lot.notes && <div className="sm:col-span-3"><span className="text-muted-foreground">Notes : </span>{lot.notes}</div>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Contrat en cours</CardTitle>
+                  <CardDescription>Contrat actif rattaché à ce lot, s'il existe.</CardDescription>
+                </div>
+                {!actif && lot.statut === "vacant" && canCreate && (
               <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
                 <div><span className="text-muted-foreground">Type : </span>{lot.type_lot ?? "—"}</div>
                 <div><span className="text-muted-foreground">Surface : </span>{lot.surface ?? "—"}</div>
