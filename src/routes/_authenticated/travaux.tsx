@@ -93,6 +93,19 @@ function TravauxPage() {
   const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F";
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return travaux.filter((t) => {
+      if (fStatut !== "all" && t.statut !== fStatut) return false;
+      if (fBien !== "all" && t.bien_id !== fBien) return false;
+      if (dFrom && (!t.date_debut || t.date_debut < dFrom)) return false;
+      if (dTo && (!t.date_debut || t.date_debut > dTo)) return false;
+      if (q && !`${t.titre} ${bienTitre(t.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [travaux, search, fStatut, fBien, dFrom, dTo, biens]);
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
