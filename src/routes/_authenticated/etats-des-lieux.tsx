@@ -20,8 +20,8 @@ export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   component: EDLPage,
 });
 
-const ALLOWED = ["admin", "juridique", "gestion_locative"] as const;
-const CAN_WRITE = ["admin", "juridique"] as const;
+const ALLOWED = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
+const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
 
 const RESPONSABLES = [
   { value: "bailleur", label: "Bailleur" },
