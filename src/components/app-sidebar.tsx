@@ -43,19 +43,20 @@ type NavItem = {
 
 const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Calendrier", url: "/calendrier", icon: CalendarDays },
 ];
 
 const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
   { title: "Contacts", url: "/contacts", icon: ContactIcon },
-  { title: "Contrats", url: "/contrats", icon: FileText, roles: ["admin", "juridique", "gestion_locative"] },
-  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: ["admin", "juridique", "gestion_locative"] },
+  { title: "Contrats", url: "/contrats", icon: FileText, roles: ["admin", "direction", "juridique", "gestion_locative"] },
+  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: ["admin", "direction", "juridique", "gestion_locative"] },
 ];
 
 const FINANCE: NavItem[] = [
-  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "recouvrement"] },
-  { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "gestion_locative"] },
-  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "commercial"] },
+  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement"] },
+  { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"] },
+  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"] },
 ];
 
 const OPS: NavItem[] = [
