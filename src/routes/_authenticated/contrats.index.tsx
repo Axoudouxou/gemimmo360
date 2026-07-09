@@ -96,7 +96,7 @@ function ContratsPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r) {
         toast.error("Accès refusé");
         navigate({ to: "/dashboard", replace: true });
       }
