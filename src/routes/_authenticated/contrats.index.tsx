@@ -103,7 +103,7 @@ function ContratsPage() {
     })();
   }, [navigate]);
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = !!role;
 
   const load = async () => {
     setLoading(true);
