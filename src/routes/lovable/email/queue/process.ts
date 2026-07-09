@@ -324,4 +324,4 @@ export const Route = createFileRoute("/lovable/email/queue/process")({
       },
     },
   },
-})
+} as never)
