@@ -250,9 +250,19 @@ function ContactsPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Nom, email, téléphone..."
+              selects={[
+                { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES.map((t) => ({ value: t.value, label: t.label })) },
+                { key: "entite", label: "Entité", value: fEntite, onChange: setFEntite, options: [{ value: "personne", label: "Personne" }, { value: "entreprise", label: "Entreprise" }] },
+              ]}
+              onReset={() => { setSearch(""); setFType("all"); setFEntite("all"); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : contacts.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun contact.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -267,7 +277,7 @@ function ContactsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contacts.map((c) => (
+                    {filtered.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/contacts/$contactId", params: { contactId: c.id } })}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
