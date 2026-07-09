@@ -51,6 +51,41 @@ function LotDetailPage() {
   });
 
   const canCreate = myRole === "admin" || myRole === "juridique";
+  const canEditLot = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({ label: "", type_lot: "", surface: "", statut: "vacant", notes: "" });
+
+  useEffect(() => {
+    if (!lot) return;
+    setEditForm({
+      label: lot.label ?? "",
+      type_lot: lot.type_lot ?? "",
+      surface: lot.surface?.toString() ?? "",
+      statut: lot.statut ?? "vacant",
+      notes: lot.notes ?? "",
+    });
+  }, [lot]);
+
+  const handleEditLot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lot) return;
+    if (!editForm.label.trim()) return toast.error("Le libellé est obligatoire");
+    setEditSaving(true);
+    const { error } = await supabase.from("lots").update({
+      label: editForm.label.trim(),
+      type_lot: editForm.type_lot.trim() || null,
+      surface: editForm.surface ? Number(editForm.surface) : null,
+      statut: editForm.statut,
+      notes: editForm.notes.trim() || null,
+    }).eq("id", lot.id);
+    setEditSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Lot mis à jour");
+    setEditOpen(false);
+    load();
+  };
 
   const load = async () => {
     setLoading(true);
