@@ -132,6 +132,7 @@ function ContratDetailPage() {
       date_fin: editForm.date_fin || null,
       statut: editForm.statut,
       notes: editForm.notes.trim() || null,
+      locataire_id: editForm.locataire_id || null,
     }).eq("id", contratId);
     setEditSaving(false);
     if (error) {
