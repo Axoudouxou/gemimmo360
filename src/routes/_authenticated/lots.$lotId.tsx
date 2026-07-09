@@ -272,19 +272,6 @@ function LotDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                  <CardTitle>Contrat en cours</CardTitle>
-                  <CardDescription>Contrat actif rattaché à ce lot, s'il existe.</CardDescription>
-                </div>
-                {!actif && lot.statut === "vacant" && canCreate && (
-              <CardContent className="grid gap-2 sm:grid-cols-3 text-sm">
-                <div><span className="text-muted-foreground">Type : </span>{lot.type_lot ?? "—"}</div>
-                <div><span className="text-muted-foreground">Surface : </span>{lot.surface ?? "—"}</div>
-                {lot.notes && <div className="sm:col-span-3"><span className="text-muted-foreground">Notes : </span>{lot.notes}</div>}
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
