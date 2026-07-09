@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Trash2, FileText } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Trash2, FileText, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
@@ -21,8 +21,7 @@ export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   component: EDLPage,
 });
 
-const ALLOWED = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
+const NO_ACCESS = ["recouvrement", "en_attente"] as const;
 
 const RESPONSABLES = [
   { value: "bailleur", label: "Bailleur" },
@@ -58,6 +57,7 @@ function EDLPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
+  const [editing, setEditing] = useState<EDL | null>(null);
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
   const [search, setSearch] = useState("");
@@ -65,7 +65,7 @@ function EDLPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = role ? !(NO_ACCESS as readonly string[]).includes(role) : false;
 
   useEffect(() => {
     (async () => {
@@ -75,7 +75,7 @@ function EDLPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r || (NO_ACCESS as readonly string[]).includes(r)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
@@ -98,7 +98,7 @@ function EDLPage() {
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { if (role && !(NO_ACCESS as readonly string[]).includes(role)) load(); }, [role]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id); if (!c) return "—";
@@ -193,6 +193,26 @@ function EDLPage() {
     toast.success(`État des lieux enregistré, ${created.length} travaux créés`);
   };
 
+  const openEdit = (e: EDL) => {
+    setEditing(e);
+    setForm({ contrat_id: e.contrat_id, type: e.type, date_realisation: e.date_realisation, observations: e.observations ?? "" });
+    setAnomalies([newAnomalie()]);
+    setOpen(true);
+  };
+  const handleUpdate = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editing) return;
+    if (!form.contrat_id || !form.date_realisation) return toast.error("Contrat et date obligatoires");
+    setSaving(true);
+    const { error } = await supabase.from("etats_des_lieux").update({
+      contrat_id: form.contrat_id, type: form.type,
+      date_realisation: form.date_realisation, observations: form.observations.trim() || null,
+    }).eq("id", editing.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("État des lieux modifié"); setOpen(false); setEditing(null); resetForm(); load();
+  };
+
   if (!checked) return null;
 
   return (
@@ -208,11 +228,11 @@ function EDLPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>États des lieux</CardTitle><CardDescription>{canWrite ? "Entrées et sorties des locataires." : "Consultation (lecture seule)."}</CardDescription></div>
             {canWrite && (
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
+                <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvel état des lieux</DialogTitle><DialogDescription>Enregistrer un état des lieux lié à un contrat.</DialogDescription></DialogHeader>
+                  <form onSubmit={editing ? handleUpdate : handleCreate}>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier l'état des lieux" : "Nouvel état des lieux"}</DialogTitle><DialogDescription>{editing ? "Modification des informations principales." : "Enregistrer un état des lieux lié à un contrat."}</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2"><Label>Contrat *</Label>
                         <Select value={form.contrat_id} onValueChange={(v) => setForm({ ...form, contrat_id: v })}>
@@ -231,7 +251,7 @@ function EDLPage() {
                       </div>
                       <div className="grid gap-2"><Label htmlFor="obs">Observations</Label><Textarea id="obs" rows={3} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} /></div>
 
-                      <div className="border-t pt-4">
+                      {!editing && <div className="border-t pt-4">
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <Label className="text-base">Anomalies constatées</Label>
@@ -275,11 +295,11 @@ function EDLPage() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </div>}
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-                      <Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer et créer les travaux"}</Button>
+                      <Button type="submit" disabled={saving}>{saving ? "..." : editing ? "Enregistrer" : "Enregistrer et créer les travaux"}</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -299,9 +319,9 @@ function EDLPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((e) => (
-                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell></TableRow>
+                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
             )}

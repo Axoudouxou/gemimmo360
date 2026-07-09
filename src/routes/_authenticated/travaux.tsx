@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, FileText } from "lucide-react";
+import { Building2, ArrowLeft, Plus, FileText, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
@@ -43,6 +43,7 @@ function TravauxPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", titre: "", description: "", budget_prevu: "", budget_depense: "0", statut: "planifie", date_debut: "", date_fin: "" });
+  const [editing, setEditing] = useState<Travail | null>(null);
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
   const [fBien, setFBien] = useState("all");
@@ -90,6 +91,32 @@ function TravauxPage() {
     toast.success("Travaux ajoutés"); setOpen(false); resetForm(); load();
   };
 
+  const openEdit = (t: Travail) => {
+    setEditing(t);
+    setForm({
+      bien_id: t.bien_id, titre: t.titre, description: t.description ?? "",
+      budget_prevu: t.budget_prevu != null ? String(t.budget_prevu) : "",
+      budget_depense: String(t.budget_depense ?? 0),
+      statut: t.statut, date_debut: t.date_debut ?? "", date_fin: t.date_fin ?? "",
+    });
+    setOpen(true);
+  };
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!form.bien_id || !form.titre) return toast.error("Bien et titre obligatoires");
+    setSaving(true);
+    const { error } = await supabase.from("travaux").update({
+      bien_id: form.bien_id, titre: form.titre.trim(), description: form.description.trim() || null,
+      budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
+      budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
+      statut: form.statut, date_debut: form.date_debut || null, date_fin: form.date_fin || null,
+    }).eq("id", editing.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Travaux modifiés"); setOpen(false); setEditing(null); resetForm(); load();
+  };
+
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA";
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
@@ -120,11 +147,11 @@ function TravauxPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Travaux</CardTitle><CardDescription>{canWrite ? "Suivi des travaux sur les biens." : "Consultation des travaux (lecture seule)."}</CardDescription></div>
             {canWrite && (
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
+                <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
                 <DialogContent>
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouveaux travaux</DialogTitle><DialogDescription>Planifier des travaux sur un bien.</DialogDescription></DialogHeader>
+                  <form onSubmit={editing ? handleUpdate : handleCreate}>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier les travaux" : "Nouveaux travaux"}</DialogTitle><DialogDescription>Planifier des travaux sur un bien.</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2"><Label>Bien *</Label>
                         <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
@@ -169,9 +196,9 @@ function TravauxPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead><TableHead className="w-[110px]">Documents</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((t) => (
-                  <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell><TableCell><DocsButton travailId={t.id} canWrite={canWrite} /></TableCell></TableRow>
+                  <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell><TableCell><DocsButton travailId={t.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
 

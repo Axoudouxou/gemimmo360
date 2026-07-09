@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/reclamations")({
@@ -46,6 +46,7 @@ function ReclamationsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", locataire_id: "", titre: "", description: "", statut: "ouverte", priorite: "normale" });
+  const [editing, setEditing] = useState<Reclamation | null>(null);
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
   const [fPrio, setFPrio] = useState("all");
@@ -93,6 +94,26 @@ function ReclamationsPage() {
     toast.success("Réclamation ajoutée"); setOpen(false); resetForm(); load();
   };
 
+  const openEdit = (r: Reclamation) => {
+    setEditing(r);
+    setForm({ bien_id: r.bien_id, locataire_id: r.locataire_id ?? "", titre: r.titre, description: r.description ?? "", statut: r.statut, priorite: r.priorite });
+    setOpen(true);
+  };
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!form.bien_id || !form.titre) return toast.error("Bien et titre obligatoires");
+    setSaving(true);
+    const { error } = await supabase.from("reclamations").update({
+      bien_id: form.bien_id, locataire_id: form.locataire_id || null,
+      titre: form.titre.trim(), description: form.description.trim() || null,
+      statut: form.statut, priorite: form.priorite,
+    }).eq("id", editing.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Réclamation modifiée"); setOpen(false); setEditing(null); resetForm(); load();
+  };
+
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const prioVariant = (p: string) => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
@@ -122,11 +143,11 @@ function ReclamationsPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Réclamations</CardTitle><CardDescription>{canWrite ? "Gestion des réclamations." : "Consultation (lecture seule)."}</CardDescription></div>
             {canWrite && (
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
+                <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
                 <DialogContent>
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvelle réclamation</DialogTitle><DialogDescription>Enregistrer une réclamation sur un bien.</DialogDescription></DialogHeader>
+                  <form onSubmit={editing ? handleUpdate : handleCreate}>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier la réclamation" : "Nouvelle réclamation"}</DialogTitle><DialogDescription>Enregistrer une réclamation sur un bien.</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2"><Label>Bien *</Label>
                         <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
@@ -177,9 +198,9 @@ function ReclamationsPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune réclamation.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Locataire</TableHead><TableHead>Priorité</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Locataire</TableHead><TableHead>Priorité</TableHead><TableHead>Statut</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((r) => (
-                  <TableRow key={r.id}><TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell><TableCell>{r.titre}</TableCell><TableCell>{locataireName(r.locataire_id)}</TableCell><TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell><TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell></TableRow>
+                  <TableRow key={r.id}><TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell><TableCell>{r.titre}</TableCell><TableCell>{locataireName(r.locataire_id)}</TableCell><TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell><TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
