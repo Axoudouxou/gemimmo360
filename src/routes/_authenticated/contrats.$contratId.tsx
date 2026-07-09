@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
+import { ContratPropositions } from "@/components/contrat-propositions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
