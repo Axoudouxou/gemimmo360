@@ -46,11 +46,13 @@ const OVERVIEW: NavItem[] = [
   { title: "Calendrier", url: "/calendrier", icon: CalendarDays },
 ];
 
+const NON_RECOUVREMENT = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"];
+
 const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
   { title: "Contacts", url: "/contacts", icon: ContactIcon },
   { title: "Contrats", url: "/contrats", icon: FileText, roles: ["admin", "direction", "juridique", "gestion_locative"] },
-  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: ["admin", "direction", "juridique", "gestion_locative"] },
+  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: NON_RECOUVREMENT },
 ];
 
 const FINANCE: NavItem[] = [
