@@ -68,6 +68,10 @@ function ImpayesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const [form, setForm] = useState({
     contrat_id: "",

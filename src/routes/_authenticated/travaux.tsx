@@ -42,6 +42,11 @@ function TravauxPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", titre: "", description: "", budget_prevu: "", budget_depense: "0", statut: "planifie", date_debut: "", date_fin: "" });
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [fBien, setFBien] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 

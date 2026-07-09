@@ -46,6 +46,10 @@ function ReclamationsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", locataire_id: "", titre: "", description: "", statut: "ouverte", priorite: "normale" });
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [fPrio, setFPrio] = useState("all");
+  const [fBien, setFBien] = useState("all");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 

@@ -50,6 +50,11 @@ function TransactionsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", date_visite: "", notes: "" });
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [fStatut, setFStatut] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   useEffect(() => {
     (async () => {

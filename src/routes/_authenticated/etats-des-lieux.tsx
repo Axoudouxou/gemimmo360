@@ -59,6 +59,10 @@ function EDLPage() {
   const [form, setForm] = useState({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 
