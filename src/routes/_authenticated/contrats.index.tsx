@@ -39,8 +39,9 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "direction", "juridique", "gestion_locative", "commercial"] as const;
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "commercial"] as const;
+const ALLOWED: readonly string[] = [];
+const CAN_WRITE: readonly string[] = [];
+const ALLOW_ALL = true;
 
 type Contrat = {
   id: string;
@@ -95,14 +96,14 @@ function ContratsPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r) {
         toast.error("Accès refusé");
         navigate({ to: "/dashboard", replace: true });
       }
     })();
   }, [navigate]);
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = !!role;
 
   const load = async () => {
     setLoading(true);
@@ -121,7 +122,7 @@ function ContratsPage() {
   };
 
   useEffect(() => {
-    if (role && (ALLOWED as readonly string[]).includes(role)) load();
+    if (role) load();
   }, [role]);
 
   const resetForm = () =>
