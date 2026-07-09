@@ -143,11 +143,11 @@ function ReclamationsPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Réclamations</CardTitle><CardDescription>{canWrite ? "Gestion des réclamations." : "Consultation (lecture seule)."}</CardDescription></div>
             {canWrite && (
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
+                <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
                 <DialogContent>
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvelle réclamation</DialogTitle><DialogDescription>Enregistrer une réclamation sur un bien.</DialogDescription></DialogHeader>
+                  <form onSubmit={editing ? handleUpdate : handleCreate}>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier la réclamation" : "Nouvelle réclamation"}</DialogTitle><DialogDescription>Enregistrer une réclamation sur un bien.</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2"><Label>Bien *</Label>
                         <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
