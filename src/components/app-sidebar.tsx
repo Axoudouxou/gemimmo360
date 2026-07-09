@@ -17,6 +17,8 @@ import {
   Users2,
   CalendarDays,
   LogOut,
+  HelpCircle,
+
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +46,7 @@ type NavItem = {
 const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Calendrier", url: "/calendrier", icon: CalendarDays },
+  { title: "Aide", url: "/aide", icon: HelpCircle },
 ];
 
 const NON_RECOUVREMENT = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"];

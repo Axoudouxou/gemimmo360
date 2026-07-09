@@ -24,6 +24,7 @@ import { Route as AuthenticatedDoublonsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedCalendrierRouteImport } from './routes/_authenticated/calendrier'
+import { Route as AuthenticatedAideRouteImport } from './routes/_authenticated/aide'
 import { Route as AuthenticatedContratsIndexRouteImport } from './routes/_authenticated/contrats.index'
 import { Route as AuthenticatedContactsIndexRouteImport } from './routes/_authenticated/contacts.index'
 import { Route as AuthenticatedBiensIndexRouteImport } from './routes/_authenticated/biens.index'
@@ -110,6 +111,11 @@ const AuthenticatedCalendrierRoute = AuthenticatedCalendrierRouteImport.update({
   path: '/calendrier',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAideRoute = AuthenticatedAideRouteImport.update({
+  id: '/aide',
+  path: '/aide',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedContratsIndexRoute =
   AuthenticatedContratsIndexRouteImport.update({
     id: '/contrats/',
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compte-en-attente': typeof CompteEnAttenteRoute
+  '/aide': typeof AuthenticatedAideRoute
   '/calendrier': typeof AuthenticatedCalendrierRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/compte-en-attente': typeof CompteEnAttenteRoute
+  '/aide': typeof AuthenticatedAideRoute
   '/calendrier': typeof AuthenticatedCalendrierRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/compte-en-attente': typeof CompteEnAttenteRoute
+  '/_authenticated/aide': typeof AuthenticatedAideRoute
   '/_authenticated/calendrier': typeof AuthenticatedCalendrierRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compte-en-attente'
+    | '/aide'
     | '/calendrier'
     | '/charges'
     | '/dashboard'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/compte-en-attente'
+    | '/aide'
     | '/calendrier'
     | '/charges'
     | '/dashboard'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/compte-en-attente'
+    | '/_authenticated/aide'
     | '/_authenticated/calendrier'
     | '/_authenticated/charges'
     | '/_authenticated/dashboard'
@@ -422,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendrierRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/aide': {
+      id: '/_authenticated/aide'
+      path: '/aide'
+      fullPath: '/aide'
+      preLoaderRoute: typeof AuthenticatedAideRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contrats/': {
       id: '/_authenticated/contrats/'
       path: '/contrats'
@@ -482,6 +501,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAideRoute: typeof AuthenticatedAideRoute
   AuthenticatedCalendrierRoute: typeof AuthenticatedCalendrierRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -503,6 +523,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAideRoute: AuthenticatedAideRoute,
   AuthenticatedCalendrierRoute: AuthenticatedCalendrierRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
