@@ -58,14 +58,15 @@ function ContratDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editForm, setEditForm] = useState({
-    loyer_mensuel: "", depot_garantie: "", date_debut: "", date_fin: "", statut: "actif", notes: "",
+    loyer_mensuel: "", depot_garantie: "", date_debut: "", date_fin: "", statut: "actif", notes: "", locataire_id: "",
   });
+  const [locataireList, setLocataireList] = useState<Locataire[]>([]);
 
   const [endOpen, setEndOpen] = useState(false);
   const [endSaving, setEndSaving] = useState(false);
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const canEdit = myRole === "admin" || myRole === "juridique";
+  const canEdit = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
 
   const load = async () => {
     setLoading(true);
@@ -109,8 +110,17 @@ function ContratDetailPage() {
       date_fin: contrat.date_fin ?? "",
       statut: contrat.statut,
       notes: contrat.notes ?? "",
+      locataire_id: contrat.locataire_id ?? "",
     });
   }, [contrat]);
+
+  const openEdit = async () => {
+    setEditOpen(true);
+    if (locataireList.length === 0) {
+      const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("type_contact", "locataire").eq("archive", false).order("nom");
+      setLocataireList((data ?? []) as Locataire[]);
+    }
+  };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +132,7 @@ function ContratDetailPage() {
       date_fin: editForm.date_fin || null,
       statut: editForm.statut,
       notes: editForm.notes.trim() || null,
+      locataire_id: editForm.locataire_id || null,
     }).eq("id", contratId);
     setEditSaving(false);
     if (error) {
@@ -214,7 +225,7 @@ function ContratDetailPage() {
                           </DialogContent>
                         </Dialog>
                       )}
-                      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <Dialog open={editOpen} onOpenChange={(o) => (o ? openEdit() : setEditOpen(false))}>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
                         </DialogTrigger>
@@ -223,13 +234,25 @@ function ContratDetailPage() {
                             <DialogHeader>
                               <DialogTitle>Modifier contrat</DialogTitle>
                               <DialogDescription>
-                                Le lot et le locataire ne peuvent pas être modifiés depuis ce formulaire.
+                                Vous pouvez réattribuer le locataire ci-dessous. Le lot n'est pas modifiable ici.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                               <div className="grid gap-2 text-sm p-3 rounded-md bg-muted/50">
                                 <div><span className="text-muted-foreground">Lot : </span>{lot?.label ?? "—"} ({bien?.titre ?? "—"})</div>
-                                <div><span className="text-muted-foreground">Locataire : </span>{locataire ? locName(locataire) : "—"}</div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Locataire</Label>
+                                <Select value={editForm.locataire_id} onValueChange={(v) => setEditForm({ ...editForm, locataire_id: v })}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={locataireList.length ? "Sélectionner un locataire..." : "Chargement..."} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {locataireList.map((l) => (
+                                      <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">

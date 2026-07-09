@@ -38,8 +38,8 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "juridique", "gestion_locative"] as const;
-const CAN_WRITE = ["admin", "juridique"] as const;
+const ALLOWED = ["admin", "juridique", "gestion_locative", "commercial"] as const;
+const CAN_WRITE = ["admin", "juridique", "gestion_locative", "commercial"] as const;
 
 type Contrat = {
   id: string;
