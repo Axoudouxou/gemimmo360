@@ -90,6 +90,19 @@ function TransactionsPage() {
   const contactName = (id: string) => { const c = contacts.find((x) => x.id === id); return c ? `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}` : "—"; };
   const bienTitre = (id: string | null) => id ? (biens.find((b) => b.id === id)?.titre ?? "—") : "—";
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((t) => {
+      if (fType !== "all" && t.type_transaction !== fType) return false;
+      if (fStatut !== "all" && t.statut_opportunite !== fStatut) return false;
+      if (dFrom && (!t.date_visite || t.date_visite < dFrom)) return false;
+      if (dTo && (!t.date_visite || t.date_visite > dTo)) return false;
+      if (q && !`${contactName(t.contact_id)} ${bienTitre(t.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fType, fStatut, dFrom, dTo, contacts, biens]);
+
   const stats = useMemo(() => {
     const prospectIds = new Set(contacts.filter((c) => c.type_contact === "prospect").map((c) => c.id));
     const nbProspectsActifs = items.filter((t) => prospectIds.has(t.contact_id) && ["nouveau", "en_cours"].includes(t.statut_opportunite)).length;
