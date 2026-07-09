@@ -166,6 +166,26 @@ function ContratsPage() {
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
   const fmtMoney = (n: number | null) => (n == null ? "—" : n.toLocaleString("fr-FR") + " F");
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return contrats.filter((c) => {
+      if (fStatut !== "all" && c.statut !== fStatut) return false;
+      if (fBien !== "all") {
+        const lot = lotById.get(c.lot_id);
+        if (!lot || lot.bien_id !== fBien) return false;
+      }
+      if (dFrom && (!c.date_debut || c.date_debut < dFrom)) return false;
+      if (dTo && (!c.date_debut || c.date_debut > dTo)) return false;
+      if (q) {
+        const hay = `${lotLabel(c.lot_id)} ${locataireName(c.locataire_id)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contrats, search, fStatut, fBien, dFrom, dTo, lotById, bienById, locataires]);
+
+
   if (!checked) return null;
 
   return (
