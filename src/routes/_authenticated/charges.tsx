@@ -120,8 +120,8 @@ function ChargesPage() {
                   {biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle charge</Button></DialogTrigger>
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+              <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle charge</Button></DialogTrigger>
                 <DialogContent>
                   <form onSubmit={handleCreate}>
                     <DialogHeader><DialogTitle>Nouvelle charge</DialogTitle><DialogDescription>Ajouter une charge sur un bien.</DialogDescription></DialogHeader>
