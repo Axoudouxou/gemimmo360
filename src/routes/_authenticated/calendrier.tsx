@@ -59,6 +59,7 @@ function CalendrierPage() {
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
   const [openNew, setOpenNew] = useState(false);
+  const [editing, setEditing] = useState<Activite | null>(null);
 
   // Load me + profiles
   useEffect(() => {
