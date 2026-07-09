@@ -303,9 +303,20 @@ function ContratsPage() {
             )}
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Bien, lot ou locataire..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+              ]}
+              dateRange={{ label: "Début", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFBien("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : contrats.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun contrat.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -321,7 +332,7 @@ function ContratsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contrats.map((c) => (
+                    {filtered.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/contrats/$contratId", params: { contratId: c.id } })}>
                         <TableCell className="font-medium">{lotLabel(c.lot_id)}</TableCell>
                         <TableCell>{locataireName(c.locataire_id)}</TableCell>
