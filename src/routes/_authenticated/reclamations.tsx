@@ -198,9 +198,9 @@ function ReclamationsPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune réclamation.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Locataire</TableHead><TableHead>Priorité</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Locataire</TableHead><TableHead>Priorité</TableHead><TableHead>Statut</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((r) => (
-                  <TableRow key={r.id}><TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell><TableCell>{r.titre}</TableCell><TableCell>{locataireName(r.locataire_id)}</TableCell><TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell><TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell></TableRow>
+                  <TableRow key={r.id}><TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell><TableCell>{r.titre}</TableCell><TableCell>{locataireName(r.locataire_id)}</TableCell><TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell><TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
