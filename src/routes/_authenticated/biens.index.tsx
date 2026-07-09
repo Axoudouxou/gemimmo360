@@ -278,8 +278,9 @@ function BiensPage() {
                 { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES_BIEN.map((t) => ({ value: t.value, label: t.label })) },
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
                 { key: "op", label: "Opération", value: fOp, onChange: setFOp, options: OPERATIONS.map((o) => ({ value: o.value, label: o.label })) },
+                { key: "gest", label: "Gestionnaire", value: fGest, onChange: setFGest, width: "w-56", options: gestionnaires.map((g) => ({ value: g.id, label: g.email ?? g.id })) },
               ]}
-              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setFOp("all"); }}
+              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setFOp("all"); setFGest("all"); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
