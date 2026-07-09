@@ -14,6 +14,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      activites: {
+        Row: {
+          assigne_a: string
+          bien_id: string | null
+          contact_id: string | null
+          contrat_id: string | null
+          created_at: string
+          created_by: string | null
+          date_debut: string | null
+          date_fin: string | null
+          id: string
+          lieu: string | null
+          lot_id: string | null
+          notes: string | null
+          priorite: string
+          statut: string
+          titre: string
+          type_activite: string
+          updated_at: string
+        }
+        Insert: {
+          assigne_a: string
+          bien_id?: string | null
+          contact_id?: string | null
+          contrat_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_debut?: string | null
+          date_fin?: string | null
+          id?: string
+          lieu?: string | null
+          lot_id?: string | null
+          notes?: string | null
+          priorite?: string
+          statut?: string
+          titre: string
+          type_activite?: string
+          updated_at?: string
+        }
+        Update: {
+          assigne_a?: string
+          bien_id?: string | null
+          contact_id?: string | null
+          contrat_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_debut?: string | null
+          date_fin?: string | null
+          id?: string
+          lieu?: string | null
+          lot_id?: string | null
+          notes?: string | null
+          priorite?: string
+          statut?: string
+          titre?: string
+          type_activite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activites_assigne_a_fkey"
+            columns: ["assigne_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       biens: {
         Row: {
           adresse: string | null
