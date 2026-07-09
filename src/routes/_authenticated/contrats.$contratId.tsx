@@ -14,6 +14,7 @@ import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { ContratPropositions } from "@/components/contrat-propositions";
+import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
@@ -384,6 +385,14 @@ function ContratDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <DocumentsSection
+              bucket="contrats-documents"
+              recordId={contratId}
+              canWrite={canEdit}
+              description="Bail signé et avenants éventuels (PDF)."
+            />
+
 
             {contrat && (
               <ContratPropositions

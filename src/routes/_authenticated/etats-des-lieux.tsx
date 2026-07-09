@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Trash2, FileText } from "lucide-react";
+import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
@@ -298,14 +299,15 @@ function EDLPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead></TableRow></TableHeader>
                 <TableBody>{filtered.map((e) => (
-                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell></TableRow>
+                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
           </CardContent>
         </Card>
+
 
         <Dialog open={!!summary} onOpenChange={(o) => { if (!o) setSummary(null); }}>
           <DialogContent>
@@ -331,3 +333,19 @@ function EDLPage() {
     </div>
   );
 }
+
+function DocsButton({ edlId, canWrite }: { edlId: string; canWrite: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline"><FileText className="mr-1 h-3 w-3" /> Documents</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Documents de l'état des lieux</DialogTitle></DialogHeader>
+        <DocumentsSection bucket="edl-documents" recordId={edlId} canWrite={canWrite} description="Rapport Kizeo et pièces jointes (PDF)." />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
