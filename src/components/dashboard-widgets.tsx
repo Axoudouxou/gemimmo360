@@ -681,22 +681,25 @@ export function ContratsParStatut() {
 
 /* ------------------------ MODIFICATIONS EN ATTENTE (juridique) ------------------------ */
 export function ModificationsEnAttente() {
-  const [rows, setRows] = useState<Array<{ id: string; contrat_id: string; created_at: string; champs: any; ancien: any; nouveau: any }>>([]);
+  const [rows, setRows] = useState<Array<{ id: string; contrat_id: string; created_at: string; champ_modifie: string; ancienne_valeur: string | null; nouvelle_valeur: string | null }>>([]);
 
   const load = async () => {
     const { data } = await supabase
       .from("contrat_modifications_proposees")
-      .select("*")
+      .select("id, contrat_id, created_at, champ_modifie, ancienne_valeur, nouvelle_valeur")
       .eq("statut", "en_attente")
       .order("created_at", { ascending: false })
       .limit(10);
-    setRows((data ?? []) as any);
+    setRows((data ?? []) as Array<{ id: string; contrat_id: string; created_at: string; champ_modifie: string; ancienne_valeur: string | null; nouvelle_valeur: string | null }>);
   };
   useEffect(() => { load(); }, []);
 
   const act = async (id: string, statut: "approuve" | "rejete") => {
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("contrat_modifications_proposees").update({ statut, validated_by: u.user?.id, validated_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase
+      .from("contrat_modifications_proposees")
+      .update({ statut, traite_par: u.user?.id ?? null, traite_le: new Date().toISOString() })
+      .eq("id", id);
     if (error) return toast.error(error.message);
     toast.success(statut === "approuve" ? "Modification approuvée" : "Modification rejetée");
     load();
@@ -716,14 +719,17 @@ export function ModificationsEnAttente() {
                   </Link>
                   <span className="text-xs text-muted-foreground">{format(new Date(r.created_at), "d MMM yyyy", { locale: fr })}</span>
                 </div>
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Champ : </span><span className="font-medium">{r.champ_modifie}</span>
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <div className="text-muted-foreground mb-1">Actuel</div>
-                    <pre className="bg-muted/50 p-2 rounded text-[10px] max-h-24 overflow-auto">{JSON.stringify(r.ancien, null, 1)}</pre>
+                    <div className="bg-muted/50 p-2 rounded text-[11px] break-all">{r.ancienne_valeur ?? "—"}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground mb-1">Proposé</div>
-                    <pre className="bg-primary/5 p-2 rounded text-[10px] max-h-24 overflow-auto">{JSON.stringify(r.nouveau, null, 1)}</pre>
+                    <div className="bg-primary/5 p-2 rounded text-[11px] break-all">{r.nouvelle_valeur ?? "—"}</div>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
