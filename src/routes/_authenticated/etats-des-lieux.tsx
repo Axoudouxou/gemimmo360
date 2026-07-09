@@ -251,7 +251,7 @@ function EDLPage() {
                       </div>
                       <div className="grid gap-2"><Label htmlFor="obs">Observations</Label><Textarea id="obs" rows={3} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} /></div>
 
-                      <div className="border-t pt-4">
+                      {!editing && <div className="border-t pt-4">
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <Label className="text-base">Anomalies constatées</Label>
@@ -295,11 +295,11 @@ function EDLPage() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </div>}
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-                      <Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer et créer les travaux"}</Button>
+                      <Button type="submit" disabled={saving}>{saving ? "..." : editing ? "Enregistrer" : "Enregistrer et créer les travaux"}</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -319,9 +319,9 @@ function EDLPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((e) => (
-                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell></TableRow>
+                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
