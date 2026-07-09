@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,10 @@ function ReclamationsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", locataire_id: "", titre: "", description: "", statut: "ouverte", priorite: "normale" });
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [fPrio, setFPrio] = useState("all");
+  const [fBien, setFBien] = useState("all");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 
@@ -91,6 +96,18 @@ function ReclamationsPage() {
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const prioVariant = (p: string) => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((r) => {
+      if (fStatut !== "all" && r.statut !== fStatut) return false;
+      if (fPrio !== "all" && r.priorite !== fPrio) return false;
+      if (fBien !== "all" && r.bien_id !== fBien) return false;
+      if (q && !`${r.titre} ${bienTitre(r.bien_id)} ${locataireName(r.locataire_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fStatut, fPrio, fBien, biens, locataires]);
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -147,10 +164,21 @@ function ReclamationsPage() {
             )}
           </CardHeader>
           <CardContent>
-            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">Aucune réclamation.</p> : (
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Titre, bien ou locataire..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: PRIORITES.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+              ]}
+              onReset={() => { setSearch(""); setFStatut("all"); setFPrio("all"); setFBien("all"); }}
+            />
+            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune réclamation.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Locataire</TableHead><TableHead>Priorité</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                <TableBody>{items.map((r) => (
+                <TableBody>{filtered.map((r) => (
                   <TableRow key={r.id}><TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell><TableCell>{r.titre}</TableCell><TableCell>{locataireName(r.locataire_id)}</TableCell><TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell><TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>

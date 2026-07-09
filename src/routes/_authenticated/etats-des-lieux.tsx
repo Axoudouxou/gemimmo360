@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +59,10 @@ function EDLPage() {
   const [form, setForm] = useState({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 
@@ -103,6 +108,18 @@ function EDLPage() {
     const locStr = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
     return `${bienTitre} — ${lotLabel} — ${locStr}`;
   };
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((e) => {
+      if (fType !== "all" && e.type !== fType) return false;
+      if (dFrom && e.date_realisation < dFrom) return false;
+      if (dTo && e.date_realisation > dTo) return false;
+      if (q && !contratLabel(e.contrat_id).toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fType, dFrom, dTo, contrats, lots, biens, contacts]);
 
   const resetForm = () => {
     setForm({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
@@ -269,10 +286,20 @@ function EDLPage() {
             )}
           </CardHeader>
           <CardContent>
-            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Bien, lot ou locataire..."
+              selects={[
+                { key: "type", label: "Type", value: fType, onChange: setFType, options: [{ value: "entree", label: "Entrée" }, { value: "sortie", label: "Sortie" }] },
+              ]}
+              dateRange={{ label: "Date", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFType("all"); setDFrom(""); setDTo(""); }}
+            />
+            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead></TableRow></TableHeader>
-                <TableBody>{items.map((e) => (
+                <TableBody>{filtered.map((e) => (
                   <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>

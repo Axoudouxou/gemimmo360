@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,10 @@ function ChargesPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [filterBien, setFilterBien] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [fRec, setFRec] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -77,7 +82,19 @@ function ChargesPage() {
   };
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
-  const filtered = useMemo(() => filterBien === "all" ? charges : charges.filter((c) => c.bien_id === filterBien), [charges, filterBien]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return charges.filter((c) => {
+      if (filterBien !== "all" && c.bien_id !== filterBien) return false;
+      if (fRec === "oui" && !c.recurrente) return false;
+      if (fRec === "non" && c.recurrente) return false;
+      if (dFrom && c.date < dFrom) return false;
+      if (dTo && c.date > dTo) return false;
+      if (q && !`${c.libelle} ${bienTitre(c.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charges, filterBien, fRec, dFrom, dTo, search, biens]);
   const fmtMoney = (n: number) => Number(n).toLocaleString("fr-FR") + " F";
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
 
@@ -95,40 +112,42 @@ function ChargesPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Charges</CardTitle><CardDescription>Charges liées aux biens.</CardDescription></div>
-            <div className="flex gap-2">
-              <Select value={filterBien} onValueChange={setFilterBien}>
-                <SelectTrigger className="w-56"><SelectValue placeholder="Filtrer par bien" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les biens</SelectItem>
-                  {biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle charge</Button></DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvelle charge</DialogTitle><DialogDescription>Ajouter une charge sur un bien.</DialogDescription></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2"><Label>Bien *</Label>
-                        <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
-                          <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
-                          <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2"><Label htmlFor="libelle">Libellé *</Label><Input id="libelle" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required /></div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2"><Label htmlFor="montant">Montant *</Label><Input id="montant" type="number" min="0" step="0.01" required value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} /></div>
-                        <div className="grid gap-2"><Label htmlFor="date">Date *</Label><Input id="date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                      </div>
-                      <div className="flex items-center gap-2"><Checkbox id="recurrente" checked={form.recurrente} onCheckedChange={(v) => setForm({ ...form, recurrente: v === true })} /><Label htmlFor="recurrente">Charge récurrente</Label></div>
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+              <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle charge</Button></DialogTrigger>
+              <DialogContent>
+                <form onSubmit={handleCreate}>
+                  <DialogHeader><DialogTitle>Nouvelle charge</DialogTitle><DialogDescription>Ajouter une charge sur un bien.</DialogDescription></DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2"><Label>Bien *</Label>
+                      <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
+                        <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
+                        <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
-                    <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
+                    <div className="grid gap-2"><Label htmlFor="libelle">Libellé *</Label><Input id="libelle" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2"><Label htmlFor="montant">Montant *</Label><Input id="montant" type="number" min="0" step="0.01" required value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} /></div>
+                      <div className="grid gap-2"><Label htmlFor="date">Date *</Label><Input id="date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                    </div>
+                    <div className="flex items-center gap-2"><Checkbox id="recurrente" checked={form.recurrente} onCheckedChange={(v) => setForm({ ...form, recurrente: v === true })} /><Label htmlFor="recurrente">Charge récurrente</Label></div>
+                  </div>
+                  <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Libellé ou bien..."
+              selects={[
+                { key: "bien", label: "Bien", value: filterBien, onChange: setFilterBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+                { key: "rec", label: "Récurrente", value: fRec, onChange: setFRec, options: [{ value: "oui", label: "Oui" }, { value: "non", label: "Non" }] },
+              ]}
+              dateRange={{ label: "Date", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFilterBien("all"); setFRec("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune charge.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Libellé</TableHead><TableHead>Montant</TableHead><TableHead>Date</TableHead><TableHead>Récurrente</TableHead></TableRow></TableHeader>

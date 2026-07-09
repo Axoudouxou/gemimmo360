@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +68,10 @@ function ImpayesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const [form, setForm] = useState({
     contrat_id: "",
@@ -143,6 +148,21 @@ function ImpayesPage() {
   }, [impayes]);
 
   const contratsActifs = contrats.filter((c) => c.statut === "actif");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return impayes.filter((i) => {
+      if (fStatut !== "all" && i.statut !== fStatut) return false;
+      if (dFrom && i.date_echeance < dFrom) return false;
+      if (dTo && i.date_echeance > dTo) return false;
+      if (q) {
+        const { bien, locataire } = contratLabel(i.contrat_id);
+        if (!`${bien} ${locataire}`.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impayes, search, fStatut, dFrom, dTo, contrats, lots, biens, contacts]);
 
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
@@ -289,9 +309,19 @@ function ImpayesPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Bien ou locataire..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+              ]}
+              dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : impayes.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun impayé.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -307,7 +337,7 @@ function ImpayesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {impayes.map((i) => {
+                    {filtered.map((i) => {
                       const { bien, locataire } = contratLabel(i.contrat_id);
                       return (
                         <TableRow key={i.id}>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +67,22 @@ function ContactsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [fEntite, setFEntite] = useState("all");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return contacts.filter((c) => {
+      if (q) {
+        const hay = `${c.nom} ${c.prenom ?? ""} ${c.email ?? ""} ${c.telephone ?? ""} ${c.interlocuteur ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (fType !== "all" && c.type_contact !== fType) return false;
+      if (fEntite !== "all" && (c.type_entite ?? "personne") !== fEntite) return false;
+      return true;
+    });
+  }, [contacts, search, fType, fEntite]);
 
   const [form, setForm] = useState({
     nom: "",
@@ -233,9 +250,19 @@ function ContactsPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Nom, email, téléphone..."
+              selects={[
+                { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES.map((t) => ({ value: t.value, label: t.label })) },
+                { key: "entite", label: "Entité", value: fEntite, onChange: setFEntite, options: [{ value: "personne", label: "Personne" }, { value: "entreprise", label: "Entreprise" }] },
+              ]}
+              onReset={() => { setSearch(""); setFType("all"); setFEntite("all"); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : contacts.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun contact.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -250,7 +277,7 @@ function ContactsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contacts.map((c) => (
+                    {filtered.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/contacts/$contactId", params: { contactId: c.id } })}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">

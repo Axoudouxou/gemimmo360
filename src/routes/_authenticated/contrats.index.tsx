@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +69,11 @@ function ContratsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [fBien, setFBien] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const [form, setForm] = useState({
     lot_id: "",
@@ -159,6 +165,26 @@ function ContratsPage() {
   };
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
   const fmtMoney = (n: number | null) => (n == null ? "—" : n.toLocaleString("fr-FR") + " F");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return contrats.filter((c) => {
+      if (fStatut !== "all" && c.statut !== fStatut) return false;
+      if (fBien !== "all") {
+        const lot = lotById.get(c.lot_id);
+        if (!lot || lot.bien_id !== fBien) return false;
+      }
+      if (dFrom && (!c.date_debut || c.date_debut < dFrom)) return false;
+      if (dTo && (!c.date_debut || c.date_debut > dTo)) return false;
+      if (q) {
+        const hay = `${lotLabel(c.lot_id)} ${locataireName(c.locataire_id)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contrats, search, fStatut, fBien, dFrom, dTo, lotById, bienById, locataires]);
+
 
   if (!checked) return null;
 
@@ -277,9 +303,20 @@ function ContratsPage() {
             )}
           </CardHeader>
           <CardContent>
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Bien, lot ou locataire..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+              ]}
+              dateRange={{ label: "Début", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFBien("all"); setDFrom(""); setDTo(""); }}
+            />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
-            ) : contrats.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aucun contrat.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -295,7 +332,7 @@ function ContratsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contrats.map((c) => (
+                    {filtered.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate({ to: "/contrats/$contratId", params: { contratId: c.id } })}>
                         <TableCell className="font-medium">{lotLabel(c.lot_id)}</TableCell>
                         <TableCell>{locataireName(c.locataire_id)}</TableCell>

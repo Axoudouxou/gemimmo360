@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,11 @@ function TravauxPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ bien_id: "", titre: "", description: "", budget_prevu: "", budget_depense: "0", statut: "planifie", date_debut: "", date_fin: "" });
+  const [search, setSearch] = useState("");
+  const [fStatut, setFStatut] = useState("all");
+  const [fBien, setFBien] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
 
@@ -86,6 +92,19 @@ function TravauxPage() {
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F";
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return travaux.filter((t) => {
+      if (fStatut !== "all" && t.statut !== fStatut) return false;
+      if (fBien !== "all" && t.bien_id !== fBien) return false;
+      if (dFrom && (!t.date_debut || t.date_debut < dFrom)) return false;
+      if (dTo && (!t.date_debut || t.date_debut > dTo)) return false;
+      if (q && !`${t.titre} ${bienTitre(t.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [travaux, search, fStatut, fBien, dFrom, dTo, biens]);
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -136,10 +155,21 @@ function TravauxPage() {
             )}
           </CardHeader>
           <CardContent>
-            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : travaux.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Titre ou bien..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+              ]}
+              dateRange={{ label: "Début", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFBien("all"); setDFrom(""); setDTo(""); }}
+            />
+            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                <TableBody>{travaux.map((t) => (
+                <TableBody>{filtered.map((t) => (
                   <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>

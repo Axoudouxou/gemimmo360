@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,11 @@ function TransactionsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", date_visite: "", notes: "" });
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [fStatut, setFStatut] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -83,6 +89,19 @@ function TransactionsPage() {
 
   const contactName = (id: string) => { const c = contacts.find((x) => x.id === id); return c ? `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}` : "—"; };
   const bienTitre = (id: string | null) => id ? (biens.find((b) => b.id === id)?.titre ?? "—") : "—";
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((t) => {
+      if (fType !== "all" && t.type_transaction !== fType) return false;
+      if (fStatut !== "all" && t.statut_opportunite !== fStatut) return false;
+      if (dFrom && (!t.date_visite || t.date_visite < dFrom)) return false;
+      if (dTo && (!t.date_visite || t.date_visite > dTo)) return false;
+      if (q && !`${contactName(t.contact_id)} ${bienTitre(t.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, search, fType, fStatut, dFrom, dTo, contacts, biens]);
 
   const stats = useMemo(() => {
     const prospectIds = new Set(contacts.filter((c) => c.type_contact === "prospect").map((c) => c.id));
@@ -170,10 +189,21 @@ function TransactionsPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">Aucune transaction.</p> : (
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Contact ou bien..."
+              selects={[
+                { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+              ]}
+              dateRange={{ label: "Visite", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setDFrom(""); setDTo(""); }}
+            />
+            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune transaction.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Contact</TableHead><TableHead>Bien</TableHead><TableHead>Type</TableHead><TableHead>Date visite</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                <TableBody>{items.map((t) => (
+                <TableBody>{filtered.map((t) => (
                   <TableRow key={t.id}><TableCell className="font-medium">{contactName(t.contact_id)}</TableCell><TableCell>{bienTitre(t.bien_id)}</TableCell><TableCell><Badge variant="outline">{TYPE_LABEL[t.type_transaction] ?? t.type_transaction}</Badge></TableCell><TableCell>{t.date_visite ? new Date(t.date_visite).toLocaleDateString("fr-FR") : "—"}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut_opportunite] ?? t.statut_opportunite}</Badge></TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>
