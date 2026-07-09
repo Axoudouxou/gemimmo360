@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
+import { ContratPropositions } from "@/components/contrat-propositions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
@@ -358,6 +360,45 @@ function ContratDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {contrat && (
+              <ContratPropositions
+                contratId={contratId}
+                contrat={contrat as unknown as Record<string, any>}
+                myRole={myRole}
+                onApproved={load}
+              />
+            )}
+
+            {myRole === "admin" && contrat && (
+              <DeleteZone
+                entityLabel="ce contrat"
+                checkReferences={async () => {
+                  const [i, e] = await Promise.all([
+                    supabase.from("impayes").select("id", { count: "exact", head: true }).eq("contrat_id", contratId),
+                    supabase.from("etats_des_lieux").select("id", { count: "exact", head: true }).eq("contrat_id", contratId),
+                  ]);
+                  const parts: string[] = [];
+                  if ((i.count ?? 0) > 0) parts.push(`${i.count} impayé(s)`);
+                  if ((e.count ?? 0) > 0) parts.push(`${e.count} état(s) des lieux`);
+                  const msg = parts.length
+                    ? `⚠️ Ce contrat a ${parts.join(" et ")} lié(s). Ils seront supprimés en cascade.`
+                    : "Aucun impayé ni état des lieux lié.";
+                  return { blocked: false, message: msg, requireTypeToConfirm: parts.length > 0 };
+                }}
+                onDelete={async () => {
+                  const wasActive = contrat.statut === "actif";
+                  const lotId = contrat.lot_id;
+                  const { error } = await supabase.from("contrats").delete().eq("id", contratId);
+                  if (error) throw new Error(error.message);
+                  if (wasActive && lotId) {
+                    await supabase.from("lots").update({ statut: "vacant" }).eq("id", lotId);
+                  }
+                  toast.success("Contrat supprimé");
+                  navigate({ to: "/contrats" });
+                }}
+              />
+            )}
           </>
         )}
       </main>

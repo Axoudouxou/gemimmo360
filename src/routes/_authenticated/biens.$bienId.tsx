@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
@@ -521,6 +522,22 @@ function BienDetailPage() {
                 )}
               </CardContent>
             </Card>
+            {myRole === "admin" && bien && (
+              <DeleteZone
+                entityLabel="ce bien"
+                checkReferences={async () => {
+                  const { count } = await supabase.from("lots").select("id", { count: "exact", head: true }).eq("bien_id", bienId);
+                  if ((count ?? 0) > 0) return { blocked: true, message: `Ce bien a ${count} lot(s) rattaché(s) — supprimez ou déplacez d'abord les lots.` };
+                  return { blocked: false, message: "Aucun lot rattaché. Cette suppression est définitive." };
+                }}
+                onDelete={async () => {
+                  const { error } = await supabase.from("biens").delete().eq("id", bienId);
+                  if (error) throw new Error(error.message);
+                  toast.success("Bien supprimé");
+                  navigate({ to: "/biens" });
+                }}
+              />
+            )}
           </>
         )}
       </main>

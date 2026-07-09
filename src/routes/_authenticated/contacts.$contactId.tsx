@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, UserCog } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contacts/$contactId")({
@@ -411,6 +412,30 @@ function ContactDetailPage() {
                   )}
                 </CardContent>
               </Card>
+            )}
+            {myRole === "admin" && contact && (
+              <DeleteZone
+                entityLabel="ce contact"
+                checkReferences={async () => {
+                  const [b, cAsLoc, tx] = await Promise.all([
+                    supabase.from("biens").select("id", { count: "exact", head: true }).eq("bailleur_id", contactId),
+                    supabase.from("contrats").select("id", { count: "exact", head: true }).eq("locataire_id", contactId),
+                    supabase.from("transactions_commerciales").select("id", { count: "exact", head: true }).eq("contact_id", contactId),
+                  ]);
+                  const blockers: string[] = [];
+                  if ((b.count ?? 0) > 0) blockers.push(`bailleur de ${b.count} bien(s)`);
+                  if ((cAsLoc.count ?? 0) > 0) blockers.push(`locataire sur ${cAsLoc.count} contrat(s)`);
+                  if ((tx.count ?? 0) > 0) blockers.push(`lié à ${tx.count} transaction(s) commerciale(s)`);
+                  if (blockers.length) return { blocked: true, message: `Ce contact est ${blockers.join(", ")} — impossible à supprimer. Utilisez la fusion ou archivez-le à la place.` };
+                  return { blocked: false, message: "Aucune référence détectée. Cette suppression est définitive." };
+                }}
+                onDelete={async () => {
+                  const { error } = await supabase.from("contacts").delete().eq("id", contactId);
+                  if (error) throw new Error(error.message);
+                  toast.success("Contact supprimé");
+                  navigate({ to: "/contacts" });
+                }}
+              />
             )}
           </>
         )}

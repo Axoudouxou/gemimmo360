@@ -229,6 +229,70 @@ export type Database = {
           },
         ]
       }
+      contrat_modifications_proposees: {
+        Row: {
+          ancienne_valeur: string | null
+          champ_modifie: string
+          commentaire: string | null
+          contrat_id: string
+          created_at: string
+          id: string
+          nouvelle_valeur: string | null
+          propose_par: string
+          statut: string
+          traite_le: string | null
+          traite_par: string | null
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          champ_modifie: string
+          commentaire?: string | null
+          contrat_id: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          propose_par: string
+          statut?: string
+          traite_le?: string | null
+          traite_par?: string | null
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          champ_modifie?: string
+          commentaire?: string | null
+          contrat_id?: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          propose_par?: string
+          statut?: string
+          traite_le?: string | null
+          traite_par?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrat_modifications_proposees_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrat_modifications_proposees_propose_par_fkey"
+            columns: ["propose_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrat_modifications_proposees_traite_par_fkey"
+            columns: ["traite_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrats: {
         Row: {
           created_at: string

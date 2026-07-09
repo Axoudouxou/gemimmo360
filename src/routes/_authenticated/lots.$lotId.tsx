@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
+import { DeleteZone } from "@/components/delete-zone";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/lots/$lotId")({
@@ -337,6 +338,22 @@ function LotDetailPage() {
                 )}
               </CardContent>
             </Card>
+            {myRole === "admin" && lot && (
+              <DeleteZone
+                entityLabel="ce lot"
+                checkReferences={async () => {
+                  const { count } = await supabase.from("contrats").select("id", { count: "exact", head: true }).eq("lot_id", lotId);
+                  if ((count ?? 0) > 0) return { blocked: true, message: `Ce lot a ${count} contrat(s) lié(s) — supprimez d'abord les contrats.` };
+                  return { blocked: false, message: "Aucun contrat rattaché. Cette suppression est définitive." };
+                }}
+                onDelete={async () => {
+                  const { error } = await supabase.from("lots").delete().eq("id", lotId);
+                  if (error) throw new Error(error.message);
+                  toast.success("Lot supprimé");
+                  navigate({ to: "/biens/$bienId", params: { bienId: lot.bien_id } });
+                }}
+              />
+            )}
           </>
         )}
       </main>
