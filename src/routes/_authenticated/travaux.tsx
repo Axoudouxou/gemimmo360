@@ -196,9 +196,9 @@ function TravauxPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead><TableHead className="w-[110px]">Documents</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((t) => (
-                  <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell><TableCell><DocsButton travailId={t.id} canWrite={canWrite} /></TableCell></TableRow>
+                  <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell><TableCell><DocsButton travailId={t.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
 
