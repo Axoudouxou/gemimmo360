@@ -225,7 +225,7 @@ function ContratDetailPage() {
                           </DialogContent>
                         </Dialog>
                       )}
-                      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                      <Dialog open={editOpen} onOpenChange={(o) => (o ? openEdit() : setEditOpen(false))}>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>
                         </DialogTrigger>
@@ -234,13 +234,25 @@ function ContratDetailPage() {
                             <DialogHeader>
                               <DialogTitle>Modifier contrat</DialogTitle>
                               <DialogDescription>
-                                Le lot et le locataire ne peuvent pas être modifiés depuis ce formulaire.
+                                Vous pouvez réattribuer le locataire ci-dessous. Le lot n'est pas modifiable ici.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                               <div className="grid gap-2 text-sm p-3 rounded-md bg-muted/50">
                                 <div><span className="text-muted-foreground">Lot : </span>{lot?.label ?? "—"} ({bien?.titre ?? "—"})</div>
-                                <div><span className="text-muted-foreground">Locataire : </span>{locataire ? locName(locataire) : "—"}</div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Locataire</Label>
+                                <Select value={editForm.locataire_id} onValueChange={(v) => setEditForm({ ...editForm, locataire_id: v })}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={locataireList.length ? "Sélectionner un locataire..." : "Chargement..."} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {locataireList.map((l) => (
+                                      <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
