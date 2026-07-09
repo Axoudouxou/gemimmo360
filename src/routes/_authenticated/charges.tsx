@@ -30,6 +30,10 @@ function ChargesPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [filterBien, setFilterBien] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [fRec, setFRec] = useState("all");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
