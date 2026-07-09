@@ -94,6 +94,26 @@ function ReclamationsPage() {
     toast.success("Réclamation ajoutée"); setOpen(false); resetForm(); load();
   };
 
+  const openEdit = (r: Reclamation) => {
+    setEditing(r);
+    setForm({ bien_id: r.bien_id, locataire_id: r.locataire_id ?? "", titre: r.titre, description: r.description ?? "", statut: r.statut, priorite: r.priorite });
+    setOpen(true);
+  };
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!form.bien_id || !form.titre) return toast.error("Bien et titre obligatoires");
+    setSaving(true);
+    const { error } = await supabase.from("reclamations").update({
+      bien_id: form.bien_id, locataire_id: form.locataire_id || null,
+      titre: form.titre.trim(), description: form.description.trim() || null,
+      statut: form.statut, priorite: form.priorite,
+    }).eq("id", editing.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Réclamation modifiée"); setOpen(false); setEditing(null); resetForm(); load();
+  };
+
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const prioVariant = (p: string) => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
