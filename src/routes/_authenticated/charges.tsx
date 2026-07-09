@@ -82,7 +82,19 @@ function ChargesPage() {
   };
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
-  const filtered = useMemo(() => filterBien === "all" ? charges : charges.filter((c) => c.bien_id === filterBien), [charges, filterBien]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return charges.filter((c) => {
+      if (filterBien !== "all" && c.bien_id !== filterBien) return false;
+      if (fRec === "oui" && !c.recurrente) return false;
+      if (fRec === "non" && c.recurrente) return false;
+      if (dFrom && c.date < dFrom) return false;
+      if (dTo && c.date > dTo) return false;
+      if (q && !`${c.libelle} ${bienTitre(c.bien_id)}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charges, filterBien, fRec, dFrom, dTo, search, biens]);
   const fmtMoney = (n: number) => Number(n).toLocaleString("fr-FR") + " F";
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
 
