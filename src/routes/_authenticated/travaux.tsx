@@ -90,7 +90,7 @@ function TravauxPage() {
   };
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
-  const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F";
+  const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA";
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 
   const filtered = useMemo(() => {

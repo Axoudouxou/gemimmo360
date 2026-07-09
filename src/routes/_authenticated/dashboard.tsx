@@ -62,7 +62,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function fmtMoney(n: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n ?? 0);
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n ?? 0);
 }
 
 type StatCard = {
