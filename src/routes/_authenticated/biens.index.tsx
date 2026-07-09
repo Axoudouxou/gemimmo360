@@ -78,6 +78,21 @@ function BiensPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("all");
+  const [fStatut, setFStatut] = useState("all");
+  const [fOp, setFOp] = useState("all");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return biens.filter((b) => {
+      if (q && !`${b.titre} ${b.adresse ?? ""}`.toLowerCase().includes(q)) return false;
+      if (fType !== "all" && b.type_bien !== fType) return false;
+      if (fStatut !== "all" && b.statut !== fStatut) return false;
+      if (fOp !== "all" && b.type_operation !== fOp) return false;
+      return true;
+    });
+  }, [biens, search, fType, fStatut, fOp]);
 
   const [form, setForm] = useState({
     titre: "",
