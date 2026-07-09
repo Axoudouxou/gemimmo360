@@ -62,8 +62,8 @@ const FINANCE: NavItem[] = [
 ];
 
 const OPS: NavItem[] = [
-  { title: "Travaux", url: "/travaux", icon: Hammer },
-  { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning },
+  { title: "Travaux", url: "/travaux", icon: Hammer, roles: NON_RECOUVREMENT },
+  { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning, roles: NON_RECOUVREMENT },
 ];
 
 const ADMIN: NavItem[] = [
