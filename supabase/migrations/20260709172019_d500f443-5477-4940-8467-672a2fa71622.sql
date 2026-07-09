@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.contrats_lot_actif_unique;
