@@ -10,6 +10,15 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    if (!profile || profile.role === "en_attente") {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/compte-en-attente" });
+    }
     return { user: data.user };
   },
   component: AuthenticatedLayout,
@@ -23,6 +32,7 @@ const ROLE_LABELS: Record<string, string> = {
   technique: "Technique",
   juridique: "Juridique",
   commercial: "Commercial",
+  en_attente: "Compte en attente d'activation",
 };
 
 function initialsFrom(email: string) {
