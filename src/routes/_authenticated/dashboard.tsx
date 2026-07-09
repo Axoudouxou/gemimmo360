@@ -323,6 +323,11 @@ function Dashboard() {
           );
         })}
       </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <MesTachesSemaine userId={userId} />
+        <MesActivitesEnCours userId={userId} />
+      </div>
     </div>
   );
 }
