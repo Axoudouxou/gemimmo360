@@ -49,7 +49,7 @@ function TravauxPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? (CAN_WRITE as readonly string[]).includes(role) : false;
+  const canWrite = role ? !(NO_WRITE as readonly string[]).includes(role) : false;
 
   useEffect(() => {
     (async () => {
