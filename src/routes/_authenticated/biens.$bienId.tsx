@@ -56,7 +56,7 @@ type Travail = { id: string; titre: string; statut: string; date_debut: string |
 type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
 type Gestionnaire = { id: string; email: string | null; role: string };
 
-const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " F");
+const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
 const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
 const isStale = (d?: string | null) => !!d && Date.now() - new Date(d).getTime() > 1000 * 60 * 60 * 24 * 30 * 6;
 

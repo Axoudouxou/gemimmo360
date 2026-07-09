@@ -95,7 +95,7 @@ function ChargesPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charges, filterBien, fRec, dFrom, dTo, search, biens]);
-  const fmtMoney = (n: number) => Number(n).toLocaleString("fr-FR") + " F";
+  const fmtMoney = (n: number) => Number(n).toLocaleString("fr-FR") + " FCFA";
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
 
   if (!checked) return null;

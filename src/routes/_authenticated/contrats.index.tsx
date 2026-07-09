@@ -164,7 +164,7 @@ function ContratsPage() {
     return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—";
   };
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
-  const fmtMoney = (n: number | null) => (n == null ? "—" : n.toLocaleString("fr-FR") + " F");
+  const fmtMoney = (n: number | null) => (n == null ? "—" : n.toLocaleString("fr-FR") + " FCFA");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
