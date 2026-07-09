@@ -141,6 +141,15 @@ function CalendrierPage() {
     load();
   };
 
+  const handleDelete = async (id: string) => {
+    if (isReadOnly) return;
+    if (!confirm("Supprimer cette tâche ?")) return;
+    const { error } = await supabase.from("activites").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Tâche supprimée");
+    load();
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
