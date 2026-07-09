@@ -228,11 +228,11 @@ function EDLPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>États des lieux</CardTitle><CardDescription>{canWrite ? "Entrées et sorties des locataires." : "Consultation (lecture seule)."}</CardDescription></div>
             {canWrite && (
-              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-                <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
+                <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <form onSubmit={handleCreate}>
-                    <DialogHeader><DialogTitle>Nouvel état des lieux</DialogTitle><DialogDescription>Enregistrer un état des lieux lié à un contrat.</DialogDescription></DialogHeader>
+                  <form onSubmit={editing ? handleUpdate : handleCreate}>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier l'état des lieux" : "Nouvel état des lieux"}</DialogTitle><DialogDescription>{editing ? "Modification des informations principales." : "Enregistrer un état des lieux lié à un contrat."}</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2"><Label>Contrat *</Label>
                         <Select value={form.contrat_id} onValueChange={(v) => setForm({ ...form, contrat_id: v })}>
