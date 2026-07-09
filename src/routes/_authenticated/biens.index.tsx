@@ -112,14 +112,16 @@ function BiensPage() {
     setLoading(true);
     const { data: userRes } = await supabase.auth.getUser();
     setUserId(userRes.user?.id ?? null);
-    const [{ data: biensData, error }, { data: bData, error: bErr }] = await Promise.all([
+    const [{ data: biensData, error }, { data: bData, error: bErr }, { data: gData }] = await Promise.all([
       supabase.from("biens").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
+      supabase.from("profiles").select("id, email").in("role", ["gestion_locative", "commercial", "admin", "direction"]).order("email"),
     ]);
     if (error) toast.error(error.message);
     else setBiens((biensData ?? []) as Bien[]);
     if (bErr) toast.error(bErr.message);
     else setBailleurs((bData ?? []) as Bailleur[]);
+    setGestionnaires((gData ?? []) as { id: string; email: string | null }[]);
     setLoading(false);
   };
 
