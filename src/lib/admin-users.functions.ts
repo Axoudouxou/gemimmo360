@@ -22,6 +22,7 @@ export const adminSetUserPassword = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: data.password,
+      email_confirm: true,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
