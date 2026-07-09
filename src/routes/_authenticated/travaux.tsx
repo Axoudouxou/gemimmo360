@@ -25,7 +25,7 @@ const STATUTS = [
   { value: "termine", label: "Terminé" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const CAN_WRITE = ["admin", "technique"] as const;
+const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"] as const;
 
 type Travail = {
   id: string; bien_id: string; titre: string; description: string | null;
