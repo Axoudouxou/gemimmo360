@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { ContratPropositions } from "@/components/contrat-propositions";
 import { toast } from "sonner";
 
@@ -394,6 +395,8 @@ function ContratDetailPage() {
             )}
 
             {myRole === "admin" && contrat && (
+              <ActivitesLiees contratId={contratId} />
+
               <DeleteZone
                 entityLabel="ce contrat"
                 checkReferences={async () => {

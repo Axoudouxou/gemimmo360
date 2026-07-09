@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
@@ -523,6 +524,8 @@ function BienDetailPage() {
               </CardContent>
             </Card>
             {myRole === "admin" && bien && (
+              <ActivitesLiees bienId={bienId} />
+
               <DeleteZone
                 entityLabel="ce bien"
                 checkReferences={async () => {

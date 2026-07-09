@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, AlertCircle, Pencil } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/lots/$lotId")({
@@ -430,6 +431,8 @@ function LotDetailPage() {
               </CardContent>
             </Card>
             {myRole === "admin" && lot && (
+              <ActivitesLiees lotId={lotId} />
+
               <DeleteZone
                 entityLabel="ce lot"
                 checkReferences={async () => {
