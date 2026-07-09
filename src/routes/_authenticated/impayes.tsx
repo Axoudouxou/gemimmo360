@@ -149,6 +149,21 @@ function ImpayesPage() {
 
   const contratsActifs = contrats.filter((c) => c.statut === "actif");
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return impayes.filter((i) => {
+      if (fStatut !== "all" && i.statut !== fStatut) return false;
+      if (dFrom && i.date_echeance < dFrom) return false;
+      if (dTo && i.date_echeance > dTo) return false;
+      if (q) {
+        const { bien, locataire } = contratLabel(i.contrat_id);
+        if (!`${bien} ${locataire}`.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impayes, search, fStatut, dFrom, dTo, contrats, lots, biens, contacts]);
+
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
 
