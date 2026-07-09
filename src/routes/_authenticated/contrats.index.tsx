@@ -39,8 +39,9 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "direction", "juridique", "gestion_locative", "commercial"] as const;
-const CAN_WRITE = ["admin", "direction", "juridique", "gestion_locative", "commercial"] as const;
+const ALLOWED: readonly string[] = [];
+const CAN_WRITE: readonly string[] = [];
+const ALLOW_ALL = true;
 
 type Contrat = {
   id: string;
