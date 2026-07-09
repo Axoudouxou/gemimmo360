@@ -155,10 +155,21 @@ function TravauxPage() {
             )}
           </CardHeader>
           <CardContent>
-            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : travaux.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
+            <FilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Titre ou bien..."
+              selects={[
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+              ]}
+              dateRange={{ label: "Début", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFBien("all"); setDFrom(""); setDTo(""); }}
+            />
+            {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
               <div className="overflow-x-auto"><Table>
                 <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Budget prévu</TableHead><TableHead>Dépensé</TableHead><TableHead>Début</TableHead><TableHead>Fin</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                <TableBody>{travaux.map((t) => (
+                <TableBody>{filtered.map((t) => (
                   <TableRow key={t.id}><TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(t.budget_prevu)}</TableCell><TableCell>{fmtMoney(t.budget_depense)}</TableCell><TableCell>{fmtDate(t.date_debut)}</TableCell><TableCell>{fmtDate(t.date_fin)}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell></TableRow>
                 ))}</TableBody>
               </Table></div>
