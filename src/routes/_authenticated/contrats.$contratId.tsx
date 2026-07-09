@@ -394,9 +394,8 @@ function ContratDetailPage() {
               />
             )}
 
+            <ActivitesLiees contratId={contratId} />
             {myRole === "admin" && contrat && (
-              <ActivitesLiees contratId={contratId} />
-
               <DeleteZone
                 entityLabel="ce contrat"
                 checkReferences={async () => {

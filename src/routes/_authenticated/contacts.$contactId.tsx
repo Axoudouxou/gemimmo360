@@ -228,6 +228,7 @@ function ContactDetailPage() {
                   <CardDescription>Coordonnées et informations du contact.</CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <ActivitesLiees contactId={contactId} />
                   {myRole === "admin" && (
                     <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
                       <DialogTrigger asChild>
@@ -415,8 +416,6 @@ function ContactDetailPage() {
               </Card>
             )}
             {myRole === "admin" && contact && (
-              <ActivitesLiees contactId={contactId} />
-
               <DeleteZone
                 entityLabel="ce contact"
                 checkReferences={async () => {

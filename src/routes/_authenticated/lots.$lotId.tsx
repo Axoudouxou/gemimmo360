@@ -51,6 +51,7 @@ function LotDetailPage() {
     date_debut: new Date().toISOString().slice(0, 10), statut: "actif",
   });
 
+  <ActivitesLiees lotId={lotId} />
   const canCreate = myRole === "admin" || myRole === "juridique";
   const canEditLot = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
 
@@ -431,8 +432,6 @@ function LotDetailPage() {
               </CardContent>
             </Card>
             {myRole === "admin" && lot && (
-              <ActivitesLiees lotId={lotId} />
-
               <DeleteZone
                 entityLabel="ce lot"
                 checkReferences={async () => {

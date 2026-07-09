@@ -247,6 +247,7 @@ function BienDetailPage() {
                   <CardDescription>{bien.adresse ?? "Adresse non renseignée"}</CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <ActivitesLiees bienId={bienId} />
                   {myRole === "admin" && (
                     <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
                       <DialogTrigger asChild>
@@ -524,8 +525,6 @@ function BienDetailPage() {
               </CardContent>
             </Card>
             {myRole === "admin" && bien && (
-              <ActivitesLiees bienId={bienId} />
-
               <DeleteZone
                 entityLabel="ce bien"
                 checkReferences={async () => {
