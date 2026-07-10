@@ -265,9 +265,9 @@ function CalendrierPage() {
 
         <TabsContent value="tasks" className="mt-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
+            <TaskColumn title="À faire" items={tasksAFaire} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="En cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="Fait" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
           </div>
         </TabsContent>
       </Tabs>
@@ -283,6 +283,18 @@ function CalendrierPage() {
           onSaved={() => { setEditing(null); load(); }}
         />
       )}
+
+      <ActiviteDetailDialog
+        open={!!detail}
+        setOpen={(o) => { if (!o) setDetail(null); }}
+        activite={detail}
+        me={me}
+        role={me?.role ?? ""}
+        profiles={profiles}
+        onEdit={(a) => setEditing(a)}
+        onChanged={() => { setDetail(null); load(); }}
+        onDeleted={() => { setDetail(null); load(); }}
+      />
     </div>
   );
 }
