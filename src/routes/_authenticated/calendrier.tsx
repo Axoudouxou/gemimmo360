@@ -302,7 +302,8 @@ function CalendrierPage() {
 function TaskColumn({
   title,
   items,
-  readonly,
+  me,
+  onOpen,
   onToggle,
   onEdit,
   onDelete,
@@ -310,10 +311,11 @@ function TaskColumn({
 }: {
   title: string;
   items: Activite[];
-  readonly: boolean;
-  onToggle: (id: string, done: boolean) => void;
+  me: Profile | null;
+  onOpen: (a: Activite) => void;
+  onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
-  onDelete: (id: string) => void;
+  onDelete: (a: Activite) => void;
   done?: boolean;
 }) {
   return (
@@ -322,39 +324,50 @@ function TaskColumn({
       <CardContent className="space-y-2">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
-        ) : items.map((a) => (
-          <div key={a.id} className={`flex items-start gap-2 rounded border p-2 ${a.priorite === "urgente" ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}>
-            <Checkbox
-              checked={done}
-              disabled={readonly}
-              onCheckedChange={(v) => onToggle(a.id, !!v)}
-              className="mt-0.5"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
-                <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
-                {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
+        ) : items.map((a) => {
+          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+          return (
+            <div
+              key={a.id}
+              className={`flex items-start gap-2 rounded border p-2 cursor-pointer hover:bg-muted/40 ${a.priorite === "urgente" ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}
+              onClick={() => onOpen(a)}
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={done}
+                  disabled={!perms.canChangeStatut}
+                  onCheckedChange={(v) => onToggle(a, !!v)}
+                  className="mt-0.5"
+                />
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {TYPE_LABELS[a.type_activite] ?? a.type_activite}
-                {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
-                {a.lieu ? ` · ${a.lieu}` : ""}
-                {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
+                  <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
+                  {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {TYPE_LABELS[a.type_activite] ?? a.type_activite}
+                  {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
+                  {a.lieu ? ` · ${a.lieu}` : ""}
+                  {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                </div>
+              </div>
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {perms.canEditAll && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {perms.canDelete && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a)} aria-label="Supprimer">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
-            {!readonly && (
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a.id)} aria-label="Supprimer">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );
