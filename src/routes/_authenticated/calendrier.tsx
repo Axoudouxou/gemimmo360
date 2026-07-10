@@ -242,14 +242,16 @@ function CalendrierPage() {
                       <div className="font-medium mb-1">{format(d, "d")}</div>
                       <div className="space-y-0.5">
                         {events.slice(0, 3).map((e) => (
-                          <div
+                          <button
+                            type="button"
                             key={e.id}
-                            className={`truncate rounded px-1 py-0.5 text-white ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
+                            onClick={() => setDetail(e)}
+                            className={`w-full text-left truncate rounded px-1 py-0.5 text-white hover:opacity-90 ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
                             title={e.titre}
                           >
                             {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
                             {e.titre}
-                          </div>
+                          </button>
                         ))}
                         {events.length > 3 && (
                           <div className="text-[10px] text-muted-foreground">+{events.length - 3} autre(s)</div>
