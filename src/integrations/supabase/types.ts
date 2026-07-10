@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      activite_commentaires: {
+        Row: {
+          activite_id: string
+          auteur: string
+          contenu: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          activite_id: string
+          auteur: string
+          contenu: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          activite_id?: string
+          auteur?: string
+          contenu?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activite_commentaires_activite_id_fkey"
+            columns: ["activite_id"]
+            isOneToOne: false
+            referencedRelation: "activites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activite_commentaires_auteur_fkey"
+            columns: ["auteur"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activites: {
         Row: {
           assigne_a: string
@@ -709,6 +748,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          last_sign_in_at: string | null
           role: string
           updated_at: string
         }
@@ -716,6 +756,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id: string
+          last_sign_in_at?: string | null
           role?: string
           updated_at?: string
         }
@@ -723,6 +764,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          last_sign_in_at?: string | null
           role?: string
           updated_at?: string
         }
@@ -919,6 +961,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_activite: {
+        Args: { _activite_id: string; _user_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
