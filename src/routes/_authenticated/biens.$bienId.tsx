@@ -71,6 +71,7 @@ function BienDetailPage() {
   const [activeContrats, setActiveContrats] = useState<Contrat[]>([]);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [reclamations, setReclamations] = useState<Reclamation[]>([]);
+  const [charges, setCharges] = useState<Charge[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
