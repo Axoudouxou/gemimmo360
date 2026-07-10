@@ -20,7 +20,7 @@ import {
   Line,
   LineChart,
 } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfWeek, addDays } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfWeek, addDays, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 

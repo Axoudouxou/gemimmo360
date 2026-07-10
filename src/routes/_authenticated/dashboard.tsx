@@ -39,6 +39,7 @@ import {
   ContratsParStatut,
   ModificationsEnAttente,
   MesActivites7j,
+  FilActualiteEquipe,
 } from "@/components/dashboard-widgets";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
