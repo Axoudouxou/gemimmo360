@@ -114,6 +114,7 @@ function BienDetailPage() {
     setLots(lotsList);
     setTravaux((tData ?? []) as Travail[]);
     setReclamations((rData ?? []) as Reclamation[]);
+    setCharges((chData ?? []) as Charge[]);
 
     if (b?.bailleur_id) {
       const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("id", b.bailleur_id).maybeSingle();
