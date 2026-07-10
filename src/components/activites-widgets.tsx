@@ -244,6 +244,7 @@ type LinkedProps = {
 
 export function ActivitesLiees(props: LinkedProps) {
   const [items, setItems] = useState<Activite[]>([]);
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     let q = supabase.from("activites").select("*").order("date_debut", { ascending: false, nullsFirst: false }).limit(20);
@@ -267,18 +268,8 @@ export function ActivitesLiees(props: LinkedProps) {
           <CheckCircle2 className="h-4 w-4 text-primary" />
           Activités liées
         </CardTitle>
-        <Button asChild size="sm" variant="outline">
-          <Link
-            to="/calendrier"
-            search={{
-              bien_id: props.bienId,
-              lot_id: props.lotId,
-              contrat_id: props.contratId,
-              contact_id: props.contactId,
-            } as never}
-          >
-            Nouvelle activité
-          </Link>
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-3.5 w-3.5" /> Nouvelle activité
         </Button>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -290,6 +281,216 @@ export function ActivitesLiees(props: LinkedProps) {
           ))
         )}
       </CardContent>
+      <NouvelleActiviteLieeDialog
+        open={open}
+        setOpen={setOpen}
+        defaults={props}
+        onSaved={() => { setOpen(false); load(); }}
+      />
     </Card>
   );
 }
+
+type OptionRow = { id: string; label: string };
+
+function NouvelleActiviteLieeDialog({
+  open,
+  setOpen,
+  defaults,
+  onSaved,
+}: {
+  open: boolean;
+  setOpen: (b: boolean) => void;
+  defaults: LinkedProps;
+  onSaved: () => void;
+}) {
+  const [titre, setTitre] = useState("");
+  const [type, setType] = useState("tache");
+  const [priorite, setPriorite] = useState("normale");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [lieu, setLieu] = useState("");
+  const [notes, setNotes] = useState("");
+  const [assigne, setAssigne] = useState<string>("");
+  const [profiles, setProfiles] = useState<OptionRow[]>([]);
+
+  const [bienId, setBienId] = useState<string>(defaults.bienId ?? "");
+  const [lotId, setLotId] = useState<string>(defaults.lotId ?? "");
+  const [contratId, setContratId] = useState<string>(defaults.contratId ?? "");
+  const [contactId, setContactId] = useState<string>(defaults.contactId ?? "");
+
+  const [biens, setBiens] = useState<OptionRow[]>([]);
+  const [lots, setLots] = useState<OptionRow[]>([]);
+  const [contrats, setContrats] = useState<OptionRow[]>([]);
+  const [contacts, setContacts] = useState<OptionRow[]>([]);
+
+  const [saving, setSaving] = useState(false);
+
+  // Reset prefilled values whenever the dialog opens
+  useEffect(() => {
+    if (!open) return;
+    setBienId(defaults.bienId ?? "");
+    setLotId(defaults.lotId ?? "");
+    setContratId(defaults.contratId ?? "");
+    setContactId(defaults.contactId ?? "");
+  }, [open, defaults.bienId, defaults.lotId, defaults.contratId, defaults.contactId]);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (u.user) setAssigne((prev) => prev || u.user!.id);
+      const [p, b, l, ct, c] = await Promise.all([
+        supabase.from("profiles").select("id, email").order("email"),
+        supabase.from("biens").select("id, titre").order("titre").limit(300),
+        supabase.from("lots").select("id, nom, bien_id").order("nom").limit(500),
+        supabase.from("contrats").select("id, lot_id, date_debut, statut").order("date_debut", { ascending: false }).limit(300),
+        supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(500),
+      ]);
+      setProfiles(((p.data ?? []) as Array<{ id: string; email: string | null }>)
+        .map((r) => ({ id: r.id, label: r.email ?? r.id.slice(0, 8) })));
+      setBiens(((b.data ?? []) as Array<{ id: string; titre: string | null }>)
+        .map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
+      setLots(((l.data ?? []) as Array<{ id: string; nom: string | null }>)
+        .map((r) => ({ id: r.id, label: r.nom ?? r.id.slice(0, 8) })));
+      setContrats(((ct.data ?? []) as Array<{ id: string; date_debut: string | null; statut: string | null }>)
+        .map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
+      setContacts(((c.data ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>)
+        .map((r) => ({ id: r.id, label: `${r.nom ?? ""} ${r.prenom ?? ""}`.trim() || r.id.slice(0, 8) })));
+    })();
+  }, [open]);
+
+  const save = async () => {
+    if (!titre.trim() || !assigne) return toast.error("Titre et assigné requis");
+    setSaving(true);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from("activites").insert({
+      titre: titre.trim(),
+      type_activite: type,
+      priorite,
+      date_debut: dateDebut ? new Date(dateDebut).toISOString() : null,
+      date_fin: dateFin ? new Date(dateFin).toISOString() : null,
+      lieu: lieu.trim() || null,
+      notes: notes.trim() || null,
+      assigne_a: assigne,
+      created_by: u.user?.id ?? null,
+      bien_id: bienId || null,
+      lot_id: lotId || null,
+      contrat_id: contratId || null,
+      contact_id: contactId || null,
+      statut: type === "tache" ? "a_faire" : "planifiee",
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Activité créée");
+    // Reset text fields for next entry
+    setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes("");
+    setPriorite("normale"); setType("tache");
+    onSaved();
+  };
+
+  const LinkSelect = ({
+    label, value, onChange, options, prefilled,
+  }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    options: OptionRow[];
+    prefilled: boolean;
+  }) => (
+    <div>
+      <Label className="flex items-center gap-2">
+        {label}
+        {prefilled && <Badge variant="secondary" className="text-[10px]">Pré-rempli</Badge>}
+      </Label>
+      <div className="flex items-center gap-1">
+        <Select value={value || "__none__"} onValueChange={(v) => onChange(v === "__none__" ? "" : v)}>
+          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Aucun</SelectItem>
+            {options.map((o) => (
+              <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Nouvelle activité liée</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Titre</Label>
+            <Input value={titre} onChange={(e) => setTitre(e.target.value)} placeholder="Ex : Visite appartement" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Type</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Priorité</Label>
+              <Select value={priorite} onValueChange={setPriorite}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normale">Normale</SelectItem>
+                  <SelectItem value="urgente">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Début</Label>
+              <Input type="datetime-local" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+            </div>
+            <div>
+              <Label>Fin</Label>
+              <Input type="datetime-local" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label>Assigné à</Label>
+            <Select value={assigne} onValueChange={setAssigne}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Lieu</Label>
+            <Input value={lieu} onChange={(e) => setLieu(e.target.value)} />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+          </div>
+
+          <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+            <p className="text-xs font-medium text-muted-foreground">Liaisons</p>
+            <LinkSelect label="Bien" value={bienId} onChange={setBienId} options={biens} prefilled={!!defaults.bienId} />
+            <LinkSelect label="Lot" value={lotId} onChange={setLotId} options={lots} prefilled={!!defaults.lotId} />
+            <LinkSelect label="Contrat" value={contratId} onChange={setContratId} options={contrats} prefilled={!!defaults.contratId} />
+            <LinkSelect label="Contact" value={contactId} onChange={setContactId} options={contacts} prefilled={!!defaults.contactId} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button onClick={save} disabled={saving}>Créer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Suppress unused-import warning for DialogTrigger (kept for parity with the app's dialog API).
+void DialogTrigger;
