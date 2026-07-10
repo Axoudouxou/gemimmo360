@@ -27,6 +27,7 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
