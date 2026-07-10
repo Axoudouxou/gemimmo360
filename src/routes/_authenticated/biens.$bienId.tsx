@@ -55,6 +55,7 @@ type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statu
 type Travail = { id: string; titre: string; statut: string; date_debut: string | null; date_fin: string | null; budget_prevu: number | null };
 type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
 type Gestionnaire = { id: string; email: string | null; role: string };
+type Charge = { id: string; montant: number | null; date: string | null; recurrente: boolean | null; created_at: string };
 
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
 const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
