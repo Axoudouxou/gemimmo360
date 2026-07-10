@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Trash2, FileText, Pencil } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 
@@ -22,31 +22,34 @@ export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
 });
 
 const NO_ACCESS = ["recouvrement", "en_attente"] as const;
+const PRIVILEGED = ["admin", "direction"] as const;
 
 const RESPONSABLES = [
   { value: "bailleur", label: "Bailleur" },
   { value: "locataire", label: "Locataire" },
   { value: "usure_normale", label: "Usure normale" },
 ] as const;
+const RESP_LABEL: Record<string, string> = Object.fromEntries(RESPONSABLES.map((r) => [r.value, r.label]));
 
-type EDL = { id: string; lot_id: string; contrat_id: string | null; type: string; date_realisation: string; observations: string | null };
+type EDL = { id: string; lot_id: string; contrat_id: string | null; type: string; date_realisation: string; observations: string | null; created_by: string | null };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
-
 type Anomalie = {
   description: string;
   zone: string;
   responsable: "bailleur" | "locataire" | "usure_normale" | "";
   necessite_travaux: boolean;
 };
+type AnomalieTravail = { id: string; titre: string; description: string | null; charge_financiere: string | null; statut: string };
 
 const newAnomalie = (): Anomalie => ({ description: "", zone: "", responsable: "", necessite_travaux: true });
 
 function EDLPage() {
   const navigate = useNavigate();
   const [role, setRole] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [items, setItems] = useState<EDL[]>([]);
   const [contrats, setContrats] = useState<Contrat[]>([]);
@@ -60,19 +63,23 @@ function EDLPage() {
   const [editing, setEditing] = useState<EDL | null>(null);
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
+  const [detail, setDetail] = useState<EDL | null>(null);
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
   const canWrite = role ? !(NO_ACCESS as readonly string[]).includes(role) : false;
+  const isPrivileged = role ? (PRIVILEGED as readonly string[]).includes(role) : false;
+  const canEdit = (e: EDL) => isPrivileged || (!!uid && e.created_by === uid);
 
   useEffect(() => {
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user?.id;
-      if (!uid) { setChecked(true); return; }
-      const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
+      const u = userRes.user?.id ?? null;
+      setUid(u);
+      if (!u) { setChecked(true); return; }
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
       if (!r || (NO_ACCESS as readonly string[]).includes(r)) {
@@ -105,12 +112,16 @@ function EDLPage() {
     const b = biens.find((x) => x.id === l.bien_id)?.titre ?? "—";
     return `${b} — ${l.label}`;
   };
+  const contratLabel = (id: string | null) => {
+    if (!id) return null;
+    const c = contrats.find((x) => x.id === id); if (!c) return null;
+    const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
+    return loc ? `${c.statut} — ${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : c.statut;
+  };
   const edlLabel = (e: EDL) => {
     const base = lotLabel(e.lot_id);
-    if (!e.contrat_id) return base;
-    const c = contrats.find((x) => x.id === e.contrat_id);
-    const loc = c?.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
-    return loc ? `${base} — ${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : base;
+    const cl = contratLabel(e.contrat_id);
+    return cl ? `${base} — ${cl}` : base;
   };
 
   const activeContratForLot = (lotId: string) => contrats.find((c) => c.lot_id === lotId && c.statut === "actif") ?? null;
@@ -356,14 +367,34 @@ function EDLPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Lot / Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Lot / Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((e) => (
-                  <TableRow key={e.id}><TableCell className="font-medium">{edlLabel(e)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
+                  <TableRow key={e.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetail(e)}>
+                    <TableCell className="font-medium">{edlLabel(e)}</TableCell>
+                    <TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell>
+                    <TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell>
+                    <TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell>
+                    {canWrite && (
+                      <TableCell onClick={(ev) => ev.stopPropagation()}>
+                        {canEdit(e) && (
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(e)} title="Modifier"><Pencil className="h-4 w-4" /></Button>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
           </CardContent>
         </Card>
+
+        <EDLDetailDialog
+          edl={detail}
+          onClose={() => setDetail(null)}
+          lotLabel={detail ? lotLabel(detail.lot_id) : ""}
+          contratLabel={detail ? contratLabel(detail.contrat_id) : null}
+          canWrite={canWrite}
+        />
 
         <Dialog open={!!summary} onOpenChange={(o) => { if (!o) setSummary(null); }}>
           <DialogContent>
@@ -390,16 +421,104 @@ function EDLPage() {
   );
 }
 
-function DocsButton({ edlId, canWrite }: { edlId: string; canWrite: boolean }) {
-  const [open, setOpen] = useState(false);
+function EDLDetailDialog({
+  edl, onClose, lotLabel, contratLabel, canWrite,
+}: {
+  edl: EDL | null;
+  onClose: () => void;
+  lotLabel: string;
+  contratLabel: string | null;
+  canWrite: boolean;
+}) {
+  const [anos, setAnos] = useState<AnomalieTravail[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!edl) { setAnos([]); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("travaux")
+        .select("id, titre, description, charge_financiere, statut")
+        .eq("etat_des_lieux_id", edl.id)
+        .order("titre");
+      if (!cancelled) { setAnos((data ?? []) as AnomalieTravail[]); setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [edl]);
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline"><FileText className="mr-1 h-3 w-3" /> Documents</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Documents de l'état des lieux</DialogTitle></DialogHeader>
-        <DocumentsSection bucket="edl-documents" recordId={edlId} canWrite={canWrite} description="Rapport Kizeo et pièces jointes (PDF)." />
+    <Dialog open={!!edl} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Détail de l'état des lieux</DialogTitle>
+          <DialogDescription>Consultation en lecture seule.</DialogDescription>
+        </DialogHeader>
+        {edl && (
+          <div className="space-y-6 py-2">
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div>
+                <div className="text-muted-foreground text-xs">Type</div>
+                <Badge variant={edl.type === "entree" ? "default" : "secondary"}>{edl.type === "entree" ? "Entrée" : "Sortie"}</Badge>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Date</div>
+                <div>{new Date(edl.date_realisation).toLocaleDateString("fr-FR")}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="text-muted-foreground text-xs">Lot</div>
+                <div className="font-medium">{lotLabel}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="text-muted-foreground text-xs">Contrat</div>
+                <div>{contratLabel ?? "Aucun contrat associé"}</div>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-muted-foreground text-xs mb-1">Observations</div>
+              <div className="whitespace-pre-wrap text-sm rounded-md border bg-muted/20 p-3 min-h-[3rem]">
+                {edl.observations?.trim() || "—"}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-medium text-sm">Anomalies constatées</div>
+                <span className="text-xs text-muted-foreground">{anos.length}</span>
+              </div>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Chargement...</p>
+              ) : anos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune anomalie enregistrée.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {anos.map((a) => (
+                    <li key={a.id} className="rounded-md border p-3 bg-muted/10">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-medium text-sm">{a.titre}</div>
+                        <Badge variant="outline" className="shrink-0">
+                          {a.charge_financiere ? (RESP_LABEL[a.charge_financiere] ?? a.charge_financiere) : "—"}
+                        </Badge>
+                      </div>
+                      {a.description && <div className="text-xs text-muted-foreground mt-1">{a.description}</div>}
+                      <div className="text-xs text-muted-foreground mt-1">Statut travaux : {a.statut}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div>
+              <div className="font-medium text-sm mb-2">Documents joints</div>
+              <DocumentsSection bucket="edl-documents" recordId={edl.id} canWrite={canWrite} description="Rapport Kizeo et pièces jointes (PDF)." />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fermer</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
