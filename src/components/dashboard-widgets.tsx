@@ -20,7 +20,7 @@ import {
   Line,
   LineChart,
 } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfWeek, addDays } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfWeek, addDays, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -779,6 +779,181 @@ export function MesActivites7j({ userId }: { userId: string | null }) {
               </div>
             ))}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Fil d'actualité léger — activité récente de l'équipe
+// ============================================================
+type FeedItem = {
+  key: string;
+  ts: string;
+  auteur: string | null;
+  message: React.ReactNode;
+};
+
+async function resolveScopeIds(userId: string) {
+  const { data: biens } = await supabase.from("biens").select("id").eq("gestionnaire_id", userId);
+  const bienIds = (biens ?? []).map((b: { id: string }) => b.id);
+  if (bienIds.length === 0) return { bienIds: [], lotIds: [] as string[], contratIds: [] as string[] };
+  const { data: lots } = await supabase.from("lots").select("id").in("bien_id", bienIds);
+  const lotIds = (lots ?? []).map((l: { id: string }) => l.id);
+  let contratIds: string[] = [];
+  if (lotIds.length) {
+    const { data: cts } = await supabase.from("contrats").select("id").in("lot_id", lotIds);
+    contratIds = (cts ?? []).map((c: { id: string }) => c.id);
+  }
+  return { bienIds, lotIds, contratIds };
+}
+
+export function FilActualiteEquipe({ userId, role }: { userId: string | null; role: string }) {
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!userId) return;
+      setLoading(true);
+      const scoped = role === "gestion_locative" || role === "commercial";
+      const scope = scoped ? await resolveScopeIds(userId) : null;
+
+      // Profiles map
+      const { data: profs } = await supabase.from("profiles").select("id, email");
+      const nameOf = (id: string | null) => {
+        if (!id) return null;
+        const p = (profs ?? []).find((x: { id: string; email: string | null }) => x.id === id);
+        return p?.email ?? id.slice(0, 8);
+      };
+
+      const feed: FeedItem[] = [];
+
+      // 1) Activités terminées
+      const { data: actsDone } = await supabase
+        .from("activites")
+        .select("id, titre, updated_at, assigne_a, created_by, bien_id, lot_id, contrat_id, contact_id, statut")
+        .in("statut", ["fait", "realisee"])
+        .order("updated_at", { ascending: false })
+        .limit(30);
+      for (const a of (actsDone ?? []) as Array<{
+        id: string; titre: string; updated_at: string; assigne_a: string; created_by: string | null;
+        bien_id: string | null; lot_id: string | null; contrat_id: string | null; contact_id: string | null;
+      }>) {
+        if (scope && !(scope.bienIds.includes(a.bien_id ?? "") || scope.lotIds.includes(a.lot_id ?? "") || scope.contratIds.includes(a.contrat_id ?? "") || a.assigne_a === userId || a.created_by === userId)) continue;
+        feed.push({
+          key: `act-${a.id}`,
+          ts: a.updated_at,
+          auteur: nameOf(a.assigne_a),
+          message: <><span className="font-medium">{nameOf(a.assigne_a)}</span> a marqué <span className="font-medium">« {a.titre} »</span> comme terminé.</>,
+        });
+      }
+
+      // 2) Nouveaux contrats
+      const { data: newContrats } = await supabase
+        .from("contrats")
+        .select("id, created_at, lot_id")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      for (const c of (newContrats ?? []) as Array<{ id: string; created_at: string; lot_id: string | null }>) {
+        if (scope && !scope.lotIds.includes(c.lot_id ?? "")) continue;
+        feed.push({
+          key: `ctr-new-${c.id}`,
+          ts: c.created_at,
+          auteur: null,
+          message: <>Nouveau <Link to="/contrats/$contratId" params={{ contratId: c.id }} className="font-medium text-primary hover:underline">contrat</Link> créé.</>,
+        });
+      }
+
+      // 3) Contrats clôturés
+      const { data: closedContrats } = await supabase
+        .from("contrats")
+        .select("id, updated_at, statut, lot_id")
+        .in("statut", ["clos", "cloture", "termine", "resilie"])
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      for (const c of (closedContrats ?? []) as Array<{ id: string; updated_at: string; lot_id: string | null }>) {
+        if (scope && !scope.lotIds.includes(c.lot_id ?? "")) continue;
+        feed.push({
+          key: `ctr-clos-${c.id}`,
+          ts: c.updated_at,
+          auteur: null,
+          message: <><Link to="/contrats/$contratId" params={{ contratId: c.id }} className="font-medium text-primary hover:underline">Contrat</Link> clôturé.</>,
+        });
+      }
+
+      // 4) Commentaires ajoutés
+      const { data: coms } = await supabase
+        .from("activite_commentaires")
+        .select("id, created_at, auteur, activite_id")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const comActIds = Array.from(new Set(((coms ?? []) as Array<{ activite_id: string }>).map((c) => c.activite_id)));
+      const actMap = new Map<string, { titre: string; bien_id: string | null; lot_id: string | null; contrat_id: string | null; assigne_a: string; created_by: string | null }>();
+      if (comActIds.length) {
+        const { data: acts } = await supabase.from("activites").select("id, titre, bien_id, lot_id, contrat_id, assigne_a, created_by").in("id", comActIds);
+        for (const a of (acts ?? []) as Array<{ id: string; titre: string; bien_id: string | null; lot_id: string | null; contrat_id: string | null; assigne_a: string; created_by: string | null }>) {
+          actMap.set(a.id, a);
+        }
+      }
+      for (const c of (coms ?? []) as Array<{ id: string; created_at: string; auteur: string; activite_id: string }>) {
+        const a = actMap.get(c.activite_id);
+        if (!a) continue;
+        if (scope && !(scope.bienIds.includes(a.bien_id ?? "") || scope.lotIds.includes(a.lot_id ?? "") || scope.contratIds.includes(a.contrat_id ?? "") || a.assigne_a === userId || a.created_by === userId)) continue;
+        feed.push({
+          key: `com-${c.id}`,
+          ts: c.created_at,
+          auteur: nameOf(c.auteur),
+          message: <><span className="font-medium">{nameOf(c.auteur)}</span> a commenté <span className="font-medium">« {a.titre} »</span>.</>,
+        });
+      }
+
+      // 5) Nouveaux états des lieux
+      const { data: edls } = await supabase
+        .from("etats_des_lieux")
+        .select("id, created_at, contrat_id, type")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      for (const e of (edls ?? []) as Array<{ id: string; created_at: string; contrat_id: string | null; type: string | null }>) {
+        if (scope && !scope.contratIds.includes(e.contrat_id ?? "")) continue;
+        feed.push({
+          key: `edl-${e.id}`,
+          ts: e.created_at,
+          auteur: null,
+          message: e.contrat_id ? (
+            <>Nouvel état des lieux {e.type ? `(${e.type}) ` : ""}sur le <Link to="/contrats/$contratId" params={{ contratId: e.contrat_id }} className="font-medium text-primary hover:underline">contrat</Link>.</>
+          ) : <>Nouvel état des lieux enregistré.</>,
+        });
+      }
+
+      feed.sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
+      setItems(feed.slice(0, 15));
+      setLoading(false);
+    })();
+  }, [userId, role]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Activité récente de l'équipe</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground py-3 text-center">Chargement…</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-3 text-center">Aucune activité récente.</p>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((it) => (
+              <li key={it.key} className="flex items-start justify-between gap-3 rounded border p-2 text-sm">
+                <div className="min-w-0 flex-1">{it.message}</div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(it.ts), { locale: fr, addSuffix: true })}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </CardContent>
     </Card>

@@ -27,6 +27,7 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
@@ -60,6 +61,7 @@ function CalendrierPage() {
   const [customEnd, setCustomEnd] = useState<string>("");
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
+  const [detail, setDetail] = useState<Activite | null>(null);
 
   // Load me + profiles
   useEffect(() => {
@@ -76,7 +78,7 @@ function CalendrierPage() {
     })();
   }, []);
 
-  const isReadOnly = viewingUserId && me && viewingUserId !== me.id;
+  void viewingUserId;
 
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
     const today = startOfDay(new Date());
@@ -134,17 +136,22 @@ function CalendrierPage() {
   const tasksEnCours = filteredItems.filter((a) => a.statut === "en_cours");
   const tasksFait = filteredItems.filter((a) => a.statut === "fait" || a.statut === "realisee");
 
-  const handleToggle = async (id: string, done: boolean) => {
-    if (isReadOnly) return;
-    const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", id);
+  const handleToggle = async (a: Activite, done: boolean) => {
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    if (!perms.canChangeStatut) {
+      toast.error("Vous ne pouvez pas modifier cette tâche.");
+      return;
+    }
+    const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", a.id);
     if (error) toast.error(error.message);
     load();
   };
 
-  const handleDelete = async (id: string) => {
-    if (isReadOnly) return;
+  const handleDelete = async (a: Activite) => {
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    if (!perms.canDelete) return;
     if (!confirm("Supprimer cette tâche ?")) return;
-    const { error } = await supabase.from("activites").delete().eq("id", id);
+    const { error } = await supabase.from("activites").delete().eq("id", a.id);
     if (error) return toast.error(error.message);
     toast.success("Tâche supprimée");
     load();
@@ -235,14 +242,16 @@ function CalendrierPage() {
                       <div className="font-medium mb-1">{format(d, "d")}</div>
                       <div className="space-y-0.5">
                         {events.slice(0, 3).map((e) => (
-                          <div
+                          <button
+                            type="button"
                             key={e.id}
-                            className={`truncate rounded px-1 py-0.5 text-white ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
+                            onClick={() => setDetail(e)}
+                            className={`w-full text-left truncate rounded px-1 py-0.5 text-white hover:opacity-90 ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
                             title={e.titre}
                           >
                             {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
                             {e.titre}
-                          </div>
+                          </button>
                         ))}
                         {events.length > 3 && (
                           <div className="text-[10px] text-muted-foreground">+{events.length - 3} autre(s)</div>
@@ -258,9 +267,9 @@ function CalendrierPage() {
 
         <TabsContent value="tasks" className="mt-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <TaskColumn title="À faire" items={tasksAFaire} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="En cours" items={tasksEnCours} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="Fait" items={tasksFait} readonly={!!isReadOnly} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
+            <TaskColumn title="À faire" items={tasksAFaire} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="En cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
+            <TaskColumn title="Fait" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
           </div>
         </TabsContent>
       </Tabs>
@@ -276,6 +285,18 @@ function CalendrierPage() {
           onSaved={() => { setEditing(null); load(); }}
         />
       )}
+
+      <ActiviteDetailDialog
+        open={!!detail}
+        setOpen={(o) => { if (!o) setDetail(null); }}
+        activite={detail}
+        me={me}
+        role={me?.role ?? ""}
+        profiles={profiles}
+        onEdit={(a) => setEditing(a)}
+        onChanged={() => { setDetail(null); load(); }}
+        onDeleted={() => { setDetail(null); load(); }}
+      />
     </div>
   );
 }
@@ -283,7 +304,8 @@ function CalendrierPage() {
 function TaskColumn({
   title,
   items,
-  readonly,
+  me,
+  onOpen,
   onToggle,
   onEdit,
   onDelete,
@@ -291,10 +313,11 @@ function TaskColumn({
 }: {
   title: string;
   items: Activite[];
-  readonly: boolean;
-  onToggle: (id: string, done: boolean) => void;
+  me: Profile | null;
+  onOpen: (a: Activite) => void;
+  onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
-  onDelete: (id: string) => void;
+  onDelete: (a: Activite) => void;
   done?: boolean;
 }) {
   return (
@@ -303,39 +326,50 @@ function TaskColumn({
       <CardContent className="space-y-2">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
-        ) : items.map((a) => (
-          <div key={a.id} className={`flex items-start gap-2 rounded border p-2 ${a.priorite === "urgente" ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}>
-            <Checkbox
-              checked={done}
-              disabled={readonly}
-              onCheckedChange={(v) => onToggle(a.id, !!v)}
-              className="mt-0.5"
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
-                <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
-                {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
+        ) : items.map((a) => {
+          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+          return (
+            <div
+              key={a.id}
+              className={`flex items-start gap-2 rounded border p-2 cursor-pointer hover:bg-muted/40 ${a.priorite === "urgente" ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}
+              onClick={() => onOpen(a)}
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={done}
+                  disabled={!perms.canChangeStatut}
+                  onCheckedChange={(v) => onToggle(a, !!v)}
+                  className="mt-0.5"
+                />
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {TYPE_LABELS[a.type_activite] ?? a.type_activite}
-                {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
-                {a.lieu ? ` · ${a.lieu}` : ""}
-                {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
+                  <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
+                  {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {TYPE_LABELS[a.type_activite] ?? a.type_activite}
+                  {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
+                  {a.lieu ? ` · ${a.lieu}` : ""}
+                  {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                </div>
+              </div>
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                {perms.canEditAll && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {perms.canDelete && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a)} aria-label="Supprimer">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
-            {!readonly && (
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a.id)} aria-label="Supprimer">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );

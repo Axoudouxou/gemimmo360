@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -74,19 +74,25 @@ function AuthenticatedLayout() {
               <GlobalSearch />
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex flex-col items-end leading-tight">
-                <span className="text-sm font-medium text-foreground truncate max-w-[220px]">
-                  {email || "—"}
-                </span>
-                {role && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {ROLE_LABELS[role] ?? role}
+              <Link
+                to="/profil"
+                className="flex items-center gap-3 rounded-md px-1.5 py-1 hover:bg-muted transition-colors"
+                aria-label="Mon profil"
+              >
+                <div className="hidden sm:flex flex-col items-end leading-tight">
+                  <span className="text-sm font-medium text-foreground truncate max-w-[220px]">
+                    {email || "—"}
                   </span>
-                )}
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold ring-1 ring-primary/20">
-                {email ? initialsFrom(email) : "?"}
-              </div>
+                  {role && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {ROLE_LABELS[role] ?? role}
+                    </span>
+                  )}
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold ring-1 ring-primary/20">
+                  {email ? initialsFrom(email) : "?"}
+                </div>
+              </Link>
             </div>
           </header>
           <main className="flex-1">

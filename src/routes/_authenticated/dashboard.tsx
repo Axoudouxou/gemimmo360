@@ -39,6 +39,7 @@ import {
   ContratsParStatut,
   ModificationsEnAttente,
   MesActivites7j,
+  FilActualiteEquipe,
 } from "@/components/dashboard-widgets";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -285,6 +286,9 @@ function Dashboard() {
           {canCreateContrat && <Button asChild size="sm" variant="outline"><Link to="/contrats"><Plus className="mr-2 h-4 w-4" /> Nouveau contrat</Link></Button>}
         </div>
       )}
+
+      <FilActualiteEquipe userId={userId} role={role} />
+
 
       {/* ADMIN & DIRECTION */}
       {isAdminLike && (
