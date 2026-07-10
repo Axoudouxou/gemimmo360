@@ -55,6 +55,7 @@ type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; statu
 type Travail = { id: string; titre: string; statut: string; date_debut: string | null; date_fin: string | null; budget_prevu: number | null };
 type Reclamation = { id: string; titre: string; statut: string; priorite: string; created_at: string };
 type Gestionnaire = { id: string; email: string | null; role: string };
+type Charge = { id: string; montant: number | null; date: string | null; recurrente: boolean | null; created_at: string };
 
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
 const contactName = (c: Contact) => c.type_entite === "entreprise" ? c.nom : `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}`;
@@ -70,6 +71,7 @@ function BienDetailPage() {
   const [activeContrats, setActiveContrats] = useState<Contrat[]>([]);
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [reclamations, setReclamations] = useState<Reclamation[]>([]);
+  const [charges, setCharges] = useState<Charge[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -95,12 +97,13 @@ function BienDetailPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
       setMyRole(p?.role ?? "");
     }
-    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }] = await Promise.all([
+    const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }, { data: chData }] = await Promise.all([
       supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id, updated_at").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
+      supabase.from("charges").select("id, montant, date, recurrente, created_at").eq("bien_id", bienId),
     ]);
     if (bErr) toast.error(bErr.message);
     if (bListErr) toast.error(bListErr.message);
@@ -111,6 +114,7 @@ function BienDetailPage() {
     setLots(lotsList);
     setTravaux((tData ?? []) as Travail[]);
     setReclamations((rData ?? []) as Reclamation[]);
+    setCharges((chData ?? []) as Charge[]);
 
     if (b?.bailleur_id) {
       const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("id", b.bailleur_id).maybeSingle();
@@ -211,6 +215,17 @@ function BienDetailPage() {
   const nbLoues = lots.filter((l) => rentByLot.has(l.id)).length;
   const nbVacants = lots.length - nbLoues;
   const revenu = Array.from(rentByLot.values()).reduce((a, b) => a + b, 0);
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const totalCharges = charges.reduce((sum, c) => {
+    const montant = Number(c.montant ?? 0);
+    if (c.recurrente) return sum + montant;
+    const ref = c.date ? new Date(c.date) : new Date(c.created_at);
+    if (ref >= monthStart && ref < new Date(now.getFullYear(), now.getMonth() + 1, 1)) return sum + montant;
+    return sum;
+  }, 0);
+  const rentabilite = revenu - totalCharges;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -363,11 +378,13 @@ function BienDetailPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
               <Card><CardHeader><CardDescription>Nombre de lots</CardDescription><CardTitle className="text-2xl">{lots.length}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Loués</CardDescription><CardTitle className="text-2xl">{nbLoues}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Vacants</CardDescription><CardTitle className="text-2xl">{nbVacants}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Revenu mensuel</CardDescription><CardTitle className="text-2xl">{fmtMoney(revenu)}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Charges du mois</CardDescription><CardTitle className="text-2xl">{fmtMoney(totalCharges)}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Rentabilité nette</CardDescription><CardTitle className={`text-2xl ${rentabilite >= 0 ? "text-green-600" : "text-red-600"}`}>{fmtMoney(rentabilite)}</CardTitle></CardHeader></Card>
             </div>
 
             <Card>

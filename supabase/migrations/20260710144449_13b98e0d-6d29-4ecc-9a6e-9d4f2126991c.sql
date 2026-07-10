@@ -1,0 +1,1 @@
+ALTER TABLE public.etats_des_lieux ADD COLUMN IF NOT EXISTS created_by uuid DEFAULT auth.uid();

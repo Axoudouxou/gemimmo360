@@ -583,6 +583,7 @@ export type Database = {
         Row: {
           contrat_id: string | null
           created_at: string
+          created_by: string | null
           date_realisation: string
           id: string
           lot_id: string
@@ -592,6 +593,7 @@ export type Database = {
         Insert: {
           contrat_id?: string | null
           created_at?: string
+          created_by?: string | null
           date_realisation: string
           id?: string
           lot_id: string
@@ -601,6 +603,7 @@ export type Database = {
         Update: {
           contrat_id?: string | null
           created_at?: string
+          created_by?: string | null
           date_realisation?: string
           id?: string
           lot_id?: string
