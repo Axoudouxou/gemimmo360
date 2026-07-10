@@ -378,11 +378,13 @@ function BienDetailPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
               <Card><CardHeader><CardDescription>Nombre de lots</CardDescription><CardTitle className="text-2xl">{lots.length}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Loués</CardDescription><CardTitle className="text-2xl">{nbLoues}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Vacants</CardDescription><CardTitle className="text-2xl">{nbVacants}</CardTitle></CardHeader></Card>
               <Card><CardHeader><CardDescription>Revenu mensuel</CardDescription><CardTitle className="text-2xl">{fmtMoney(revenu)}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Charges du mois</CardDescription><CardTitle className="text-2xl">{fmtMoney(totalCharges)}</CardTitle></CardHeader></Card>
+              <Card><CardHeader><CardDescription>Rentabilité nette</CardDescription><CardTitle className={`text-2xl ${rentabilite >= 0 ? "text-green-600" : "text-red-600"}`}>{fmtMoney(rentabilite)}</CardTitle></CardHeader></Card>
             </div>
 
             <Card>
