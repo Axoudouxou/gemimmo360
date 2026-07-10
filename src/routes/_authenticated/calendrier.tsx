@@ -136,17 +136,22 @@ function CalendrierPage() {
   const tasksEnCours = filteredItems.filter((a) => a.statut === "en_cours");
   const tasksFait = filteredItems.filter((a) => a.statut === "fait" || a.statut === "realisee");
 
-  const handleToggle = async (id: string, done: boolean) => {
-    if (isReadOnly) return;
-    const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", id);
+  const handleToggle = async (a: Activite, done: boolean) => {
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    if (!perms.canChangeStatut) {
+      toast.error("Vous ne pouvez pas modifier cette tâche.");
+      return;
+    }
+    const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", a.id);
     if (error) toast.error(error.message);
     load();
   };
 
-  const handleDelete = async (id: string) => {
-    if (isReadOnly) return;
+  const handleDelete = async (a: Activite) => {
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    if (!perms.canDelete) return;
     if (!confirm("Supprimer cette tâche ?")) return;
-    const { error } = await supabase.from("activites").delete().eq("id", id);
+    const { error } = await supabase.from("activites").delete().eq("id", a.id);
     if (error) return toast.error(error.message);
     toast.success("Tâche supprimée");
     load();
