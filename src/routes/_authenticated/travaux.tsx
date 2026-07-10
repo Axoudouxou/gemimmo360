@@ -295,7 +295,7 @@ function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose
             budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
             budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
           };
-      const { error } = await supabase.from("travaux").update(patch).eq("id", initial!.id);
+      const { error } = await (supabase.from("travaux") as any).update(patch).eq("id", initial!.id);
       setSaving(false);
       if (error) return toast.error(error.message);
       toast.success("Modifié"); onSaved();

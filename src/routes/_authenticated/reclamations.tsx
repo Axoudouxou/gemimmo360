@@ -268,7 +268,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
             assigne_a: form.assigne_a || null,
             prestataire_id: form.prestataire_id || null,
           };
-      const { error } = await supabase.from("reclamations").update(patch).eq("id", initial!.id);
+      const { error } = await (supabase.from("reclamations") as any).update(patch).eq("id", initial!.id);
       setSaving(false);
       if (error) return toast.error(error.message);
       toast.success("Modifiée"); onSaved();
