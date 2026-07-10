@@ -343,7 +343,7 @@ function NouvelleActiviteLieeDialog({
       const [p, b, l, ct, c] = await Promise.all([
         supabase.from("profiles").select("id, email").order("email"),
         supabase.from("biens").select("id, titre").order("titre").limit(300),
-        supabase.from("lots").select("id, nom, bien_id").order("nom").limit(500),
+        supabase.from("lots").select("id, label, bien_id").order("label").limit(500),
         supabase.from("contrats").select("id, lot_id, date_debut, statut").order("date_debut", { ascending: false }).limit(300),
         supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(500),
       ]);
@@ -351,8 +351,8 @@ function NouvelleActiviteLieeDialog({
         .map((r) => ({ id: r.id, label: r.email ?? r.id.slice(0, 8) })));
       setBiens(((b.data ?? []) as Array<{ id: string; titre: string | null }>)
         .map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
-      setLots(((l.data ?? []) as Array<{ id: string; nom: string | null }>)
-        .map((r) => ({ id: r.id, label: r.nom ?? r.id.slice(0, 8) })));
+      setLots(((l.data ?? []) as Array<{ id: string; label: string | null }>)
+        .map((r) => ({ id: r.id, label: r.label ?? r.id.slice(0, 8) })));
       setContrats(((ct.data ?? []) as Array<{ id: string; date_debut: string | null; statut: string | null }>)
         .map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
       setContacts(((c.data ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>)
