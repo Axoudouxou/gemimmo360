@@ -17,6 +17,7 @@ import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTravauxRouteImport } from './routes/_authenticated/travaux'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authenticated/reclamations'
+import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticated/imports'
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
 import { Route as AuthenticatedEtatsDesLieuxRouteImport } from './routes/_authenticated/etats-des-lieux'
@@ -75,6 +76,11 @@ const AuthenticatedReclamationsRoute =
     path: '/reclamations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImportsRoute = AuthenticatedImportsRouteImport.update({
   id: '/imports',
   path: '/imports',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/travaux': typeof AuthenticatedTravauxRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/travaux': typeof AuthenticatedTravauxRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_authenticated/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
   '/_authenticated/imports': typeof AuthenticatedImportsRoute
+  '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/reclamations': typeof AuthenticatedReclamationsRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/travaux': typeof AuthenticatedTravauxRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/etats-des-lieux'
     | '/impayes'
     | '/imports'
+    | '/profil'
     | '/reclamations'
     | '/transactions'
     | '/travaux'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/etats-des-lieux'
     | '/impayes'
     | '/imports'
+    | '/profil'
     | '/reclamations'
     | '/transactions'
     | '/travaux'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/_authenticated/etats-des-lieux'
     | '/_authenticated/impayes'
     | '/_authenticated/imports'
+    | '/_authenticated/profil'
     | '/_authenticated/reclamations'
     | '/_authenticated/transactions'
     | '/_authenticated/travaux'
@@ -383,6 +395,13 @@ declare module '@tanstack/react-router' {
       path: '/reclamations'
       fullPath: '/reclamations'
       preLoaderRoute: typeof AuthenticatedReclamationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profil': {
+      id: '/_authenticated/profil'
+      path: '/profil'
+      fullPath: '/profil'
+      preLoaderRoute: typeof AuthenticatedProfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/imports': {
@@ -509,6 +528,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEtatsDesLieuxRoute: typeof AuthenticatedEtatsDesLieuxRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
   AuthenticatedImportsRoute: typeof AuthenticatedImportsRoute
+  AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedReclamationsRoute: typeof AuthenticatedReclamationsRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
   AuthenticatedTravauxRoute: typeof AuthenticatedTravauxRoute
@@ -531,6 +551,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEtatsDesLieuxRoute: AuthenticatedEtatsDesLieuxRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
   AuthenticatedImportsRoute: AuthenticatedImportsRoute,
+  AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedReclamationsRoute: AuthenticatedReclamationsRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
   AuthenticatedTravauxRoute: AuthenticatedTravauxRoute,
