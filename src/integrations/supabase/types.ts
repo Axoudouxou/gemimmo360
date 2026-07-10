@@ -581,26 +581,29 @@ export type Database = {
       }
       etats_des_lieux: {
         Row: {
-          contrat_id: string
+          contrat_id: string | null
           created_at: string
           date_realisation: string
           id: string
+          lot_id: string
           observations: string | null
           type: string
         }
         Insert: {
-          contrat_id: string
+          contrat_id?: string | null
           created_at?: string
           date_realisation: string
           id?: string
+          lot_id: string
           observations?: string | null
           type: string
         }
         Update: {
-          contrat_id?: string
+          contrat_id?: string | null
           created_at?: string
           date_realisation?: string
           id?: string
+          lot_id?: string
           observations?: string | null
           type?: string
         }
@@ -610,6 +613,13 @@ export type Database = {
             columns: ["contrat_id"]
             isOneToOne: false
             referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "etats_des_lieux_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
         ]
@@ -772,34 +782,46 @@ export type Database = {
       }
       reclamations: {
         Row: {
+          assigne_a: string | null
           bien_id: string
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           locataire_id: string | null
+          prestataire_id: string | null
           priorite: string
           statut: string
           titre: string
+          updated_at: string
         }
         Insert: {
+          assigne_a?: string | null
           bien_id: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           locataire_id?: string | null
+          prestataire_id?: string | null
           priorite?: string
           statut?: string
           titre: string
+          updated_at?: string
         }
         Update: {
+          assigne_a?: string | null
           bien_id?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           locataire_id?: string | null
+          prestataire_id?: string | null
           priorite?: string
           statut?: string
           titre?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -814,6 +836,45 @@ export type Database = {
             columns: ["locataire_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reclamations_prestataire_id_fkey"
+            columns: ["prestataire_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reclamations_commentaires: {
+        Row: {
+          auteur: string
+          contenu: string
+          created_at: string
+          id: string
+          reclamation_id: string
+        }
+        Insert: {
+          auteur: string
+          contenu: string
+          created_at?: string
+          id?: string
+          reclamation_id: string
+        }
+        Update: {
+          auteur?: string
+          contenu?: string
+          created_at?: string
+          id?: string
+          reclamation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reclamations_commentaires_reclamation_id_fkey"
+            columns: ["reclamation_id"]
+            isOneToOne: false
+            referencedRelation: "reclamations"
             referencedColumns: ["id"]
           },
         ]
@@ -892,11 +953,13 @@ export type Database = {
       }
       travaux: {
         Row: {
+          assigne_a: string | null
           bien_id: string
           budget_depense: number
           budget_prevu: number | null
           charge_financiere: string | null
           created_at: string
+          created_by: string | null
           date_debut: string | null
           date_fin: string | null
           description: string | null
@@ -904,15 +967,19 @@ export type Database = {
           id: string
           notes: string | null
           origine: string | null
+          prestataire_id: string | null
           statut: string
           titre: string
+          updated_at: string
         }
         Insert: {
+          assigne_a?: string | null
           bien_id: string
           budget_depense?: number
           budget_prevu?: number | null
           charge_financiere?: string | null
           created_at?: string
+          created_by?: string | null
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
@@ -920,15 +987,19 @@ export type Database = {
           id?: string
           notes?: string | null
           origine?: string | null
+          prestataire_id?: string | null
           statut?: string
           titre: string
+          updated_at?: string
         }
         Update: {
+          assigne_a?: string | null
           bien_id?: string
           budget_depense?: number
           budget_prevu?: number | null
           charge_financiere?: string | null
           created_at?: string
+          created_by?: string | null
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
@@ -936,8 +1007,10 @@ export type Database = {
           id?: string
           notes?: string | null
           origine?: string | null
+          prestataire_id?: string | null
           statut?: string
           titre?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -952,6 +1025,45 @@ export type Database = {
             columns: ["etat_des_lieux_id"]
             isOneToOne: false
             referencedRelation: "etats_des_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travaux_prestataire_id_fkey"
+            columns: ["prestataire_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travaux_commentaires: {
+        Row: {
+          auteur: string
+          contenu: string
+          created_at: string
+          id: string
+          travaux_id: string
+        }
+        Insert: {
+          auteur: string
+          contenu: string
+          created_at?: string
+          id?: string
+          travaux_id: string
+        }
+        Update: {
+          auteur?: string
+          contenu?: string
+          created_at?: string
+          id?: string
+          travaux_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travaux_commentaires_travaux_id_fkey"
+            columns: ["travaux_id"]
+            isOneToOne: false
+            referencedRelation: "travaux"
             referencedColumns: ["id"]
           },
         ]

@@ -29,8 +29,8 @@ const RESPONSABLES = [
   { value: "usure_normale", label: "Usure normale" },
 ] as const;
 
-type EDL = { id: string; contrat_id: string; type: string; date_realisation: string; observations: string | null };
-type Contrat = { id: string; lot_id: string; locataire_id: string | null };
+type EDL = { id: string; lot_id: string; contrat_id: string | null; type: string; date_realisation: string; observations: string | null };
+type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
@@ -56,7 +56,7 @@ function EDLPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
+  const [form, setForm] = useState({ lot_id: "", contrat_id: "", type: "entree", date_realisation: "", observations: "" });
   const [editing, setEditing] = useState<EDL | null>(null);
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
   const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
@@ -85,9 +85,9 @@ function EDLPage() {
     setLoading(true);
     const [{ data: eData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
       supabase.from("etats_des_lieux").select("*").order("date_realisation", { ascending: false }),
-      supabase.from("contrats").select("id, lot_id, locataire_id"),
-      supabase.from("lots").select("id, label, bien_id"),
-      supabase.from("biens").select("id, titre"),
+      supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
+      supabase.from("lots").select("id, label, bien_id").order("label"),
+      supabase.from("biens").select("id, titre").order("titre"),
       supabase.from("contacts").select("id, nom, prenom"),
     ]);
     if (error) toast.error(error.message);
@@ -100,15 +100,20 @@ function EDLPage() {
   };
   useEffect(() => { if (role && !(NO_ACCESS as readonly string[]).includes(role)) load(); }, [role]);
 
-  const contratLabel = (id: string) => {
-    const c = contrats.find((x) => x.id === id); if (!c) return "—";
-    const lot = lots.find((l) => l.id === c.lot_id);
-    const bienTitre = lot ? (biens.find((b) => b.id === lot.bien_id)?.titre ?? "—") : "—";
-    const lotLabel = lot ? lot.label : "—";
-    const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
-    const locStr = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
-    return `${bienTitre} — ${lotLabel} — ${locStr}`;
+  const lotLabel = (id: string) => {
+    const l = lots.find((x) => x.id === id); if (!l) return "—";
+    const b = biens.find((x) => x.id === l.bien_id)?.titre ?? "—";
+    return `${b} — ${l.label}`;
   };
+  const edlLabel = (e: EDL) => {
+    const base = lotLabel(e.lot_id);
+    if (!e.contrat_id) return base;
+    const c = contrats.find((x) => x.id === e.contrat_id);
+    const loc = c?.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
+    return loc ? `${base} — ${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : base;
+  };
+
+  const activeContratForLot = (lotId: string) => contrats.find((c) => c.lot_id === lotId && c.statut === "actif") ?? null;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -116,15 +121,20 @@ function EDLPage() {
       if (fType !== "all" && e.type !== fType) return false;
       if (dFrom && e.date_realisation < dFrom) return false;
       if (dTo && e.date_realisation > dTo) return false;
-      if (q && !contratLabel(e.contrat_id).toLowerCase().includes(q)) return false;
+      if (q && !edlLabel(e).toLowerCase().includes(q)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, search, fType, dFrom, dTo, contrats, lots, biens, contacts]);
 
   const resetForm = () => {
-    setForm({ contrat_id: "", type: "entree", date_realisation: "", observations: "" });
+    setForm({ lot_id: "", contrat_id: "", type: "entree", date_realisation: "", observations: "" });
     setAnomalies([newAnomalie()]);
+  };
+
+  const onLotChange = (lotId: string) => {
+    const c = activeContratForLot(lotId);
+    setForm((f) => ({ ...f, lot_id: lotId, contrat_id: c?.id ?? "" }));
   };
 
   const updateAno = (i: number, patch: Partial<Anomalie>) => {
@@ -140,9 +150,8 @@ function EDLPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.contrat_id || !form.date_realisation) return toast.error("Contrat et date obligatoires");
+    if (!form.lot_id || !form.date_realisation) return toast.error("Lot et date obligatoires");
 
-    // Validate anomalies (only rows with any content)
     const filled = anomalies.filter((a) => a.description.trim() || a.zone.trim() || a.responsable);
     for (const a of filled) {
       if (!a.description.trim()) return toast.error("Description d'anomalie obligatoire");
@@ -151,15 +160,16 @@ function EDLPage() {
 
     setSaving(true);
     const { data: edl, error } = await supabase.from("etats_des_lieux").insert({
-      contrat_id: form.contrat_id, type: form.type,
-      date_realisation: form.date_realisation, observations: form.observations.trim() || null,
+      lot_id: form.lot_id,
+      contrat_id: form.contrat_id || null,
+      type: form.type,
+      date_realisation: form.date_realisation,
+      observations: form.observations.trim() || null,
     }).select("id, date_realisation").single();
 
     if (error || !edl) { setSaving(false); return toast.error(error?.message ?? "Erreur"); }
 
-    // Build travaux to create
-    const contrat = contrats.find((c) => c.id === form.contrat_id);
-    const lot = contrat ? lots.find((l) => l.id === contrat.lot_id) : null;
+    const lot = lots.find((l) => l.id === form.lot_id);
     const bienId = lot?.bien_id;
 
     const toCreate = filled.filter((a) => a.necessite_travaux && a.responsable !== "usure_normale");
@@ -167,6 +177,7 @@ function EDLPage() {
 
     if (toCreate.length && bienId) {
       const dateStr = new Date(edl.date_realisation).toLocaleDateString("fr-FR");
+      const { data: userRes } = await supabase.auth.getUser();
       const rows = toCreate.map((a) => ({
         bien_id: bienId,
         titre: a.description.trim(),
@@ -177,12 +188,11 @@ function EDLPage() {
         charge_financiere: a.responsable,
         etat_des_lieux_id: edl.id,
         notes: `Créé automatiquement depuis l'état des lieux du ${dateStr}`,
+        created_by: userRes.user?.id ?? null,
       }));
       const { data: tData, error: tErr } = await supabase.from("travaux").insert(rows).select("id, titre");
       if (tErr) toast.error("EDL enregistré, mais erreur création travaux: " + tErr.message);
       else created = (tData ?? []) as { id: string; titre: string }[];
-    } else if (toCreate.length && !bienId) {
-      toast.error("Bien introuvable pour ce contrat, travaux non créés");
     }
 
     setSaving(false);
@@ -195,18 +205,21 @@ function EDLPage() {
 
   const openEdit = (e: EDL) => {
     setEditing(e);
-    setForm({ contrat_id: e.contrat_id, type: e.type, date_realisation: e.date_realisation, observations: e.observations ?? "" });
+    setForm({ lot_id: e.lot_id, contrat_id: e.contrat_id ?? "", type: e.type, date_realisation: e.date_realisation, observations: e.observations ?? "" });
     setAnomalies([newAnomalie()]);
     setOpen(true);
   };
   const handleUpdate = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!editing) return;
-    if (!form.contrat_id || !form.date_realisation) return toast.error("Contrat et date obligatoires");
+    if (!form.lot_id || !form.date_realisation) return toast.error("Lot et date obligatoires");
     setSaving(true);
     const { error } = await supabase.from("etats_des_lieux").update({
-      contrat_id: form.contrat_id, type: form.type,
-      date_realisation: form.date_realisation, observations: form.observations.trim() || null,
+      lot_id: form.lot_id,
+      contrat_id: form.contrat_id || null,
+      type: form.type,
+      date_realisation: form.date_realisation,
+      observations: form.observations.trim() || null,
     }).eq("id", editing.id);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -214,6 +227,8 @@ function EDLPage() {
   };
 
   if (!checked) return null;
+
+  const suggestedContrat = form.lot_id ? activeContratForLot(form.lot_id) : null;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -226,20 +241,42 @@ function EDLPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div><CardTitle>États des lieux</CardTitle><CardDescription>{canWrite ? "Entrées et sorties des locataires." : "Consultation (lecture seule)."}</CardDescription></div>
+            <div><CardTitle>États des lieux</CardTitle><CardDescription>{canWrite ? "Entrées et sorties, avec ou sans contrat associé." : "Consultation (lecture seule)."}</CardDescription></div>
             {canWrite && (
               <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { resetForm(); setEditing(null); } }}>
                 <DialogTrigger asChild><Button size="sm" onClick={() => { setEditing(null); resetForm(); }}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button></DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                   <form onSubmit={editing ? handleUpdate : handleCreate}>
-                    <DialogHeader><DialogTitle>{editing ? "Modifier l'état des lieux" : "Nouvel état des lieux"}</DialogTitle><DialogDescription>{editing ? "Modification des informations principales." : "Enregistrer un état des lieux lié à un contrat."}</DialogDescription></DialogHeader>
+                    <DialogHeader><DialogTitle>{editing ? "Modifier l'état des lieux" : "Nouvel état des lieux"}</DialogTitle><DialogDescription>{editing ? "Modification des informations principales." : "Sélectionner un lot (vacant ou loué). Le contrat actif éventuel sera pré-rempli."}</DialogDescription></DialogHeader>
                     <div className="grid gap-4 py-4">
-                      <div className="grid gap-2"><Label>Contrat *</Label>
-                        <Select value={form.contrat_id} onValueChange={(v) => setForm({ ...form, contrat_id: v })}>
-                          <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                          <SelectContent>{contrats.map((c) => <SelectItem key={c.id} value={c.id}>{contratLabel(c.id)}</SelectItem>)}</SelectContent>
+                      <div className="grid gap-2"><Label>Lot *</Label>
+                        <Select value={form.lot_id} onValueChange={onLotChange}>
+                          <SelectTrigger><SelectValue placeholder="Sélectionner un lot..." /></SelectTrigger>
+                          <SelectContent>{lots.map((l) => <SelectItem key={l.id} value={l.id}>{lotLabel(l.id)}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
+                      {form.lot_id && (
+                        <div className="grid gap-2">
+                          <Label>Contrat associé (optionnel)</Label>
+                          <Select value={form.contrat_id || "none"} onValueChange={(v) => setForm({ ...form, contrat_id: v === "none" ? "" : v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Aucun contrat</SelectItem>
+                              {contrats.filter((c) => c.lot_id === form.lot_id).map((c) => {
+                                const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
+                                const locStr = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "sans locataire";
+                                return <SelectItem key={c.id} value={c.id}>{c.statut} — {locStr}</SelectItem>;
+                              })}
+                            </SelectContent>
+                          </Select>
+                          {suggestedContrat && form.contrat_id === suggestedContrat.id && (
+                            <p className="text-xs text-muted-foreground">Contrat actif pré-rempli automatiquement. Vous pouvez le retirer.</p>
+                          )}
+                          {!suggestedContrat && !form.contrat_id && (
+                            <p className="text-xs text-muted-foreground">Ce lot n'a pas de contrat actif. L'état des lieux sera rattaché uniquement au lot.</p>
+                          )}
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2"><Label>Type</Label>
                           <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -319,15 +356,14 @@ function EDLPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun état des lieux.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Lot / Contrat</TableHead><TableHead>Type</TableHead><TableHead>Date</TableHead><TableHead>Observations</TableHead><TableHead className="w-[110px]">Documents</TableHead>{canWrite && <TableHead className="w-[60px]"></TableHead>}</TableRow></TableHeader>
                 <TableBody>{filtered.map((e) => (
-                  <TableRow key={e.id}><TableCell className="font-medium">{contratLabel(e.contrat_id)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
+                  <TableRow key={e.id}><TableCell className="font-medium">{edlLabel(e)}</TableCell><TableCell><Badge variant={e.type === "entree" ? "default" : "secondary"}>{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell><TableCell>{new Date(e.date_realisation).toLocaleDateString("fr-FR")}</TableCell><TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell><TableCell><DocsButton edlId={e.id} canWrite={canWrite} /></TableCell>{canWrite && <TableCell><Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button></TableCell>}</TableRow>
                 ))}</TableBody>
               </Table></div>
             )}
           </CardContent>
         </Card>
-
 
         <Dialog open={!!summary} onOpenChange={(o) => { if (!o) setSummary(null); }}>
           <DialogContent>
@@ -368,4 +404,3 @@ function DocsButton({ edlId, canWrite }: { edlId: string; canWrite: boolean }) {
     </Dialog>
   );
 }
-
