@@ -216,6 +216,17 @@ function BienDetailPage() {
   const nbVacants = lots.length - nbLoues;
   const revenu = Array.from(rentByLot.values()).reduce((a, b) => a + b, 0);
 
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const totalCharges = charges.reduce((sum, c) => {
+    const montant = Number(c.montant ?? 0);
+    if (c.recurrente) return sum + montant;
+    const ref = c.date ? new Date(c.date) : new Date(c.created_at);
+    if (ref >= monthStart && ref < new Date(now.getFullYear(), now.getMonth() + 1, 1)) return sum + montant;
+    return sum;
+  }, 0);
+  const rentabilite = revenu - totalCharges;
+
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
