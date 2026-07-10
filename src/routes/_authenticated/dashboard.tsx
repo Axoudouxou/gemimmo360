@@ -287,6 +287,9 @@ function Dashboard() {
         </div>
       )}
 
+      <FilActualiteEquipe userId={userId} role={role} />
+
+
       {/* ADMIN & DIRECTION */}
       {isAdminLike && (
         <>
