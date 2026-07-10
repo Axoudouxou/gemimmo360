@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, AlertCircle, Pencil } from "lucide-react";
+import { Building2, ArrowLeft, Plus, AlertCircle, Pencil, FileText } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
+import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
+import { NouvelEdlDialog } from "@/components/nouvel-edl-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/lots/$lotId")({
@@ -24,6 +26,7 @@ type Lot = { id: string; bien_id: string; label: string; type_lot: string | null
 type Bien = { id: string; titre: string; adresse: string | null };
 type Contrat = { id: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; loyer_mensuel: number | null; statut: string };
 type Locataire = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
+type Edl = { id: string; type: string; date_realisation: string; observations: string | null; contrat_id: string | null };
 
 const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
@@ -36,23 +39,16 @@ function LotDetailPage() {
   const [lot, setLot] = useState<Lot | null>(null);
   const [bien, setBien] = useState<Bien | null>(null);
   const [contrats, setContrats] = useState<Contrat[]>([]);
+  const [edls, setEdls] = useState<Edl[]>([]);
   const [locataires, setLocataires] = useState<Map<string, Locataire>>(new Map());
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string>("");
 
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [locataireList, setLocataireList] = useState<Locataire[]>([]);
-  const [mode, setMode] = useState<"existant" | "nouveau">("existant");
-  const [existantId, setExistantId] = useState<string>("");
-  const [newLoc, setNewLoc] = useState({ nom: "", prenom: "", telephone: "", email: "" });
-  const [contratForm, setContratForm] = useState({
-    loyer_mensuel: "", depot_garantie: "",
-    date_debut: new Date().toISOString().slice(0, 10), statut: "actif",
-  });
+  const [contratOpen, setContratOpen] = useState(false);
+  const [edlOpen, setEdlOpen] = useState(false);
 
-  <ActivitesLiees lotId={lotId} />
-  const canCreate = myRole === "admin" || myRole === "juridique";
+  const canCreateContrat = myRole === "admin" || myRole === "juridique";
+  const canCreateEdl = !!myRole && myRole !== "recouvrement" && myRole !== "en_attente";
   const canEditLot = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -101,13 +97,15 @@ function LotDetailPage() {
     const lotData = (lData ?? null) as Lot | null;
     setLot(lotData);
     if (lotData) {
-      const [{ data: bData }, { data: cData }] = await Promise.all([
+      const [{ data: bData }, { data: cData }, { data: eData }] = await Promise.all([
         supabase.from("biens").select("id, titre, adresse").eq("id", lotData.bien_id).maybeSingle(),
         supabase.from("contrats").select("id, locataire_id, date_debut, date_fin, loyer_mensuel, statut").eq("lot_id", lotId).order("date_debut", { ascending: false }),
+        supabase.from("etats_des_lieux").select("id, type, date_realisation, observations, contrat_id").eq("lot_id", lotId).order("date_realisation", { ascending: false }),
       ]);
       setBien((bData ?? null) as Bien | null);
       const ctsList = (cData ?? []) as Contrat[];
       setContrats(ctsList);
+      setEdls((eData ?? []) as Edl[]);
       const locIds = Array.from(new Set(ctsList.map((c) => c.locataire_id).filter((x): x is string => !!x)));
       if (locIds.length) {
         const { data: locsData } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").in("id", locIds);
@@ -118,60 +116,6 @@ function LotDetailPage() {
   };
 
   useEffect(() => { load(); }, [lotId]);
-
-  const openDialog = async () => {
-    setOpen(true);
-    if (locataireList.length === 0) {
-      const { data } = await supabase.from("contacts").select("id, nom, prenom, type_entite, interlocuteur").eq("type_contact", "locataire").eq("archive", false).order("nom");
-      setLocataireList((data ?? []) as Locataire[]);
-    }
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!lot) return;
-    setSaving(true);
-    let locId = existantId;
-    if (mode === "nouveau") {
-      if (!newLoc.nom.trim()) { setSaving(false); return toast.error("Le nom est obligatoire"); }
-      const { data: userRes } = await supabase.auth.getUser();
-      const { data: created, error: cErr } = await supabase.from("contacts").insert({
-        nom: newLoc.nom.trim(),
-        prenom: newLoc.prenom.trim() || null,
-        telephone: newLoc.telephone.trim() || null,
-        email: newLoc.email.trim() || null,
-        type_contact: "locataire",
-        type_entite: "personne",
-        gestionnaire_id: userRes.user?.id ?? null,
-      }).select("id").single();
-      if (cErr) { setSaving(false); return toast.error(cErr.message); }
-      locId = created.id;
-    }
-    if (!locId) { setSaving(false); return toast.error("Sélectionnez un locataire"); }
-
-    const { error } = await supabase.from("contrats").insert({
-      lot_id: lot.id,
-      locataire_id: locId,
-      loyer_mensuel: contratForm.loyer_mensuel ? Number(contratForm.loyer_mensuel) : null,
-      depot_garantie: contratForm.depot_garantie ? Number(contratForm.depot_garantie) : null,
-      date_debut: contratForm.date_debut || null,
-      statut: contratForm.statut || "actif",
-    });
-    if (error) {
-      setSaving(false);
-      if ((error as any).code === "23505") return toast.error("Ce lot a déjà un contrat actif en cours — mettez-y fin avant d'en créer un nouveau.");
-      return toast.error(error.message);
-    }
-    if (contratForm.statut === "actif") {
-      await supabase.from("lots").update({ statut: "loue" }).eq("id", lot.id);
-    }
-    setSaving(false);
-    toast.success("Contrat créé");
-    setOpen(false);
-    setNewLoc({ nom: "", prenom: "", telephone: "", email: "" });
-    setExistantId("");
-    load();
-  };
 
   const actif = contrats.find((c) => c.statut === "actif") ?? null;
   const passes = contrats.filter((c) => c.id !== actif?.id);
@@ -274,99 +218,16 @@ function LotDetailPage() {
               </CardContent>
             </Card>
 
-
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
                   <CardTitle>Contrat en cours</CardTitle>
                   <CardDescription>Contrat actif rattaché à ce lot, s'il existe.</CardDescription>
                 </div>
-                {!actif && lot.statut === "vacant" && canCreate && (
-                  <Dialog open={open} onOpenChange={(o) => (o ? openDialog() : setOpen(false))}>
-                    <DialogTrigger asChild>
-                      <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Créer un nouveau contrat</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg">
-                      <form onSubmit={handleCreate}>
-                        <DialogHeader>
-                          <DialogTitle>Nouveau contrat pour {lot.label}</DialogTitle>
-                          <DialogDescription>Choisir un locataire existant ou en créer un nouveau.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="flex gap-2">
-                            <Button type="button" size="sm" variant={mode === "existant" ? "default" : "outline"} onClick={() => setMode("existant")}>Locataire existant</Button>
-                            <Button type="button" size="sm" variant={mode === "nouveau" ? "default" : "outline"} onClick={() => setMode("nouveau")}>Nouveau locataire</Button>
-                          </div>
-
-                          {mode === "existant" ? (
-                            <div className="grid gap-2">
-                              <Label>Locataire</Label>
-                              <Select value={existantId} onValueChange={setExistantId}>
-                                <SelectTrigger><SelectValue placeholder={locataireList.length ? "Sélectionner..." : "Aucun locataire disponible"} /></SelectTrigger>
-                                <SelectContent>
-                                  {locataireList.map((l) => <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ) : (
-                            <div className="grid gap-3 rounded-md border p-3">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="grid gap-2">
-                                  <Label>Nom *</Label>
-                                  <Input value={newLoc.nom} onChange={(e) => setNewLoc({ ...newLoc, nom: e.target.value })} required={mode === "nouveau"} />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label>Prénom</Label>
-                                  <Input value={newLoc.prenom} onChange={(e) => setNewLoc({ ...newLoc, prenom: e.target.value })} />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="grid gap-2">
-                                  <Label>Téléphone</Label>
-                                  <Input value={newLoc.telephone} onChange={(e) => setNewLoc({ ...newLoc, telephone: e.target.value })} />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label>Email</Label>
-                                  <Input type="email" value={newLoc.email} onChange={(e) => setNewLoc({ ...newLoc, email: e.target.value })} />
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                              <Label>Loyer mensuel</Label>
-                              <Input type="number" min="0" step="0.01" value={contratForm.loyer_mensuel} onChange={(e) => setContratForm({ ...contratForm, loyer_mensuel: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Dépôt de garantie</Label>
-                              <Input type="number" min="0" step="0.01" value={contratForm.depot_garantie} onChange={(e) => setContratForm({ ...contratForm, depot_garantie: e.target.value })} />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                              <Label>Date début</Label>
-                              <Input type="date" value={contratForm.date_debut} onChange={(e) => setContratForm({ ...contratForm, date_debut: e.target.value })} />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Statut</Label>
-                              <Select value={contratForm.statut} onValueChange={(v) => setContratForm({ ...contratForm, statut: v })}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="actif">Actif</SelectItem>
-                                  <SelectItem value="brouillon">Brouillon</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-                          <Button type="submit" disabled={saving}>{saving ? "..." : "Créer le contrat"}</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                {canCreateContrat && (
+                  <Button size="sm" onClick={() => setContratOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Nouveau contrat
+                  </Button>
                 )}
               </CardHeader>
               <CardContent>
@@ -431,6 +292,51 @@ function LotDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>États des lieux</CardTitle>
+                  <CardDescription>Tous les états des lieux enregistrés sur ce lot, avec ou sans contrat.</CardDescription>
+                </div>
+                {canCreateEdl && (
+                  <Button size="sm" onClick={() => setEdlOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Nouvel état des lieux
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {edls.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun état des lieux.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Contrat lié</TableHead>
+                          <TableHead>Observations</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {edls.map((e) => (
+                          <TableRow key={e.id}>
+                            <TableCell><Badge variant="outline"><FileText className="mr-1 h-3 w-3" />{e.type === "entree" ? "Entrée" : "Sortie"}</Badge></TableCell>
+                            <TableCell>{fmtDate(e.date_realisation)}</TableCell>
+                            <TableCell>{e.contrat_id ? <Link to="/contrats/$contratId" params={{ contratId: e.contrat_id }} className="underline text-sm">Voir</Link> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
+                            <TableCell className="max-w-md truncate">{e.observations ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <ActivitesLiees lotId={lotId} />
+
             {myRole === "admin" && lot && (
               <DeleteZone
                 entityLabel="ce lot"
@@ -447,6 +353,9 @@ function LotDetailPage() {
                 }}
               />
             )}
+
+            <NouveauContratDialog open={contratOpen} onOpenChange={setContratOpen} fixedLotId={lotId} onCreated={() => load()} />
+            <NouvelEdlDialog open={edlOpen} onOpenChange={setEdlOpen} lotId={lotId} onCreated={() => load()} />
           </>
         )}
       </main>
