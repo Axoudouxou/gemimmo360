@@ -78,7 +78,7 @@ function CalendrierPage() {
     })();
   }, []);
 
-  const isReadOnly = viewingUserId && me && viewingUserId !== me.id;
+  void viewingUserId;
 
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
     const today = startOfDay(new Date());

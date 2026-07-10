@@ -60,6 +60,8 @@ function AuthPage() {
       navigate({ to: "/compte-en-attente", replace: true });
       return;
     }
+    // Best-effort : enregistre la date de dernière connexion sur le profil
+    void supabase.from("profiles").update({ last_sign_in_at: new Date().toISOString() }).eq("id", data.user.id);
     navigate({ to: "/dashboard", replace: true });
   };
 
