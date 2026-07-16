@@ -249,16 +249,12 @@ function ContratDetailPage() {
                               </div>
                               <div className="grid gap-2">
                                 <Label>Locataire</Label>
-                                <Select value={editForm.locataire_id} onValueChange={(v) => setEditForm({ ...editForm, locataire_id: v })}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={locataireList.length ? "Sélectionner un locataire..." : "Chargement..."} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {locataireList.map((l) => (
-                                      <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                  value={editForm.locataire_id}
+                                  onChange={(v) => setEditForm({ ...editForm, locataire_id: v })}
+                                  options={locataireList.map((l) => ({ value: l.id, label: locName(l) }))}
+                                  placeholder={locataireList.length ? "Rechercher un locataire..." : "Chargement..."}
+                                />
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
