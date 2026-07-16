@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { ContratPropositions } from "@/components/contrat-propositions";
 import { DocumentsSection } from "@/components/documents-section";
+import { ImpayeDetailDialog } from "@/components/impaye-detail-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
