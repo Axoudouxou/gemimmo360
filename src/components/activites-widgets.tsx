@@ -403,17 +403,12 @@ function NouvelleActiviteLieeDialog({
         {label}
         {prefilled && <Badge variant="secondary" className="text-[10px]">Pré-rempli</Badge>}
       </Label>
-      <div className="flex items-center gap-1">
-        <Select value={value || "__none__"} onValueChange={(v) => onChange(v === "__none__" ? "" : v)}>
-          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Aucun</SelectItem>
-            {options.map((o) => (
-              <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SearchableSelect
+        value={value}
+        onChange={onChange}
+        options={options.map((o) => ({ value: o.id, label: o.label }))}
+        placeholder="Rechercher..."
+      />
     </div>
   );
 
