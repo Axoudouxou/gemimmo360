@@ -133,12 +133,15 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated
             {!fixedLotId && (
               <div className="grid gap-2">
                 <Label>Lot *</Label>
-                <Select value={lotId} onValueChange={setLotId}>
-                  <SelectTrigger><SelectValue placeholder={lots.length ? "Sélectionner un lot..." : "Aucun lot disponible"} /></SelectTrigger>
-                  <SelectContent>
-                    {lots.map((l) => <SelectItem key={l.id} value={l.id}>{bienTitre(l.bien_id)} — {l.label} ({l.statut})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={lotId}
+                  onChange={setLotId}
+                  options={lots.map((l) => ({
+                    value: l.id,
+                    label: `${bienTitre(l.bien_id)} — ${l.label} (${l.statut})`,
+                  }))}
+                  placeholder={lots.length ? "Rechercher un lot..." : "Aucun lot disponible"}
+                />
               </div>
             )}
 
