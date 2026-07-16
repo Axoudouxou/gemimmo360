@@ -166,12 +166,12 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated
             {mode === "existant" ? (
               <div className="grid gap-2">
                 <Label>Locataire</Label>
-                <Select value={existantId} onValueChange={setExistantId}>
-                  <SelectTrigger><SelectValue placeholder={locataires.length ? "Sélectionner..." : "Aucun locataire disponible"} /></SelectTrigger>
-                  <SelectContent>
-                    {locataires.map((l) => <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={existantId}
+                  onChange={setExistantId}
+                  options={locataires.map((l) => ({ value: l.id, label: locName(l) }))}
+                  placeholder={locataires.length ? "Rechercher un locataire..." : "Aucun locataire disponible"}
+                />
               </div>
             ) : (
               <div className="grid gap-3 rounded-md border p-3">
