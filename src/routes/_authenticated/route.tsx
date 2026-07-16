@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
+import { NotificationsBell } from "@/components/notifications-bell";
+
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -74,7 +76,9 @@ function AuthenticatedLayout() {
               <GlobalSearch />
             </div>
             <div className="flex items-center gap-3">
+              <NotificationsBell />
               <Link
+
                 to="/profil"
                 className="flex items-center gap-3 rounded-md px-1.5 py-1 hover:bg-muted transition-colors"
                 aria-label="Mon profil"
