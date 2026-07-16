@@ -339,7 +339,11 @@ function ContratDetailPage() {
                       </TableHeader>
                       <TableBody>
                         {impayes.map((i) => (
-                          <TableRow key={i.id}>
+                          <TableRow
+                            key={i.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => { setSelectedImpaye(i); setImpayeOpen(true); }}
+                          >
                             <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                             <TableCell>{fmtMoney(i.montant_du)}</TableCell>
                             <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
