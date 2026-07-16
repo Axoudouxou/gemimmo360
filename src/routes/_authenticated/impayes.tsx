@@ -338,7 +338,11 @@ function ImpayesPage() {
                     {filtered.map((i) => {
                       const { bien, locataire } = contratLabel(i.contrat_id);
                       return (
-                        <TableRow key={i.id}>
+                        <TableRow
+                          key={i.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => { setSelected(i); setDetailOpen(true); }}
+                        >
                           <TableCell className="font-medium">{bien}</TableCell>
                           <TableCell>{locataire}</TableCell>
                           <TableCell>{fmtMoney(i.montant_du)}</TableCell>
@@ -358,6 +362,8 @@ function ImpayesPage() {
             )}
           </CardContent>
         </Card>
+
+        <ImpayeDetailDialog impaye={selected} open={detailOpen} onOpenChange={setDetailOpen} />
       </main>
     </div>
   );
