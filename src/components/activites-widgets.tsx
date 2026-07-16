@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek } from "date-fns";
@@ -403,17 +404,12 @@ function NouvelleActiviteLieeDialog({
         {label}
         {prefilled && <Badge variant="secondary" className="text-[10px]">Pré-rempli</Badge>}
       </Label>
-      <div className="flex items-center gap-1">
-        <Select value={value || "__none__"} onValueChange={(v) => onChange(v === "__none__" ? "" : v)}>
-          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Aucun</SelectItem>
-            {options.map((o) => (
-              <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SearchableSelect
+        value={value}
+        onChange={onChange}
+        options={options.map((o) => ({ value: o.id, label: o.label }))}
+        placeholder="Rechercher..."
+      />
     </div>
   );
 

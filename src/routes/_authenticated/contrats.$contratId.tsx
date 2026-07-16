@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, Ban, AlertCircle } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { ContratPropositions } from "@/components/contrat-propositions";
 import { DocumentsSection } from "@/components/documents-section";
+import { ImpayeDetailDialog } from "@/components/impaye-detail-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
@@ -31,7 +33,7 @@ type Contrat = {
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Locataire = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
-type Impaye = { id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string };
+type Impaye = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string; date_derniere_relance: string | null; notes: string | null };
 type Edl = { id: string; type: string; date_realisation: string; observations: string | null };
 
 const STATUTS = [
@@ -54,6 +56,8 @@ function ContratDetailPage() {
   const [locataire, setLocataire] = useState<Locataire | null>(null);
   const [impayes, setImpayes] = useState<Impaye[]>([]);
   const [edls, setEdls] = useState<Edl[]>([]);
+  const [selectedImpaye, setSelectedImpaye] = useState<Impaye | null>(null);
+  const [impayeOpen, setImpayeOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string>("");
 
@@ -83,7 +87,7 @@ function ContratDetailPage() {
     if (c) {
       const [{ data: l }, { data: iData }, { data: eData }] = await Promise.all([
         supabase.from("lots").select("id, label, bien_id").eq("id", c.lot_id).maybeSingle(),
-        supabase.from("impayes").select("id, montant_du, montant_paye, date_echeance, statut").eq("contrat_id", contratId).order("date_echeance", { ascending: false }),
+        supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance, statut, date_derniere_relance, notes").eq("contrat_id", contratId).order("date_echeance", { ascending: false }),
         supabase.from("etats_des_lieux").select("id, type, date_realisation, observations").eq("contrat_id", contratId).order("date_realisation", { ascending: false }),
       ]);
       setLot((l ?? null) as Lot | null);
@@ -245,16 +249,12 @@ function ContratDetailPage() {
                               </div>
                               <div className="grid gap-2">
                                 <Label>Locataire</Label>
-                                <Select value={editForm.locataire_id} onValueChange={(v) => setEditForm({ ...editForm, locataire_id: v })}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={locataireList.length ? "Sélectionner un locataire..." : "Chargement..."} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {locataireList.map((l) => (
-                                      <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                  value={editForm.locataire_id}
+                                  onChange={(v) => setEditForm({ ...editForm, locataire_id: v })}
+                                  options={locataireList.map((l) => ({ value: l.id, label: locName(l) }))}
+                                  placeholder={locataireList.length ? "Rechercher un locataire..." : "Chargement..."}
+                                />
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
@@ -339,7 +339,11 @@ function ContratDetailPage() {
                       </TableHeader>
                       <TableBody>
                         {impayes.map((i) => (
-                          <TableRow key={i.id}>
+                          <TableRow
+                            key={i.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => { setSelectedImpaye(i); setImpayeOpen(true); }}
+                          >
                             <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                             <TableCell>{fmtMoney(i.montant_du)}</TableCell>
                             <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
@@ -352,6 +356,8 @@ function ContratDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <ImpayeDetailDialog impaye={selectedImpaye} open={impayeOpen} onOpenChange={setImpayeOpen} />
 
             <Card>
               <CardHeader>

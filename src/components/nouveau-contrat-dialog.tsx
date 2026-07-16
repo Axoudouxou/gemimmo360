@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -132,12 +133,15 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated
             {!fixedLotId && (
               <div className="grid gap-2">
                 <Label>Lot *</Label>
-                <Select value={lotId} onValueChange={setLotId}>
-                  <SelectTrigger><SelectValue placeholder={lots.length ? "Sélectionner un lot..." : "Aucun lot disponible"} /></SelectTrigger>
-                  <SelectContent>
-                    {lots.map((l) => <SelectItem key={l.id} value={l.id}>{bienTitre(l.bien_id)} — {l.label} ({l.statut})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={lotId}
+                  onChange={setLotId}
+                  options={lots.map((l) => ({
+                    value: l.id,
+                    label: `${bienTitre(l.bien_id)} — ${l.label} (${l.statut})`,
+                  }))}
+                  placeholder={lots.length ? "Rechercher un lot..." : "Aucun lot disponible"}
+                />
               </div>
             )}
 
@@ -162,12 +166,12 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated
             {mode === "existant" ? (
               <div className="grid gap-2">
                 <Label>Locataire</Label>
-                <Select value={existantId} onValueChange={setExistantId}>
-                  <SelectTrigger><SelectValue placeholder={locataires.length ? "Sélectionner..." : "Aucun locataire disponible"} /></SelectTrigger>
-                  <SelectContent>
-                    {locataires.map((l) => <SelectItem key={l.id} value={l.id}>{locName(l)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={existantId}
+                  onChange={setExistantId}
+                  options={locataires.map((l) => ({ value: l.id, label: locName(l) }))}
+                  placeholder={locataires.length ? "Rechercher un locataire..." : "Aucun locataire disponible"}
+                />
               </div>
             ) : (
               <div className="grid gap-3 rounded-md border p-3">

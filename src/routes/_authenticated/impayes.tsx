@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ImpayeDetailDialog } from "@/components/impaye-detail-dialog";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +70,8 @@ function ImpayesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Impaye | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
   const [dFrom, setDFrom] = useState("");
@@ -248,21 +252,15 @@ function ImpayesPage() {
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                       <Label>Contrat *</Label>
-                      <Select value={form.contrat_id} onValueChange={(v) => setForm({ ...form, contrat_id: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={contratsActifs.length ? "Sélectionner un contrat actif..." : "Aucun contrat actif"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {contratsActifs.map((c) => {
-                            const { bien, locataire } = contratLabel(c.id);
-                            return (
-                              <SelectItem key={c.id} value={c.id}>
-                                {bien} — {locataire}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.contrat_id}
+                        onChange={(v) => setForm({ ...form, contrat_id: v })}
+                        options={contratsActifs.map((c) => {
+                          const { bien, locataire } = contratLabel(c.id);
+                          return { value: c.id, label: `${bien} — ${locataire}` };
+                        })}
+                        placeholder={contratsActifs.length ? "Rechercher un contrat actif..." : "Aucun contrat actif"}
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
@@ -340,7 +338,11 @@ function ImpayesPage() {
                     {filtered.map((i) => {
                       const { bien, locataire } = contratLabel(i.contrat_id);
                       return (
-                        <TableRow key={i.id}>
+                        <TableRow
+                          key={i.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => { setSelected(i); setDetailOpen(true); }}
+                        >
                           <TableCell className="font-medium">{bien}</TableCell>
                           <TableCell>{locataire}</TableCell>
                           <TableCell>{fmtMoney(i.montant_du)}</TableCell>
@@ -360,6 +362,8 @@ function ImpayesPage() {
             )}
           </CardContent>
         </Card>
+
+        <ImpayeDetailDialog impaye={selected} open={detailOpen} onOpenChange={setDetailOpen} />
       </main>
     </div>
   );
