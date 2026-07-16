@@ -252,21 +252,15 @@ function ImpayesPage() {
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                       <Label>Contrat *</Label>
-                      <Select value={form.contrat_id} onValueChange={(v) => setForm({ ...form, contrat_id: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={contratsActifs.length ? "Sélectionner un contrat actif..." : "Aucun contrat actif"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {contratsActifs.map((c) => {
-                            const { bien, locataire } = contratLabel(c.id);
-                            return (
-                              <SelectItem key={c.id} value={c.id}>
-                                {bien} — {locataire}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.contrat_id}
+                        onChange={(v) => setForm({ ...form, contrat_id: v })}
+                        options={contratsActifs.map((c) => {
+                          const { bien, locataire } = contratLabel(c.id);
+                          return { value: c.id, label: `${bien} — ${locataire}` };
+                        })}
+                        placeholder={contratsActifs.length ? "Rechercher un contrat actif..." : "Aucun contrat actif"}
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
