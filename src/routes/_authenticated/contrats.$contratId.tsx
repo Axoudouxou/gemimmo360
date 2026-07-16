@@ -33,7 +33,7 @@ type Contrat = {
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Locataire = { id: string; nom: string; prenom: string | null; type_entite: string | null; interlocuteur: string | null };
-type Impaye = { id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string };
+type Impaye = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string; date_derniere_relance: string | null; notes: string | null };
 type Edl = { id: string; type: string; date_realisation: string; observations: string | null };
 
 const STATUTS = [
