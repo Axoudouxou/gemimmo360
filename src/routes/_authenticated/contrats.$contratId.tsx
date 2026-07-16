@@ -56,6 +56,8 @@ function ContratDetailPage() {
   const [locataire, setLocataire] = useState<Locataire | null>(null);
   const [impayes, setImpayes] = useState<Impaye[]>([]);
   const [edls, setEdls] = useState<Edl[]>([]);
+  const [selectedImpaye, setSelectedImpaye] = useState<Impaye | null>(null);
+  const [impayeOpen, setImpayeOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string>("");
 
