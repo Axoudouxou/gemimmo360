@@ -357,6 +357,8 @@ function ContratDetailPage() {
               </CardContent>
             </Card>
 
+            <ImpayeDetailDialog impaye={selectedImpaye} open={impayeOpen} onOpenChange={setImpayeOpen} />
+
             <Card>
               <CardHeader>
                 <CardTitle>États des lieux</CardTitle>
