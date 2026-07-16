@@ -70,6 +70,8 @@ function ImpayesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Impaye | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
   const [dFrom, setDFrom] = useState("");
