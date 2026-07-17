@@ -132,12 +132,12 @@ function ImpayesPage() {
   }, [role]);
 
   // Auto-open detail from ?open=<id>
-  const search = Route.useSearch();
+  const routeSearch = Route.useSearch();
   useEffect(() => {
-    if (!search.open || impayes.length === 0) return;
-    const found = impayes.find((i) => i.id === search.open);
+    if (!routeSearch.open || impayes.length === 0) return;
+    const found = impayes.find((i) => i.id === routeSearch.open);
     if (found) { setSelected(found); setDetailOpen(true); }
-  }, [search.open, impayes]);
+  }, [routeSearch.open, impayes]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
