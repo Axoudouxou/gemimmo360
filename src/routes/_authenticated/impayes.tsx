@@ -337,9 +337,10 @@ function ImpayesPage() {
               searchPlaceholder="Bien ou locataire..."
               selects={[
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "service", label: "Service en charge", value: fService, onChange: setFService, options: [{ value: "recouvrement", label: "Recouvrement" }, { value: "juridique", label: "Juridique" }] },
               ]}
               dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFStatut("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFService("all"); setDFrom(""); setDTo(""); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
