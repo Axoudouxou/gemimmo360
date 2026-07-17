@@ -475,6 +475,9 @@ function TransactionDetailDialog({
       date_debut_mandat: tx.date_debut_mandat ?? "",
       duree_indeterminee: tx.duree_indeterminee ?? true,
       date_fin_mandat: tx.date_fin_mandat ?? "",
+      montant_estime: tx.montant_estime != null ? String(tx.montant_estime) : "",
+      date_cloture_prevue: tx.date_cloture_prevue ?? "",
+      gestionnaire_id: tx.gestionnaire_id ?? "",
     });
   }, [tx]);
 
