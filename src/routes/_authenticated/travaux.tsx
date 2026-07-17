@@ -189,6 +189,7 @@ function TravauxPage() {
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
+            onStatusChanged={(updated) => { setDetail(updated); setTravaux((prev) => prev.map((x) => x.id === updated.id ? updated : x)); }}
           />
         )}
 
