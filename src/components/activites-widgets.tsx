@@ -396,6 +396,7 @@ function NouvelleActiviteLieeDialog({
       lot_id: lotId || null,
       contrat_id: contratId || null,
       contact_id: contactId || null,
+      transaction_id: transactionId || null,
       statut: type === "tache" ? "a_faire" : "planifiee",
     });
     setSaving(false);
