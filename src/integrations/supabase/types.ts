@@ -1118,8 +1118,13 @@ export type Database = {
           bien_id: string | null
           contact_id: string
           created_at: string
+          date_debut_mandat: string | null
+          date_fin_mandat: string | null
           date_visite: string | null
+          duree_indeterminee: boolean
+          exclusivite: string | null
           id: string
+          motif_perdu: string | null
           notes: string | null
           statut_opportunite: string
           type_transaction: string
@@ -1128,8 +1133,13 @@ export type Database = {
           bien_id?: string | null
           contact_id: string
           created_at?: string
+          date_debut_mandat?: string | null
+          date_fin_mandat?: string | null
           date_visite?: string | null
+          duree_indeterminee?: boolean
+          exclusivite?: string | null
           id?: string
+          motif_perdu?: string | null
           notes?: string | null
           statut_opportunite?: string
           type_transaction: string
@@ -1138,8 +1148,13 @@ export type Database = {
           bien_id?: string | null
           contact_id?: string
           created_at?: string
+          date_debut_mandat?: string | null
+          date_fin_mandat?: string | null
           date_visite?: string | null
+          duree_indeterminee?: boolean
+          exclusivite?: string | null
           id?: string
+          motif_perdu?: string | null
           notes?: string | null
           statut_opportunite?: string
           type_transaction?: string
