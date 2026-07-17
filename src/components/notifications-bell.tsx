@@ -72,7 +72,13 @@ export function NotificationsBell() {
   async function openItem(n: Notification) {
     if (!n.read) await markOne(n.id);
     setOpen(false);
-    if (n.link) navigate({ to: n.link });
+    const route = n.entity_type ? ENTITY_ROUTE[n.entity_type] : undefined;
+    if (route && n.entity_id) {
+      navigate({ to: route as never, search: { open: n.entity_id } as never });
+    } else if (n.link) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigate({ to: n.link as any });
+    }
   }
 
   return (
