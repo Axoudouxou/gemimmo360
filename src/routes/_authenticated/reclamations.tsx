@@ -97,6 +97,14 @@ function ReclamationsPage() {
   };
   useEffect(() => { load(); }, []);
 
+  // Auto-open detail from ?open=<id>
+  const routeSearch = Route.useSearch();
+  useEffect(() => {
+    if (!routeSearch.open || items.length === 0) return;
+    const found = items.find((r: Reclamation) => r.id === routeSearch.open);
+    if (found) setDetail(found);
+  }, [routeSearch.open, items]);
+
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
