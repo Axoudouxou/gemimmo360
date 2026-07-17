@@ -320,6 +320,7 @@ function ImpayesPage() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </CardHeader>
           <CardContent>
             <FilterBar
