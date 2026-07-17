@@ -330,11 +330,13 @@ function NouvelleActiviteLieeDialog({
   const [lotId, setLotId] = useState<string>(defaults.lotId ?? "");
   const [contratId, setContratId] = useState<string>(defaults.contratId ?? "");
   const [contactId, setContactId] = useState<string>(defaults.contactId ?? "");
+  const [transactionId, setTransactionId] = useState<string>(defaults.transactionId ?? "");
 
   const [biens, setBiens] = useState<OptionRow[]>([]);
   const [lots, setLots] = useState<OptionRow[]>([]);
   const [contrats, setContrats] = useState<OptionRow[]>([]);
   const [contacts, setContacts] = useState<OptionRow[]>([]);
+  const [transactions, setTransactions] = useState<OptionRow[]>([]);
 
   const [saving, setSaving] = useState(false);
 
