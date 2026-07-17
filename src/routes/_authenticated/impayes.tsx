@@ -86,6 +86,8 @@ function ImpayesPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
+  const [fService, setFService] = useState("all");
+
   const [form, setForm] = useState({
     contrat_id: "",
     montant_du: "",
