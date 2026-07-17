@@ -52,6 +52,7 @@ function linkFor(a: Activite): { to: string; params?: Record<string, string>; la
   if (a.lot_id) return { to: "/lots/$lotId", params: { lotId: a.lot_id }, label: "Lot associé" };
   if (a.bien_id) return { to: "/biens/$bienId", params: { bienId: a.bien_id }, label: "Bien associé" };
   if (a.contact_id) return { to: "/contacts/$contactId", params: { contactId: a.contact_id }, label: "Contact associé" };
+  if (a.transaction_id) return { to: "/transactions", label: "Transaction associée" };
   return null;
 }
 
