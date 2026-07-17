@@ -56,6 +56,11 @@ type Impaye = {
   statut: string;
   date_derniere_relance: string | null;
   notes: string | null;
+  service_en_charge?: string | null;
+  etape_traitement?: string | null;
+  date_mise_en_demeure?: string | null;
+  date_acte_commissaire?: string | null;
+  date_assignation?: string | null;
 };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
