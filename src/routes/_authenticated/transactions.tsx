@@ -248,7 +248,7 @@ function TransactionsPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Type</Label>
-                        <Select value={form.type_transaction} onValueChange={(v) => setForm({ ...form, type_transaction: v })}>
+                        <Select value={form.type_transaction} onValueChange={setType}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>{TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                         </Select>
@@ -260,6 +260,75 @@ function TransactionsPage() {
                         </Select>
                       </div>
                     </div>
+
+                    {isMandat(form.type_transaction) && (
+                      <div className="grid gap-2"><Label>Exclusivité</Label>
+                        <Select
+                          value={form.exclusivite || ""}
+                          onValueChange={(v) => setForm({ ...form, exclusivite: v as "exclusif" | "non_exclusif" })}
+                          disabled={form.type_transaction === "mandat_gestion"}
+                        >
+                          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="exclusif">Exclusif</SelectItem>
+                            <SelectItem value="non_exclusif">Non exclusif</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {form.type_transaction === "mandat_gestion" && (
+                          <p className="text-xs text-muted-foreground">Un mandat de gestion est toujours exclusif.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {form.type_transaction === "mandat_gestion" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Date de début du mandat</Label>
+                            <Input type="date" value={form.date_debut_mandat}
+                              onChange={(e) => setForm({ ...form, date_debut_mandat: e.target.value })} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Date de fin</Label>
+                            <Input type="date" value={form.date_fin_mandat}
+                              disabled={form.duree_indeterminee}
+                              onChange={(e) => setForm({ ...form, date_fin_mandat: e.target.value })} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="duree-indet"
+                            checked={form.duree_indeterminee}
+                            onCheckedChange={(v) => setForm({ ...form, duree_indeterminee: !!v, date_fin_mandat: v ? "" : form.date_fin_mandat })}
+                          />
+                          <Label htmlFor="duree-indet" className="cursor-pointer">Durée indéterminée</Label>
+                        </div>
+                        {!form.bien_id && (
+                          <p className="text-xs text-amber-700 flex items-start gap-1">
+                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            Rattachez un bien pour activer le badge de mandat.
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {form.statut_opportunite === "perdu" && (
+                      <>
+                        <div className="grid gap-2"><Label>Motif de perte</Label>
+                          <Select value={form.motif_perdu} onValueChange={(v) => setForm({ ...form, motif_perdu: v })}>
+                            <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
+                            <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        {form.motif_perdu === "autre" && (
+                          <div className="grid gap-2"><Label>Précisez</Label>
+                            <Textarea rows={2} value={form.motif_perdu_autre}
+                              onChange={(e) => setForm({ ...form, motif_perdu_autre: e.target.value })} />
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                     <p className="text-xs text-muted-foreground">Les visites sont désormais des activités liées à la transaction (créées depuis la fiche détail).</p>
                   </div>
