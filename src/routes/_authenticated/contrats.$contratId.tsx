@@ -39,7 +39,7 @@ type Edl = { id: string; type: string; date_realisation: string; observations: s
 const STATUTS = [
   { value: "actif", label: "Actif" },
   { value: "termine", label: "Terminé" },
-  { value: "resilié", label: "Résilié" },
+  { value: "resilie", label: "Résilié" },
   { value: "brouillon", label: "Brouillon" },
 ] as const;
 
