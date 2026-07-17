@@ -244,7 +244,7 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           </div>
 
           <div className="border-t pt-3">
-            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} />
+            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} entityType="travaux" entityId={travail.id} link={`/travaux?open=${travail.id}`} entityTitle={travail.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">
