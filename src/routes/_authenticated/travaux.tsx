@@ -94,6 +94,14 @@ function TravauxPage() {
   };
   useEffect(() => { load(); }, []);
 
+  // Auto-open detail from ?open=<id>
+  const routeSearch = Route.useSearch();
+  useEffect(() => {
+    if (!routeSearch.open || items.length === 0) return;
+    const found = items.find((t) => t.id === routeSearch.open);
+    if (found) setDetail(found);
+  }, [routeSearch.open, items]);
+
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
   const prestataire = (id: string | null) => id ? prestataires.find((p) => p.id === id) : null;
