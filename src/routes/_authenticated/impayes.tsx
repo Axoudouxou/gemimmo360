@@ -100,12 +100,14 @@ function ImpayesPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r || (READ_BLOCKED as readonly string[]).includes(r)) {
         toast.error("Accès refusé");
         navigate({ to: "/dashboard", replace: true });
       }
     })();
   }, [navigate]);
+
+  const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
 
   const load = async () => {
     setLoading(true);
@@ -126,8 +128,16 @@ function ImpayesPage() {
   };
 
   useEffect(() => {
-    if (role && (ALLOWED as readonly string[]).includes(role)) load();
+    if (role && !(READ_BLOCKED as readonly string[]).includes(role)) load();
   }, [role]);
+
+  // Auto-open detail from ?open=<id>
+  const search = Route.useSearch();
+  useEffect(() => {
+    if (!search.open || impayes.length === 0) return;
+    const found = impayes.find((i) => i.id === search.open);
+    if (found) { setSelected(found); setDetailOpen(true); }
+  }, [search.open, impayes]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
