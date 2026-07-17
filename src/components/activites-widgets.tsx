@@ -495,6 +495,7 @@ function NouvelleActiviteLieeDialog({
             <LinkSelect label="Lot" value={lotId} onChange={setLotId} options={lots} prefilled={!!defaults.lotId} />
             <LinkSelect label="Contrat" value={contratId} onChange={setContratId} options={contrats} prefilled={!!defaults.contratId} />
             <LinkSelect label="Contact" value={contactId} onChange={setContactId} options={contacts} prefilled={!!defaults.contactId} />
+            <LinkSelect label="Transaction" value={transactionId} onChange={setTransactionId} options={transactions} prefilled={!!defaults.transactionId} />
           </div>
         </div>
         <DialogFooter>
