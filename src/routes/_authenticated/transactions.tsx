@@ -165,19 +165,41 @@ function TransactionsPage() {
     return { nbProspectsActifs, enCours, taux };
   }, [items, contacts]);
 
-  const resetForm = () => setForm({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
+  const resetForm = () => setForm({
+    contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
+    exclusivite: "non_exclusif", motif_perdu: "", motif_perdu_autre: "",
+    date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+  });
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
     setSaving(true);
-    const { error } = await supabase.from("transactions_commerciales").insert({
+    const t = form.type_transaction;
+    const motifFinal = form.statut_opportunite === "perdu"
+      ? (form.motif_perdu === "autre" ? (form.motif_perdu_autre.trim() || null) : (form.motif_perdu || null))
+      : null;
+    const payload: Record<string, any> = {
       contact_id: form.contact_id, bien_id: form.bien_id || null,
-      type_transaction: form.type_transaction, statut_opportunite: form.statut_opportunite,
+      type_transaction: t, statut_opportunite: form.statut_opportunite,
       notes: form.notes.trim() || null,
-    });
+      exclusivite: isMandat(t) ? (form.exclusivite || null) : null,
+      motif_perdu: motifFinal,
+      date_debut_mandat: t === "mandat_gestion" ? (form.date_debut_mandat || null) : null,
+      duree_indeterminee: t === "mandat_gestion" ? form.duree_indeterminee : true,
+      date_fin_mandat: t === "mandat_gestion" && !form.duree_indeterminee ? (form.date_fin_mandat || null) : null,
+    };
+    const { error } = await supabase.from("transactions_commerciales").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
+  };
+
+  const setType = (v: string) => {
+    setForm((f) => ({
+      ...f,
+      type_transaction: v,
+      exclusivite: isMandat(v) ? defaultExclusivite(v) : "",
+    }));
   };
 
   const fmt = (d: Date | null) => d ? format(d, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—";
