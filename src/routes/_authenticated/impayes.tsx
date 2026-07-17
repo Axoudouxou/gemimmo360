@@ -31,6 +31,9 @@ export const Route = createFileRoute("/_authenticated/impayes")({
       { name: "description", content: "Suivi des impayés et relances." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: ImpayesPage,
 });
 
@@ -41,7 +44,8 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "direction", "recouvrement"] as const;
+const READ_BLOCKED = ["en_attente"] as const;
+const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] as const;
 
 type Impaye = {
   id: string;
@@ -96,12 +100,14 @@ function ImpayesPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!r || (READ_BLOCKED as readonly string[]).includes(r)) {
         toast.error("Accès refusé");
         navigate({ to: "/dashboard", replace: true });
       }
     })();
   }, [navigate]);
+
+  const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
 
   const load = async () => {
     setLoading(true);
@@ -122,8 +128,16 @@ function ImpayesPage() {
   };
 
   useEffect(() => {
-    if (role && (ALLOWED as readonly string[]).includes(role)) load();
+    if (role && !(READ_BLOCKED as readonly string[]).includes(role)) load();
   }, [role]);
+
+  // Auto-open detail from ?open=<id>
+  const routeSearch = Route.useSearch();
+  useEffect(() => {
+    if (!routeSearch.open || impayes.length === 0) return;
+    const found = impayes.find((i) => i.id === routeSearch.open);
+    if (found) { setSelected(found); setDetailOpen(true); }
+  }, [routeSearch.open, impayes]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
@@ -237,6 +251,7 @@ function ImpayesPage() {
               <CardTitle>Impayés</CardTitle>
               <CardDescription>Suivi des échéances et relances.</CardDescription>
             </div>
+            {canWrite && (
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -305,6 +320,7 @@ function ImpayesPage() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </CardHeader>
           <CardContent>
             <FilterBar
@@ -363,7 +379,16 @@ function ImpayesPage() {
           </CardContent>
         </Card>
 
-        <ImpayeDetailDialog impaye={selected} open={detailOpen} onOpenChange={setDetailOpen} />
+        <ImpayeDetailDialog
+          impaye={selected}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          role={role ?? undefined}
+          onUpdated={(u) => {
+            setSelected(u);
+            setImpayes((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+          }}
+        />
       </main>
     </div>
   );

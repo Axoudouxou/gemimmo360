@@ -18,6 +18,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: TravauxPage,
 });
 
@@ -90,6 +93,14 @@ function TravauxPage() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Auto-open detail from ?open=<id>
+  const routeSearch = Route.useSearch();
+  useEffect(() => {
+    if (!routeSearch.open || travaux.length === 0) return;
+    const found = travaux.find((t: Travail) => t.id === routeSearch.open);
+    if (found) setDetail(found);
+  }, [routeSearch.open, travaux]);
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
@@ -233,7 +244,7 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           </div>
 
           <div className="border-t pt-3">
-            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} />
+            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} entityType="travaux" entityId={travail.id} link={`/travaux?open=${travail.id}`} entityTitle={travail.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">

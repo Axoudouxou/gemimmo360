@@ -17,6 +17,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/reclamations")({
   head: () => ({ meta: [{ title: "Réclamations — Agence Immobilière" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: ReclamationsPage,
 });
 
@@ -93,6 +96,14 @@ function ReclamationsPage() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Auto-open detail from ?open=<id>
+  const routeSearch = Route.useSearch();
+  useEffect(() => {
+    if (!routeSearch.open || items.length === 0) return;
+    const found = items.find((r: Reclamation) => r.id === routeSearch.open);
+    if (found) setDetail(found);
+  }, [routeSearch.open, items]);
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
@@ -213,7 +224,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
           {rec.description && <div className="bg-muted/40 rounded p-2 whitespace-pre-wrap">{rec.description}</div>}
 
           <div className="border-t pt-3">
-            <CommentSection table="reclamations_commentaires" fkColumn="reclamation_id" recordId={rec.id} canComment={perms.canComment} />
+            <CommentSection table="reclamations_commentaires" fkColumn="reclamation_id" recordId={rec.id} canComment={perms.canComment} entityType="reclamation" entityId={rec.id} link={`/reclamations?open=${rec.id}`} entityTitle={rec.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">

@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/calendrier")({
     lot_id: typeof s.lot_id === "string" ? s.lot_id : undefined,
     contrat_id: typeof s.contrat_id === "string" ? s.contrat_id : undefined,
     contact_id: typeof s.contact_id === "string" ? s.contact_id : undefined,
+    open: typeof s.open === "string" ? s.open : undefined,
   }),
   component: CalendrierPage,
 });
@@ -102,6 +103,13 @@ function CalendrierPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Auto-open detail from ?open=<id>
+  useEffect(() => {
+    if (!search.open || items.length === 0) return;
+    const found = items.find((a) => a.id === search.open);
+    if (found) setDetail(found);
+  }, [search.open, items]);
 
   // Filter items by range
   const filteredItems = useMemo(() => {

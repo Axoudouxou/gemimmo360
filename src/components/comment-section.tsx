@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,46 +8,202 @@ import { toast } from "sonner";
 type Comment = { id: string; auteur: string; contenu: string; created_at: string };
 type Profile = { id: string; email: string | null };
 
+type CommentTable = "travaux_commentaires" | "reclamations_commentaires" | "impayes_commentaires" | "activite_commentaires";
+type FkColumn = "travaux_id" | "reclamation_id" | "impaye_id" | "activite_id";
+
+type EntityCtx =
+  | { entityType: "travaux"; entityId: string; link: string }
+  | { entityType: "reclamation"; entityId: string; link: string }
+  | { entityType: "impaye"; entityId: string; link: string }
+  | { entityType: "activite"; entityId: string; link: string }
+  | { entityType?: undefined; entityId?: undefined; link?: undefined };
+
+function localPart(email: string | null | undefined) {
+  if (!email) return "";
+  return email.split("@")[0] ?? "";
+}
+
+function renderWithMentions(text: string, mentionSet: Set<string>) {
+  const parts = text.split(/(@[\w.-]+)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith("@")) {
+      const key = p.slice(1).toLowerCase();
+      if (mentionSet.has(key)) {
+        return (
+          <span key={i} className="text-emerald-600 font-medium bg-emerald-50 rounded px-0.5">
+            {p}
+          </span>
+        );
+      }
+    }
+    return <span key={i}>{p}</span>;
+  });
+}
+
 /**
- * Section de commentaires générique pour travaux / réclamations.
- * table = "travaux_commentaires" ou "reclamations_commentaires"
- * fkColumn = "travaux_id" ou "reclamation_id"
+ * Section de commentaires générique (travaux / réclamations / impayés).
+ * Supporte @mentions avec autocomplétion et notifications.
  */
-export function CommentSection({ table, fkColumn, recordId, canComment }: {
-  table: "travaux_commentaires" | "reclamations_commentaires";
-  fkColumn: "travaux_id" | "reclamation_id";
-  recordId: string;
-  canComment: boolean;
-}) {
+export function CommentSection(
+  props: {
+    table: CommentTable;
+    fkColumn: FkColumn;
+    recordId: string;
+    canComment: boolean;
+    entityTitle?: string;
+  } & EntityCtx,
+) {
+  const { table, fkColumn, recordId, canComment, entityType, entityId, link, entityTitle } = props;
   const [items, setItems] = useState<Comment[]>([]);
-  const [authors, setAuthors] = useState<Map<string, Profile>>(new Map());
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [me, setMe] = useState<string>("");
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const authorsMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
+  const knownHandles = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of profiles) {
+      const lp = localPart(p.email).toLowerCase();
+      if (lp) s.add(lp);
+    }
+    return s;
+  }, [profiles]);
 
   const load = async () => {
     const { data: userRes } = await supabase.auth.getUser();
     setMe(userRes.user?.id ?? "");
-    const { data, error } = await (supabase.from(table) as any).select("id, auteur, contenu, created_at").eq(fkColumn, recordId).order("created_at", { ascending: true });
+    const { data, error } = await (supabase.from(table) as any)
+      .select("id, auteur, contenu, created_at")
+      .eq(fkColumn, recordId)
+      .order("created_at", { ascending: true });
     if (error) return;
-    const list = (data ?? []) as Comment[];
-    setItems(list);
-    const ids = Array.from(new Set(list.map((c) => c.auteur)));
-    if (ids.length) {
-      const { data: pData } = await supabase.from("profiles").select("id, email").in("id", ids);
-      setAuthors(new Map(((pData ?? []) as Profile[]).map((p) => [p.id, p])));
-    }
+    setItems((data ?? []) as Comment[]);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [recordId]);
+  const loadProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("id, email").order("email");
+    setProfiles((data ?? []) as Profile[]);
+  };
+
+  useEffect(() => {
+    load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [recordId, table]);
+  useEffect(() => {
+    loadProfiles();
+  }, []);
+
+  const filteredMentions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return profiles
+      .filter((p) => p.id !== me)
+      .filter((p) => {
+        const lp = localPart(p.email).toLowerCase();
+        return !q || lp.startsWith(q) || lp.includes(q);
+      })
+      .slice(0, 6);
+  }, [mentionQuery, profiles, me]);
+
+  function onContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setContent(val);
+    const caret = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, caret);
+    const match = before.match(/(?:^|\s)@([\w.-]*)$/);
+    if (match) {
+      setMentionQuery(match[1] ?? "");
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  function insertMention(profile: Profile) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? content.length;
+    const before = content.slice(0, caret);
+    const after = content.slice(caret);
+    const handle = localPart(profile.email);
+    const replaced = before.replace(/(?:^|\s)@([\w.-]*)$/, (m) => {
+      const lead = m.startsWith("@") ? "" : m.charAt(0);
+      return `${lead}@${handle} `;
+    });
+    const next = replaced + after;
+    setContent(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = replaced.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery === null || filteredMentions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionIndex((i) => Math.min(i + 1, filteredMentions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertMention(filteredMentions[mentionIndex]);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+    }
+  }
+
+  function extractMentionedIds(text: string): string[] {
+    const found = new Set<string>();
+    const re = /(?:^|\s)@([\w.-]+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const handle = m[1].toLowerCase();
+      const prof = profiles.find((p) => localPart(p.email).toLowerCase() === handle);
+      if (prof && prof.id !== me) found.add(prof.id);
+    }
+    return Array.from(found);
+  }
 
   const submit = async () => {
     if (!content.trim()) return;
     setSending(true);
-    const { error } = await (supabase.from(table) as any).insert({ [fkColumn]: recordId, auteur: me, contenu: content.trim() });
+    const contenu = content.trim();
+    const { error } = await (supabase.from(table) as any).insert({
+      [fkColumn]: recordId,
+      auteur: me,
+      contenu,
+    });
     setSending(false);
     if (error) return toast.error(error.message);
-    setContent(""); load();
+
+    // Send mention notifications
+    if (entityType && entityId && link) {
+      const mentioned = extractMentionedIds(contenu);
+      const meEmail = authorsMap.get(me)?.email ?? "";
+      const author = localPart(meEmail) || "quelqu'un";
+      await Promise.all(
+        mentioned.map((uid) =>
+          supabase.rpc("notify_mention", {
+            _user_id: uid,
+            _title: "Vous avez été mentionné",
+            _message: `${author} vous a mentionné${entityTitle ? ` sur : ${entityTitle}` : ""}`,
+            _link: link,
+            _entity_type: entityType,
+            _entity_id: entityId,
+          }),
+        ),
+      );
+    }
+
+    setContent("");
+    load();
   };
 
   const remove = async (id: string) => {
@@ -69,12 +224,18 @@ export function CommentSection({ table, fkColumn, recordId, canComment }: {
           {items.map((c) => (
             <li key={c.id} className="rounded-md border p-2 text-sm bg-muted/30">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-xs text-muted-foreground">{authors.get(c.auteur)?.email ?? "—"} • {fmt(c.created_at)}</div>
-                  <div className="whitespace-pre-wrap">{c.contenu}</div>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">
+                    {authorsMap.get(c.auteur)?.email ?? "—"} • {fmt(c.created_at)}
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">
+                    {renderWithMentions(c.contenu, knownHandles)}
+                  </div>
                 </div>
                 {c.auteur === me && (
-                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 )}
               </div>
             </li>
@@ -82,9 +243,38 @@ export function CommentSection({ table, fkColumn, recordId, canComment }: {
         </ul>
       )}
       {canComment && (
-        <div className="flex gap-2">
-          <Textarea rows={2} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Ajouter un commentaire..." />
-          <Button size="icon" onClick={submit} disabled={sending || !content.trim()}><Send className="h-4 w-4" /></Button>
+        <div className="relative">
+          <div className="flex gap-2">
+            <Textarea
+              ref={textareaRef}
+              rows={2}
+              value={content}
+              onChange={onContentChange}
+              onKeyDown={onKeyDown}
+              placeholder="Ajouter un commentaire... (tapez @ pour mentionner)"
+            />
+            <Button size="icon" onClick={submit} disabled={sending || !content.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+          {mentionQuery !== null && filteredMentions.length > 0 && (
+            <div className="absolute z-30 left-0 bottom-full mb-1 w-64 rounded-md border bg-popover shadow-md p-1">
+              {filteredMentions.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insertMention(p);
+                  }}
+                  className={`w-full text-left px-2 py-1.5 text-sm rounded ${i === mentionIndex ? "bg-accent" : "hover:bg-accent/60"}`}
+                >
+                  <span className="text-emerald-600 font-medium">@{localPart(p.email)}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{p.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -95,12 +285,13 @@ export function computePerms(role: string, createdBy: string | null, uid: string
   const isCreator = !!createdBy && createdBy === uid;
   const isAdmin = role === "admin" || role === "direction";
   const isTech = role === "technique";
+  const isJuridique = role === "juridique";
   const locked = role === "recouvrement" || role === "en_attente";
   return {
     canRead: !locked,
     canComment: !locked,
-    canEditFull: isCreator || isAdmin,
-    canEditLimited: isTech && !isCreator && !isAdmin,
-    canDelete: isCreator || role === "admin" || role === "direction",
+    canEditFull: isCreator || isAdmin || isJuridique,
+    canEditLimited: (isTech && !isCreator && !isAdmin) && !isJuridique,
+    canDelete: isCreator || isAdmin,
   };
 }

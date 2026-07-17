@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { CommentSection } from "@/components/comment-section";
 
 type Profile = { id: string; email: string | null; role?: string };
 
@@ -230,40 +231,16 @@ export function ActiviteDetailDialog({
 
           <Separator />
 
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              Commentaires ({commentaires.length})
-            </div>
-            <div className="space-y-2">
-              {commentaires.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun commentaire pour l'instant.</p>
-              ) : (
-                commentaires.map((c) => (
-                  <div key={c.id} className="rounded-md border p-2.5">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{nameOf(c.auteur)}</span>
-                      <span>{formatDistanceToNow(new Date(c.created_at), { locale: fr, addSuffix: true })}</span>
-                    </div>
-                    <div className="mt-1 text-sm whitespace-pre-wrap">{c.contenu}</div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="mt-3 space-y-2">
-              <Textarea
-                placeholder="Ajouter un commentaire…"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                rows={2}
-              />
-              <div className="flex justify-end">
-                <Button size="sm" onClick={publishComment} disabled={posting || !newComment.trim()}>
-                  Publier
-                </Button>
-              </div>
-            </div>
-          </div>
+          <CommentSection
+            table="activite_commentaires"
+            fkColumn="activite_id"
+            recordId={activite.id}
+            canComment={true}
+            entityType="activite"
+            entityId={activite.id}
+            link={`/calendrier?open=${activite.id}`}
+            entityTitle={activite.titre}
+          />
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">

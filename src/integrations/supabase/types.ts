@@ -686,6 +686,73 @@ export type Database = {
           },
         ]
       }
+      impayes_commentaires: {
+        Row: {
+          auteur: string
+          contenu: string
+          created_at: string
+          id: string
+          impaye_id: string
+        }
+        Insert: {
+          auteur: string
+          contenu: string
+          created_at?: string
+          id?: string
+          impaye_id: string
+        }
+        Update: {
+          auteur?: string
+          contenu?: string
+          created_at?: string
+          id?: string
+          impaye_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impayes_commentaires_impaye_id_fkey"
+            columns: ["impaye_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impayes_statut_historique: {
+        Row: {
+          ancien_statut: string | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          impaye_id: string
+          nouveau_statut: string
+        }
+        Insert: {
+          ancien_statut?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          impaye_id: string
+          nouveau_statut: string
+        }
+        Update: {
+          ancien_statut?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          impaye_id?: string
+          nouveau_statut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impayes_statut_historique_impaye_id_fkey"
+            columns: ["impaye_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imports: {
         Row: {
           created_at: string
@@ -1166,6 +1233,17 @@ export type Database = {
         Returns: number
       }
       notif_display_name: { Args: { _user_id: string }; Returns: string }
+      notify_mention: {
+        Args: {
+          _entity_id: string
+          _entity_type: string
+          _link: string
+          _message: string
+          _title: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

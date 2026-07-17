@@ -16,6 +16,8 @@ type Notification = {
   title: string;
   message: string | null;
   link: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
   read: boolean;
   created_at: string;
 };
@@ -28,6 +30,13 @@ function timeAgo(iso: string) {
   return `il y a ${Math.floor(diff / 86400)} j`;
 }
 
+const ENTITY_ROUTE: Record<string, string> = {
+  activite: "/calendrier",
+  travaux: "/travaux",
+  reclamation: "/reclamations",
+  impaye: "/impayes",
+};
+
 export function NotificationsBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
@@ -36,7 +45,7 @@ export function NotificationsBell() {
   const load = useCallback(async () => {
     const { data } = await supabase
       .from("notifications")
-      .select("id, type, title, message, link, read, created_at")
+      .select("id, type, title, message, link, entity_type, entity_id, read, created_at")
       .order("created_at", { ascending: false })
       .limit(30);
     setItems((data ?? []) as Notification[]);
@@ -63,7 +72,13 @@ export function NotificationsBell() {
   async function openItem(n: Notification) {
     if (!n.read) await markOne(n.id);
     setOpen(false);
-    if (n.link) navigate({ to: n.link });
+    const route = n.entity_type ? ENTITY_ROUTE[n.entity_type] : undefined;
+    if (route && n.entity_id) {
+      navigate({ to: route as never, search: { open: n.entity_id } as never });
+    } else if (n.link) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigate({ to: n.link as any });
+    }
   }
 
   return (
