@@ -251,6 +251,7 @@ function ImpayesPage() {
               <CardTitle>Impayés</CardTitle>
               <CardDescription>Suivi des échéances et relances.</CardDescription>
             </div>
+            {canWrite && (
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button size="sm">
