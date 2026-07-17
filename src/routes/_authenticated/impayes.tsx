@@ -31,6 +31,9 @@ export const Route = createFileRoute("/_authenticated/impayes")({
       { name: "description", content: "Suivi des impayés et relances." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: ImpayesPage,
 });
 
@@ -41,7 +44,8 @@ const STATUTS = [
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const ALLOWED = ["admin", "direction", "recouvrement"] as const;
+const READ_BLOCKED = ["en_attente"] as const;
+const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] as const;
 
 type Impaye = {
   id: string;
