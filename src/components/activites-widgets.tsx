@@ -250,6 +250,7 @@ type LinkedProps = {
   lotId?: string;
   contratId?: string;
   contactId?: string;
+  transactionId?: string;
 };
 
 export function ActivitesLiees(props: LinkedProps) {
