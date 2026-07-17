@@ -68,8 +68,10 @@ export type Database = {
           lot_id: string | null
           notes: string | null
           priorite: string
+          recurrence: string
           statut: string
           titre: string
+          transaction_id: string | null
           type_activite: string
           updated_at: string
         }
@@ -87,8 +89,10 @@ export type Database = {
           lot_id?: string | null
           notes?: string | null
           priorite?: string
+          recurrence?: string
           statut?: string
           titre: string
+          transaction_id?: string | null
           type_activite?: string
           updated_at?: string
         }
@@ -106,8 +110,10 @@ export type Database = {
           lot_id?: string | null
           notes?: string | null
           priorite?: string
+          recurrence?: string
           statut?: string
           titre?: string
+          transaction_id?: string | null
           type_activite?: string
           updated_at?: string
         }
@@ -152,6 +158,13 @@ export type Database = {
             columns: ["lot_id"]
             isOneToOne: false
             referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_commerciales"
             referencedColumns: ["id"]
           },
         ]

@@ -34,6 +34,15 @@ export type Activite = {
   lot_id: string | null;
   contrat_id: string | null;
   contact_id: string | null;
+  transaction_id?: string | null;
+  recurrence?: string | null;
+};
+
+export const RECURRENCE_LABELS: Record<string, string> = {
+  aucune: "Aucune",
+  quotidienne: "Quotidienne",
+  hebdomadaire: "Hebdomadaire",
+  mensuelle: "Mensuelle",
 };
 
 export const TYPE_LABELS: Record<string, string> = {
@@ -241,6 +250,7 @@ type LinkedProps = {
   lotId?: string;
   contratId?: string;
   contactId?: string;
+  transactionId?: string;
 };
 
 export function ActivitesLiees(props: LinkedProps) {
@@ -253,10 +263,11 @@ export function ActivitesLiees(props: LinkedProps) {
     else if (props.lotId) q = q.eq("lot_id", props.lotId);
     else if (props.contratId) q = q.eq("contrat_id", props.contratId);
     else if (props.contactId) q = q.eq("contact_id", props.contactId);
+    else if (props.transactionId) q = q.eq("transaction_id", props.transactionId);
     else return;
     const { data } = await q;
     setItems((data ?? []) as Activite[]);
-  }, [props.bienId, props.lotId, props.contratId, props.contactId]);
+  }, [props.bienId, props.lotId, props.contratId, props.contactId, props.transactionId]);
 
   useEffect(() => {
     load();
@@ -294,7 +305,7 @@ export function ActivitesLiees(props: LinkedProps) {
 
 type OptionRow = { id: string; label: string };
 
-function NouvelleActiviteLieeDialog({
+export function NouvelleActiviteLieeDialog({
   open,
   setOpen,
   defaults,
@@ -319,11 +330,13 @@ function NouvelleActiviteLieeDialog({
   const [lotId, setLotId] = useState<string>(defaults.lotId ?? "");
   const [contratId, setContratId] = useState<string>(defaults.contratId ?? "");
   const [contactId, setContactId] = useState<string>(defaults.contactId ?? "");
+  const [transactionId, setTransactionId] = useState<string>(defaults.transactionId ?? "");
 
   const [biens, setBiens] = useState<OptionRow[]>([]);
   const [lots, setLots] = useState<OptionRow[]>([]);
   const [contrats, setContrats] = useState<OptionRow[]>([]);
   const [contacts, setContacts] = useState<OptionRow[]>([]);
+  const [transactions, setTransactions] = useState<OptionRow[]>([]);
 
   const [saving, setSaving] = useState(false);
 
@@ -334,19 +347,21 @@ function NouvelleActiviteLieeDialog({
     setLotId(defaults.lotId ?? "");
     setContratId(defaults.contratId ?? "");
     setContactId(defaults.contactId ?? "");
-  }, [open, defaults.bienId, defaults.lotId, defaults.contratId, defaults.contactId]);
+    setTransactionId(defaults.transactionId ?? "");
+  }, [open, defaults.bienId, defaults.lotId, defaults.contratId, defaults.contactId, defaults.transactionId]);
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (u.user) setAssigne((prev) => prev || u.user!.id);
-      const [p, b, l, ct, c] = await Promise.all([
+      const [p, b, l, ct, c, tx] = await Promise.all([
         supabase.from("profiles").select("id, email").order("email"),
         supabase.from("biens").select("id, titre").order("titre").limit(300),
         supabase.from("lots").select("id, label, bien_id").order("label").limit(500),
         supabase.from("contrats").select("id, lot_id, date_debut, statut").order("date_debut", { ascending: false }).limit(300),
         supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(500),
+        supabase.from("transactions_commerciales").select("id, contact_id, bien_id, type_transaction, statut_opportunite").order("created_at", { ascending: false }).limit(300),
       ]);
       setProfiles(((p.data ?? []) as Array<{ id: string; email: string | null }>)
         .map((r) => ({ id: r.id, label: r.email ?? r.id.slice(0, 8) })));
@@ -358,6 +373,8 @@ function NouvelleActiviteLieeDialog({
         .map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
       setContacts(((c.data ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>)
         .map((r) => ({ id: r.id, label: `${r.nom ?? ""} ${r.prenom ?? ""}`.trim() || r.id.slice(0, 8) })));
+      setTransactions(((tx.data ?? []) as Array<{ id: string; type_transaction: string | null; statut_opportunite: string | null }>)
+        .map((r) => ({ id: r.id, label: `${r.type_transaction ?? ""} · ${r.statut_opportunite ?? ""}` })));
     })();
   }, [open]);
 
@@ -379,6 +396,7 @@ function NouvelleActiviteLieeDialog({
       lot_id: lotId || null,
       contrat_id: contratId || null,
       contact_id: contactId || null,
+      transaction_id: transactionId || null,
       statut: type === "tache" ? "a_faire" : "planifiee",
     });
     setSaving(false);
@@ -477,6 +495,7 @@ function NouvelleActiviteLieeDialog({
             <LinkSelect label="Lot" value={lotId} onChange={setLotId} options={lots} prefilled={!!defaults.lotId} />
             <LinkSelect label="Contrat" value={contratId} onChange={setContratId} options={contrats} prefilled={!!defaults.contratId} />
             <LinkSelect label="Contact" value={contactId} onChange={setContactId} options={contacts} prefilled={!!defaults.contactId} />
+            <LinkSelect label="Transaction" value={transactionId} onChange={setTransactionId} options={transactions} prefilled={!!defaults.transactionId} />
           </div>
         </div>
         <DialogFooter>

@@ -11,10 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  addDays,
   addMonths,
+  addWeeks,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -26,7 +29,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
 import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
@@ -41,14 +44,32 @@ export const Route = createFileRoute("/_authenticated/calendrier")({
     lot_id: typeof s.lot_id === "string" ? s.lot_id : undefined,
     contrat_id: typeof s.contrat_id === "string" ? s.contrat_id : undefined,
     contact_id: typeof s.contact_id === "string" ? s.contact_id : undefined,
+    transaction_id: typeof s.transaction_id === "string" ? s.transaction_id : undefined,
     open: typeof s.open === "string" ? s.open : undefined,
   }),
   component: CalendrierPage,
 });
 
 type Profile = { id: string; email: string | null; role: string };
-
 type Range = "today" | "week" | "month" | "custom";
+
+const LIE_TYPES = [
+  { value: "none", label: "Aucun" },
+  { value: "bien", label: "Bien" },
+  { value: "lot", label: "Lot" },
+  { value: "contrat", label: "Contrat" },
+  { value: "contact", label: "Contact" },
+  { value: "transaction", label: "Transaction" },
+] as const;
+
+type LinkOpt = { id: string; label: string };
+
+function nextRecurrenceDate(current: Date, recurrence: string): Date | null {
+  if (recurrence === "quotidienne") return addDays(current, 1);
+  if (recurrence === "hebdomadaire") return addWeeks(current, 1);
+  if (recurrence === "mensuelle") return addMonths(current, 1);
+  return null;
+}
 
 function CalendrierPage() {
   const search = Route.useSearch();
@@ -60,11 +81,12 @@ function CalendrierPage() {
   const [range, setRange] = useState<Range>("month");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
 
-  // Load me + profiles
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
@@ -78,8 +100,6 @@ function CalendrierPage() {
       setProfiles((all ?? []) as Profile[]);
     })();
   }, []);
-
-  void viewingUserId;
 
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
     const today = startOfDay(new Date());
@@ -100,27 +120,23 @@ function CalendrierPage() {
     setItems((data ?? []) as Activite[]);
   }, [viewingUserId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Auto-open detail from ?open=<id>
   useEffect(() => {
     if (!search.open || items.length === 0) return;
     const found = items.find((a) => a.id === search.open);
     if (found) setDetail(found);
   }, [search.open, items]);
 
-  // Filter items by range
   const filteredItems = useMemo(() => {
     return items.filter((a) => {
+      if (typeFilter !== "all" && a.type_activite !== typeFilter) return false;
       if (!a.date_debut) return range === "month" || range === "custom";
       const d = new Date(a.date_debut);
       return d >= rangeStart && d <= rangeEnd;
     });
-  }, [items, rangeStart, rangeEnd, range]);
+  }, [items, rangeStart, rangeEnd, range, typeFilter]);
 
-  // Calendar grid days
   const days = useMemo(() => {
     const gridStart = startOfWeek(startOfMonth(monthCursor), { weekStartsOn: 1 });
     const gridEnd = endOfWeek(endOfMonth(monthCursor), { weekStartsOn: 1 });
@@ -129,30 +145,67 @@ function CalendrierPage() {
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, Activite[]>();
+    const seen = new Set<string>();
     for (const a of items) {
       if (!a.date_debut) continue;
+      if (seen.has(a.id)) continue;
+      seen.add(a.id);
+      if (typeFilter !== "all" && a.type_activite !== typeFilter) continue;
       const key = format(new Date(a.date_debut), "yyyy-MM-dd");
       const arr = map.get(key) ?? [];
       arr.push(a);
       map.set(key, arr);
     }
     return map;
-  }, [items]);
+  }, [items, typeFilter]);
 
-  // Tasks grouped
-  const tasksAFaire = filteredItems.filter((a) => a.statut === "a_faire");
+  const tasksAFaire = filteredItems.filter((a) => a.statut === "a_faire" || a.statut === "planifiee");
   const tasksEnCours = filteredItems.filter((a) => a.statut === "en_cours");
   const tasksFait = filteredItems.filter((a) => a.statut === "fait" || a.statut === "realisee");
+  const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
 
-  const handleToggle = async (a: Activite, done: boolean) => {
+  const setStatut = async (a: Activite, newStatut: string) => {
     const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
     if (!perms.canChangeStatut) {
       toast.error("Vous ne pouvez pas modifier cette tâche.");
       return;
     }
-    const { error } = await supabase.from("activites").update({ statut: done ? "fait" : "a_faire" }).eq("id", a.id);
-    if (error) toast.error(error.message);
+    const { error } = await supabase.from("activites").update({ statut: newStatut }).eq("id", a.id);
+    if (error) { toast.error(error.message); return; }
+
+    // Recurrence: mark done → create next occurrence
+    const isDone = newStatut === "fait" || newStatut === "realisee";
+    const wasDone = a.statut === "fait" || a.statut === "realisee";
+    if (isDone && !wasDone && a.recurrence && a.recurrence !== "aucune" && a.date_debut) {
+      const next = nextRecurrenceDate(new Date(a.date_debut), a.recurrence);
+      if (next) {
+        const nextFin = a.date_fin ? nextRecurrenceDate(new Date(a.date_fin), a.recurrence) : null;
+        await supabase.from("activites").insert({
+          titre: a.titre,
+          type_activite: a.type_activite,
+          date_debut: next.toISOString(),
+          date_fin: nextFin ? nextFin.toISOString() : null,
+          assigne_a: a.assigne_a,
+          created_by: me?.id ?? null,
+          lieu: a.lieu,
+          priorite: a.priorite,
+          notes: a.notes,
+          bien_id: a.bien_id,
+          lot_id: a.lot_id,
+          contrat_id: a.contrat_id,
+          contact_id: a.contact_id,
+          transaction_id: a.transaction_id ?? null,
+          recurrence: a.recurrence,
+          statut: a.type_activite === "tache" ? "a_faire" : "planifiee",
+        });
+        toast.success("Prochaine occurrence créée");
+      }
+    }
     load();
+  };
+
+  const handleToggle = async (a: Activite, done: boolean) => {
+    await setStatut(a, done ? "fait" : "a_faire");
   };
 
   const handleDelete = async (a: Activite) => {
@@ -165,6 +218,27 @@ function CalendrierPage() {
     load();
   };
 
+  const handleQuickAdd = async () => {
+    const t = quickTitle.trim();
+    if (!t || !me) return;
+    const { error } = await supabase.from("activites").insert({
+      titre: t,
+      type_activite: "tache",
+      assigne_a: me.id,
+      created_by: me.id,
+      priorite: "normale",
+      statut: "a_faire",
+    });
+    if (error) return toast.error(error.message);
+    setQuickTitle("");
+    load();
+  };
+
+  const handleDrop = async (a: Activite, target: "a_faire" | "en_cours" | "fait" | "annulee") => {
+    if (a.statut === target) return;
+    await setStatut(a, target);
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -174,9 +248,7 @@ function CalendrierPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={viewingUserId} onValueChange={setViewingUserId}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Voir le calendrier de" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[240px]"><SelectValue placeholder="Voir le calendrier de" /></SelectTrigger>
             <SelectContent>
               {profiles.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
@@ -212,6 +284,13 @@ function CalendrierPage() {
             <Input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="w-[160px]" />
           </>
         )}
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les types</SelectItem>
+            {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="calendar">
@@ -274,10 +353,32 @@ function CalendrierPage() {
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <TaskColumn title="À faire" items={tasksAFaire} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="En cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} />
-            <TaskColumn title="Fait" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} done />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <TaskColumn
+              title="À faire / Planifiée"
+              targetStatut="a_faire"
+              items={tasksAFaire}
+              me={me}
+              onOpen={setDetail}
+              onToggle={handleToggle}
+              onEdit={setEditing}
+              onDelete={handleDelete}
+              onDrop={handleDrop}
+              quickAdd={
+                <div className="mb-2 flex gap-2">
+                  <Input
+                    value={quickTitle}
+                    onChange={(e) => setQuickTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(); }}
+                    placeholder="Ajouter une tâche..."
+                    className="h-8 text-sm"
+                  />
+                </div>
+              }
+            />
+            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="Fait / Réalisée" targetStatut="fait" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
+            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
           </div>
         </TabsContent>
       </Tabs>
@@ -311,35 +412,62 @@ function CalendrierPage() {
 
 function TaskColumn({
   title,
+  targetStatut,
   items,
   me,
   onOpen,
   onToggle,
   onEdit,
   onDelete,
+  onDrop,
   done = false,
+  quickAdd,
 }: {
   title: string;
+  targetStatut: "a_faire" | "en_cours" | "fait" | "annulee";
   items: Activite[];
   me: Profile | null;
   onOpen: (a: Activite) => void;
   onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
   onDelete: (a: Activite) => void;
+  onDrop: (a: Activite, target: "a_faire" | "en_cours" | "fait" | "annulee") => void;
   done?: boolean;
+  quickAdd?: React.ReactNode;
 }) {
+  const [dragOver, setDragOver] = useState(false);
   return (
-    <Card>
+    <Card
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const id = e.dataTransfer.getData("text/plain");
+        const a = items.find((x) => x.id === id);
+        // The dropped card may not exist in this column; caller lookup via parent items is unavailable, so rely on data
+        const dropped: Activite | undefined = a ?? (window as unknown as { __draggedActivite?: Activite }).__draggedActivite;
+        if (dropped) onDrop(dropped, targetStatut);
+      }}
+      className={dragOver ? "ring-2 ring-primary" : ""}
+    >
       <CardHeader className="pb-2"><CardTitle className="text-base">{title} ({items.length})</CardTitle></CardHeader>
       <CardContent className="space-y-2">
+        {quickAdd}
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
         ) : items.map((a) => {
           const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+          const isDoneCard = a.statut === "fait" || a.statut === "realisee";
           return (
             <div
               key={a.id}
-              className={`flex items-start gap-2 rounded border p-2 cursor-pointer hover:bg-muted/40 ${a.priorite === "urgente" ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", a.id);
+                (window as unknown as { __draggedActivite?: Activite }).__draggedActivite = a;
+              }}
+              className={`flex items-start gap-2 rounded border p-2 cursor-pointer hover:bg-muted/40 ${a.priorite === "urgente" && !isDoneCard ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}
               onClick={() => onOpen(a)}
             >
               <div onClick={(e) => e.stopPropagation()}>
@@ -361,6 +489,7 @@ function TaskColumn({
                   {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
                   {a.lieu ? ` · ${a.lieu}` : ""}
                   {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                  {a.recurrence && a.recurrence !== "aucune" ? ` · ↻ ${RECURRENCE_LABELS[a.recurrence]}` : ""}
                 </div>
               </div>
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -399,7 +528,7 @@ function ActiviteDialog({
   open: boolean;
   setOpen: (b: boolean) => void;
   defaultAssignee: string;
-  defaults: { bien_id?: string; lot_id?: string; contrat_id?: string; contact_id?: string };
+  defaults: { bien_id?: string; lot_id?: string; contrat_id?: string; contact_id?: string; transaction_id?: string };
   profiles: Profile[];
   onSaved: () => void;
   initial?: Activite;
@@ -415,9 +544,61 @@ function ActiviteDialog({
   const [priorite, setPriorite] = useState(initial?.priorite ?? "normale");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [statut, setStatut] = useState(initial?.statut ?? "a_faire");
+  const [recurrence, setRecurrence] = useState<string>(initial?.recurrence ?? "aucune");
   const [saving, setSaving] = useState(false);
 
+  // Lié à
+  const initialLieType: string = initial?.bien_id ? "bien"
+    : initial?.lot_id ? "lot"
+    : initial?.contrat_id ? "contrat"
+    : initial?.contact_id ? "contact"
+    : initial?.transaction_id ? "transaction"
+    : defaults.bien_id ? "bien"
+    : defaults.lot_id ? "lot"
+    : defaults.contrat_id ? "contrat"
+    : defaults.contact_id ? "contact"
+    : defaults.transaction_id ? "transaction"
+    : "none";
+  const initialLieId: string = initial?.bien_id ?? initial?.lot_id ?? initial?.contrat_id ?? initial?.contact_id ?? initial?.transaction_id
+    ?? defaults.bien_id ?? defaults.lot_id ?? defaults.contrat_id ?? defaults.contact_id ?? defaults.transaction_id ?? "";
+  const [lieType, setLieType] = useState<string>(initialLieType);
+  const [lieId, setLieId] = useState<string>(initialLieId);
+  const [linkOpts, setLinkOpts] = useState<LinkOpt[]>([]);
+
   useEffect(() => { if (open && !isEdit) setAssigne(defaultAssignee); }, [open, defaultAssignee, isEdit]);
+
+  // Load link options for the selected "Lié à" type
+  useEffect(() => {
+    if (!open || lieType === "none") { setLinkOpts([]); return; }
+    (async () => {
+      if (lieType === "bien") {
+        const { data } = await supabase.from("biens").select("id, titre").order("titre").limit(500);
+        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
+      } else if (lieType === "lot") {
+        const { data } = await supabase.from("lots").select("id, label").order("label").limit(1000);
+        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: r.label ?? r.id.slice(0, 8) })));
+      } else if (lieType === "contrat") {
+        const { data } = await supabase.from("contrats").select("id, date_debut, statut").order("date_debut", { ascending: false }).limit(500);
+        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
+      } else if (lieType === "contact") {
+        const { data } = await supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(1000);
+        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.nom ?? ""} ${r.prenom ?? ""}`.trim() || r.id.slice(0, 8) })));
+      } else if (lieType === "transaction") {
+        const { data } = await supabase.from("transactions_commerciales").select("id, type_transaction, statut_opportunite").order("created_at", { ascending: false }).limit(500);
+        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.type_transaction ?? ""} · ${r.statut_opportunite ?? ""}` })));
+      }
+    })();
+  }, [open, lieType]);
+
+  const applyDateShortcut = (which: "today" | "tomorrow" | "week") => {
+    const now = new Date();
+    let target: Date;
+    if (which === "today") target = now;
+    else if (which === "tomorrow") target = addDays(now, 1);
+    else target = endOfWeek(now, { weekStartsOn: 1 });
+    target.setHours(9, 0, 0, 0);
+    setDateDebut(format(target, "yyyy-MM-dd'T'HH:mm"));
+  };
 
   const save = async () => {
     if (!titre.trim() || !assigne) {
@@ -425,6 +606,13 @@ function ActiviteDialog({
       return;
     }
     setSaving(true);
+    const link = {
+      bien_id: lieType === "bien" ? lieId || null : null,
+      lot_id: lieType === "lot" ? lieId || null : null,
+      contrat_id: lieType === "contrat" ? lieId || null : null,
+      contact_id: lieType === "contact" ? lieId || null : null,
+      transaction_id: lieType === "transaction" ? lieId || null : null,
+    };
     const payload = {
       titre: titre.trim(),
       type_activite: type,
@@ -434,19 +622,17 @@ function ActiviteDialog({
       lieu: lieu.trim() || null,
       priorite,
       notes: notes.trim() || null,
+      recurrence,
     };
     let error;
     if (isEdit && initial) {
-      ({ error } = await supabase.from("activites").update({ ...payload, statut }).eq("id", initial.id));
+      ({ error } = await supabase.from("activites").update({ ...payload, ...link, statut }).eq("id", initial.id));
     } else {
       const { data: u } = await supabase.auth.getUser();
       ({ error } = await supabase.from("activites").insert({
         ...payload,
+        ...link,
         created_by: u.user?.id ?? null,
-        bien_id: defaults.bien_id ?? null,
-        lot_id: defaults.lot_id ?? null,
-        contrat_id: defaults.contrat_id ?? null,
-        contact_id: defaults.contact_id ?? null,
         statut: type === "tache" ? "a_faire" : "planifiee",
       }));
     }
@@ -454,7 +640,8 @@ function ActiviteDialog({
     if (error) return toast.error(error.message);
     toast.success(isEdit ? "Tâche mise à jour" : "Activité créée");
     if (!isEdit) {
-      setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache");
+      setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache"); setRecurrence("aucune");
+      setLieType("none"); setLieId("");
     }
     setOpen(false);
     onSaved();
@@ -467,7 +654,7 @@ function ActiviteDialog({
           <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle activité</Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{isEdit ? "Modifier la tâche" : "Nouvelle activité / tâche"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
@@ -505,6 +692,11 @@ function ActiviteDialog({
               <Input type="datetime-local" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("today")}>Aujourd'hui</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("tomorrow")}>Demain</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("week")}>Cette semaine</Button>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Assigné à</Label>
@@ -515,18 +707,27 @@ function ActiviteDialog({
                 </SelectContent>
               </Select>
             </div>
-            {isEdit && (
-              <div>
-                <Label>Statut</Label>
-                <Select value={statut} onValueChange={setStatut}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>Récurrence</Label>
+              <Select value={recurrence} onValueChange={setRecurrence}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(RECURRENCE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          {isEdit && (
+            <div>
+              <Label>Statut</Label>
+              <Select value={statut} onValueChange={setStatut}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Lieu</Label>
             <Input value={lieu} onChange={(e) => setLieu(e.target.value)} />
@@ -534,6 +735,26 @@ function ActiviteDialog({
           <div>
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+          </div>
+
+          <div className="rounded-md border p-3 space-y-2 bg-muted/20">
+            <Label className="text-xs font-medium text-muted-foreground">Lié à</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={lieType} onValueChange={(v) => { setLieType(v); setLieId(""); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LIE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {lieType !== "none" && (
+                <SearchableSelect
+                  value={lieId}
+                  onChange={setLieId}
+                  options={linkOpts.map((o) => ({ value: o.id, label: o.label }))}
+                  placeholder="Rechercher..."
+                />
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter>
