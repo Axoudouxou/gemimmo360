@@ -305,7 +305,7 @@ export function ActivitesLiees(props: LinkedProps) {
 
 type OptionRow = { id: string; label: string };
 
-function NouvelleActiviteLieeDialog({
+export function NouvelleActiviteLieeDialog({
   open,
   setOpen,
   defaults,
