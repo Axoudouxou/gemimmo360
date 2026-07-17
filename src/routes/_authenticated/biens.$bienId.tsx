@@ -133,6 +133,16 @@ function BienDetailPage() {
       setActiveContrats((cData ?? []) as Contrat[]);
     } else setActiveContrats([]);
 
+    const { data: mData } = await supabase
+      .from("transactions_commerciales")
+      .select("id")
+      .eq("bien_id", bienId)
+      .eq("type_transaction", "mandat_gestion")
+      .eq("statut_opportunite", "gagne")
+      .limit(1);
+    setHasMandatGem((mData ?? []).length > 0);
+
+
     setLoading(false);
   };
   useEffect(() => { load(); }, [bienId]);
