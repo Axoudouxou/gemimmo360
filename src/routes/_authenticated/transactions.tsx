@@ -79,7 +79,12 @@ function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
+  const [form, setForm] = useState({
+    contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
+    exclusivite: "non_exclusif" as "" | "exclusif" | "non_exclusif",
+    motif_perdu: "", motif_perdu_autre: "",
+    date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+  });
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
