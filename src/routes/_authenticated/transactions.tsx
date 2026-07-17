@@ -458,6 +458,9 @@ function TransactionDetailDialog({
     date_debut_mandat: "",
     duree_indeterminee: true,
     date_fin_mandat: "",
+    montant_estime: "",
+    date_cloture_prevue: "",
+    gestionnaire_id: "",
   });
 
   useEffect(() => {
