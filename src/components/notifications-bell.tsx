@@ -16,6 +16,8 @@ type Notification = {
   title: string;
   message: string | null;
   link: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
   read: boolean;
   created_at: string;
 };
@@ -27,6 +29,13 @@ function timeAgo(iso: string) {
   if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
   return `il y a ${Math.floor(diff / 86400)} j`;
 }
+
+const ENTITY_ROUTE: Record<string, string> = {
+  activite: "/calendrier",
+  travaux: "/travaux",
+  reclamation: "/reclamations",
+  impaye: "/impayes",
+};
 
 export function NotificationsBell() {
   const [items, setItems] = useState<Notification[]>([]);
