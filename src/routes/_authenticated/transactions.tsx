@@ -286,7 +286,27 @@ function TransactionsPage() {
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>{STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                         </Select>
+                      <div className="grid gap-2"><Label htmlFor="montant">Montant estimé (€)</Label>
+                        <Input id="montant" type="number" min="0" step="0.01" value={form.montant_estime}
+                          onChange={(e) => setForm({ ...form, montant_estime: e.target.value })} />
                       </div>
+                      <div className="grid gap-2"><Label>Date de clôture prévue</Label>
+                        <Input type="date" value={form.date_cloture_prevue}
+                          onChange={(e) => setForm({ ...form, date_cloture_prevue: e.target.value })} />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2"><Label>Gestionnaire *</Label>
+                      {canEditGestionnaire ? (
+                        <SearchableSelect
+                          value={form.gestionnaire_id}
+                          onChange={(v) => setForm({ ...form, gestionnaire_id: v })}
+                          options={profiles.map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+                          placeholder="Choisir un gestionnaire..."
+                        />
+                      ) : (
+                        <Input value={profiles.find((p) => p.id === form.gestionnaire_id)?.email ?? "—"} disabled />
+                      )}
                     </div>
 
                     {isMandat(form.type_transaction) && (
