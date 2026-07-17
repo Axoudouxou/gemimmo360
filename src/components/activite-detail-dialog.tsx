@@ -235,7 +235,7 @@ export function ActiviteDetailDialog({
             table="activite_commentaires"
             fkColumn="activite_id"
             recordId={activite.id}
-            canComment={perms.canComment !== false}
+            canComment={true}
             entityType="activite"
             entityId={activite.id}
             link={`/calendrier?open=${activite.id}`}
