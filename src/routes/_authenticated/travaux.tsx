@@ -18,6 +18,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: TravauxPage,
 });
 
