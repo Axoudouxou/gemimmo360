@@ -99,16 +99,21 @@ function TransactionsPage() {
   useEffect(() => {
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user?.id;
-      if (!uid) { setChecked(true); return; }
-      const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
+      const u = userRes.user?.id ?? null;
+      setUid(u);
+      if (!u) { setChecked(true); return; }
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
       if (!r || !(ALLOWED as readonly string[]).includes(r)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
+      // Load profiles list for gestionnaire selection (admin/direction only need the picker)
+      const { data: profs } = await supabase.from("profiles").select("id, email").order("email");
+      setProfiles((profs ?? []) as { id: string; email: string | null }[]);
     })();
   }, [navigate]);
+
 
   const load = useCallback(async () => {
     setLoading(true);
