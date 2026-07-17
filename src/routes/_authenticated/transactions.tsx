@@ -180,10 +180,23 @@ function TransactionsPage() {
     contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
     exclusivite: "non_exclusif", motif_perdu: "", motif_perdu_autre: "",
     date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+    montant_estime: "", date_cloture_prevue: "",
+    gestionnaire_id: role === "commercial" ? (uid ?? "") : "",
   });
+
+  // Prefill gestionnaire when the current user is commercial
+  useEffect(() => {
+    if (role === "commercial" && uid) {
+      setForm((f) => (f.gestionnaire_id ? f : { ...f, gestionnaire_id: uid }));
+    }
+  }, [role, uid]);
+
+  const canEditGestionnaire = role === "admin" || role === "direction";
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
+    if (!form.gestionnaire_id) return toast.error("Le gestionnaire est obligatoire");
     setSaving(true);
     const t = form.type_transaction;
     const motifFinal = form.statut_opportunite === "perdu"
@@ -198,12 +211,16 @@ function TransactionsPage() {
       date_debut_mandat: t === "mandat_gestion" ? (form.date_debut_mandat || null) : null,
       duree_indeterminee: t === "mandat_gestion" ? form.duree_indeterminee : true,
       date_fin_mandat: t === "mandat_gestion" && !form.duree_indeterminee ? (form.date_fin_mandat || null) : null,
+      montant_estime: form.montant_estime ? Number(form.montant_estime) : null,
+      date_cloture_prevue: form.date_cloture_prevue || null,
+      gestionnaire_id: form.gestionnaire_id,
     };
     const { error } = await supabase.from("transactions_commerciales").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
   };
+
 
   const setType = (v: string) => {
     setForm((f) => ({
