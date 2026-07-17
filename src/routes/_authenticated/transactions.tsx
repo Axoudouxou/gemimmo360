@@ -178,7 +178,7 @@ function TransactionsPage() {
     const motifFinal = form.statut_opportunite === "perdu"
       ? (form.motif_perdu === "autre" ? (form.motif_perdu_autre.trim() || null) : (form.motif_perdu || null))
       : null;
-    const payload: Record<string, any> = {
+    const payload = {
       contact_id: form.contact_id, bien_id: form.bien_id || null,
       type_transaction: t, statut_opportunite: form.statut_opportunite,
       notes: form.notes.trim() || null,
@@ -438,7 +438,7 @@ function TransactionDetailDialog({
     const motifFinal = edit.statut_opportunite === "perdu"
       ? (edit.motif_perdu === "autre" ? (edit.motif_perdu_autre.trim() || null) : (edit.motif_perdu || null))
       : null;
-    const payload: Record<string, any> = {
+    const payload = {
       statut_opportunite: edit.statut_opportunite,
       exclusivite: isMandat(t) ? (edit.exclusivite || null) : null,
       motif_perdu: motifFinal,
