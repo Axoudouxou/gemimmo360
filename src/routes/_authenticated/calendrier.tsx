@@ -104,6 +104,13 @@ function CalendrierPage() {
     load();
   }, [load]);
 
+  // Auto-open detail from ?open=<id>
+  useEffect(() => {
+    if (!search.open || items.length === 0) return;
+    const found = items.find((a) => a.id === search.open);
+    if (found) setDetail(found);
+  }, [search.open, items]);
+
   // Filter items by range
   const filteredItems = useMemo(() => {
     return items.filter((a) => {
