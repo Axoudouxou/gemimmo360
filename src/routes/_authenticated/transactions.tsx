@@ -1,18 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   head: () => ({ meta: [{ title: "Transactions — Agence Immobilière" }] }),
@@ -21,7 +24,6 @@ export const Route = createFileRoute("/_authenticated/transactions")({
 
 const TYPES = [
   { value: "mandat", label: "Mandat" },
-  { value: "visite", label: "Visite" },
   { value: "offre", label: "Offre" },
 ] as const;
 const STATUTS = [
@@ -46,15 +48,15 @@ function TransactionsPage() {
   const [items, setItems] = useState<Tx[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
+  const [activites, setActivites] = useState<Activite[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", date_visite: "", notes: "" });
+  const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
-  const [dFrom, setDFrom] = useState("");
-  const [dTo, setDTo] = useState("");
+  const [detail, setDetail] = useState<Tx | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -70,38 +72,56 @@ function TransactionsPage() {
     })();
   }, [navigate]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: tData, error }, { data: cData }, { data: bData }] = await Promise.all([
+    const [{ data: tData, error }, { data: cData }, { data: bData }, { data: aData }] = await Promise.all([
       supabase.from("transactions_commerciales").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom, type_contact").eq("archive", false).order("nom"),
       supabase.from("biens").select("id, titre").order("titre"),
+      supabase.from("activites").select("*").not("transaction_id", "is", null),
     ]);
     if (error) toast.error(error.message);
     else setItems((tData ?? []) as Tx[]);
     setContacts((cData ?? []) as Contact[]);
     setBiens((bData ?? []) as Bien[]);
+    setActivites((aData ?? []) as Activite[]);
     setLoading(false);
-  };
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role]);
+  }, []);
+  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role, load]);
 
   const commercialContacts = contacts.filter((c) => c.type_contact && COMMERCIAL_TYPES.includes(c.type_contact));
 
   const contactName = (id: string) => { const c = contacts.find((x) => x.id === id); return c ? `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}` : "—"; };
   const bienTitre = (id: string | null) => id ? (biens.find((b) => b.id === id)?.titre ?? "—") : "—";
 
+  // Compute last/next visit from linked activites of type visite
+  const visitesByTx = useMemo(() => {
+    const map = new Map<string, { last: Date | null; next: Date | null }>();
+    const now = new Date();
+    for (const a of activites) {
+      if (!a.transaction_id || a.type_activite !== "visite" || !a.date_debut) continue;
+      const d = new Date(a.date_debut);
+      const entry = map.get(a.transaction_id) ?? { last: null, next: null };
+      if (d <= now) {
+        if (!entry.last || d > entry.last) entry.last = d;
+      } else {
+        if (!entry.next || d < entry.next) entry.next = d;
+      }
+      map.set(a.transaction_id, entry);
+    }
+    return map;
+  }, [activites]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((t) => {
       if (fType !== "all" && t.type_transaction !== fType) return false;
       if (fStatut !== "all" && t.statut_opportunite !== fStatut) return false;
-      if (dFrom && (!t.date_visite || t.date_visite < dFrom)) return false;
-      if (dTo && (!t.date_visite || t.date_visite > dTo)) return false;
       if (q && !`${contactName(t.contact_id)} ${bienTitre(t.bien_id)}`.toLowerCase().includes(q)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, search, fType, fStatut, dFrom, dTo, contacts, biens]);
+  }, [items, search, fType, fStatut, contacts, biens]);
 
   const stats = useMemo(() => {
     const prospectIds = new Set(contacts.filter((c) => c.type_contact === "prospect").map((c) => c.id));
@@ -113,7 +133,7 @@ function TransactionsPage() {
     return { nbProspectsActifs, enCours, taux };
   }, [items, contacts]);
 
-  const resetForm = () => setForm({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", date_visite: "", notes: "" });
+  const resetForm = () => setForm({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
@@ -121,12 +141,14 @@ function TransactionsPage() {
     const { error } = await supabase.from("transactions_commerciales").insert({
       contact_id: form.contact_id, bien_id: form.bien_id || null,
       type_transaction: form.type_transaction, statut_opportunite: form.statut_opportunite,
-      date_visite: form.date_visite || null, notes: form.notes.trim() || null,
+      notes: form.notes.trim() || null,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
   };
+
+  const fmt = (d: Date | null) => d ? format(d, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—";
 
   if (!checked) return null;
 
@@ -155,16 +177,20 @@ function TransactionsPage() {
                   <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle><DialogDescription>Prospect, acheteur ou vendeur.</DialogDescription></DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2"><Label>Contact *</Label>
-                      <Select value={form.contact_id} onValueChange={(v) => setForm({ ...form, contact_id: v })}>
-                        <SelectTrigger><SelectValue placeholder={commercialContacts.length ? "Sélectionner..." : "Aucun prospect/acheteur/vendeur"} /></SelectTrigger>
-                        <SelectContent>{commercialContacts.map((c) => <SelectItem key={c.id} value={c.id}>{c.nom}{c.prenom ? ` ${c.prenom}` : ""} ({c.type_contact})</SelectItem>)}</SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.contact_id}
+                        onChange={(v) => setForm({ ...form, contact_id: v })}
+                        options={commercialContacts.map((c) => ({ value: c.id, label: `${c.nom}${c.prenom ? ` ${c.prenom}` : ""} (${c.type_contact})` }))}
+                        placeholder={commercialContacts.length ? "Rechercher un contact..." : "Aucun prospect/acheteur/vendeur"}
+                      />
                     </div>
                     <div className="grid gap-2"><Label>Bien concerné</Label>
-                      <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="Optionnel..." /></SelectTrigger>
-                        <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.bien_id}
+                        onChange={(v) => setForm({ ...form, bien_id: v })}
+                        options={biens.map((b) => ({ value: b.id, label: b.titre }))}
+                        placeholder="Optionnel..."
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Type</Label>
@@ -180,8 +206,8 @@ function TransactionsPage() {
                         </Select>
                       </div>
                     </div>
-                    <div className="grid gap-2"><Label htmlFor="dv">Date de visite</Label><Input id="dv" type="date" value={form.date_visite} onChange={(e) => setForm({ ...form, date_visite: e.target.value })} /></div>
                     <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                    <p className="text-xs text-muted-foreground">Les visites sont désormais des activités liées à la transaction (créées depuis la fiche détail).</p>
                   </div>
                   <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
                 </form>
@@ -197,20 +223,131 @@ function TransactionsPage() {
                 { key: "type", label: "Type", value: fType, onChange: setFType, options: TYPES.map((s) => ({ value: s.value, label: s.label })) },
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
               ]}
-              dateRange={{ label: "Visite", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFType("all"); setFStatut("all"); }}
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune transaction.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Contact</TableHead><TableHead>Bien</TableHead><TableHead>Type</TableHead><TableHead>Date visite</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                <TableBody>{filtered.map((t) => (
-                  <TableRow key={t.id}><TableCell className="font-medium">{contactName(t.contact_id)}</TableCell><TableCell>{bienTitre(t.bien_id)}</TableCell><TableCell><Badge variant="outline">{TYPE_LABEL[t.type_transaction] ?? t.type_transaction}</Badge></TableCell><TableCell>{t.date_visite ? new Date(t.date_visite).toLocaleDateString("fr-FR") : "—"}</TableCell><TableCell><Badge>{STATUT_LABEL[t.statut_opportunite] ?? t.statut_opportunite}</Badge></TableCell></TableRow>
-                ))}</TableBody>
+                <TableHeader><TableRow><TableHead>Contact</TableHead><TableHead>Bien</TableHead><TableHead>Type</TableHead><TableHead>Dernière visite</TableHead><TableHead>Prochaine visite</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableBody>{filtered.map((t) => {
+                  const v = visitesByTx.get(t.id);
+                  return (
+                    <TableRow key={t.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setDetail(t)}>
+                      <TableCell className="font-medium">{contactName(t.contact_id)}</TableCell>
+                      <TableCell>{bienTitre(t.bien_id)}</TableCell>
+                      <TableCell><Badge variant="outline">{TYPE_LABEL[t.type_transaction] ?? t.type_transaction}</Badge></TableCell>
+                      <TableCell>{fmt(v?.last ?? null)}</TableCell>
+                      <TableCell>{fmt(v?.next ?? null)}</TableCell>
+                      <TableCell><Badge>{STATUT_LABEL[t.statut_opportunite] ?? t.statut_opportunite}</Badge></TableCell>
+                    </TableRow>
+                  );
+                })}</TableBody>
               </Table></div>
             )}
           </CardContent>
         </Card>
+
+        <TransactionDetailDialog
+          tx={detail}
+          onClose={() => setDetail(null)}
+          contactName={contactName}
+          bienTitre={bienTitre}
+          activites={activites.filter((a) => detail && a.transaction_id === detail.id)}
+          onChanged={load}
+        />
       </main>
     </div>
+  );
+}
+
+function TransactionDetailDialog({
+  tx,
+  onClose,
+  contactName,
+  bienTitre,
+  activites,
+  onChanged,
+}: {
+  tx: Tx | null;
+  onClose: () => void;
+  contactName: (id: string) => string;
+  bienTitre: (id: string | null) => string;
+  activites: Activite[];
+  onChanged: () => void;
+}) {
+  const [openNew, setOpenNew] = useState(false);
+  const now = new Date();
+  const visits = activites.filter((a) => a.type_activite === "visite" && a.date_debut);
+  const past = visits.filter((a) => new Date(a.date_debut!) <= now).sort((a, b) => (b.date_debut! > a.date_debut! ? 1 : -1));
+  const upcoming = visits.filter((a) => new Date(a.date_debut!) > now).sort((a, b) => (a.date_debut! > b.date_debut! ? 1 : -1));
+  const last = past[0]?.date_debut ? new Date(past[0].date_debut) : null;
+  const next = upcoming[0]?.date_debut ? new Date(upcoming[0].date_debut) : null;
+
+  return (
+    <Dialog open={!!tx} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {tx && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Transaction — {contactName(tx.contact_id)}</DialogTitle>
+              <DialogDescription>{bienTitre(tx.bien_id)}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><div className="text-xs text-muted-foreground">Type</div><div><Badge variant="outline">{TYPE_LABEL[tx.type_transaction] ?? tx.type_transaction}</Badge></div></div>
+                <div><div className="text-xs text-muted-foreground">Statut</div><div><Badge>{STATUT_LABEL[tx.statut_opportunite] ?? tx.statut_opportunite}</Badge></div></div>
+                <div><div className="text-xs text-muted-foreground">Dernière visite</div><div>{last ? format(last, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Prochaine visite</div><div>{next ? format(next, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—"}</div></div>
+              </div>
+              {tx.notes && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Notes</div>
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{tx.notes}</div>
+                </div>
+              )}
+
+              <div className="rounded-md border p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-semibold">Activités liées</div>
+                  <Button size="sm" variant="outline" onClick={() => setOpenNew(true)}>
+                    <Plus className="mr-2 h-3.5 w-3.5" /> Nouvelle activité
+                  </Button>
+                </div>
+                {activites.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-muted-foreground">Aucune activité liée.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {activites
+                      .slice()
+                      .sort((a, b) => (a.date_debut ?? "").localeCompare(b.date_debut ?? ""))
+                      .map((a) => (
+                        <li key={a.id} className="flex items-start gap-2 rounded border p-2">
+                          <span className={`mt-1 inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium">{a.titre}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {TYPE_LABELS[a.type_activite] ?? a.type_activite}
+                              {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM yyyy HH:mm", { locale: fr })}` : ""}
+                              {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>Fermer</Button>
+            </DialogFooter>
+            <NouvelleActiviteLieeDialog
+              open={openNew}
+              setOpen={setOpenNew}
+              defaults={{ transactionId: tx.id }}
+              onSaved={() => { setOpenNew(false); onChanged(); }}
+            />
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
