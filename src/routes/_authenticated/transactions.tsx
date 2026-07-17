@@ -427,6 +427,8 @@ function TransactionsPage() {
           bienTitre={bienTitre}
           activites={activites.filter((a) => detail && a.transaction_id === detail.id)}
           onChanged={load}
+          profiles={profiles}
+          canEditGestionnaire={role === "admin" || role === "direction"}
         />
       </main>
     </div>
@@ -440,6 +442,8 @@ function TransactionDetailDialog({
   bienTitre,
   activites,
   onChanged,
+  profiles,
+  canEditGestionnaire,
 }: {
   tx: Tx | null;
   onClose: () => void;
@@ -447,6 +451,8 @@ function TransactionDetailDialog({
   bienTitre: (id: string | null) => string;
   activites: Activite[];
   onChanged: () => void;
+  profiles: { id: string; email: string | null }[];
+  canEditGestionnaire: boolean;
 }) {
   const [openNew, setOpenNew] = useState(false);
   const [saving, setSaving] = useState(false);
