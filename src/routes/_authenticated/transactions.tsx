@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -23,7 +25,9 @@ export const Route = createFileRoute("/_authenticated/transactions")({
 });
 
 const TYPES = [
-  { value: "mandat", label: "Mandat" },
+  { value: "mandat_location", label: "Mandat location" },
+  { value: "mandat_gestion", label: "Mandat gestion" },
+  { value: "mandat_vente", label: "Mandat vente" },
   { value: "offre", label: "Offre" },
 ] as const;
 const STATUTS = [
@@ -32,14 +36,37 @@ const STATUTS = [
   { value: "gagne", label: "Gagné" },
   { value: "perdu", label: "Perdu" },
 ] as const;
+const MOTIFS_PERDU = [
+  { value: "prix_trop_eleve", label: "Prix trop élevé" },
+  { value: "bien_non_conforme", label: "Bien non conforme aux attentes" },
+  { value: "financement_refuse", label: "Financement refusé" },
+  { value: "delai_trop_long", label: "Délai trop long" },
+  { value: "conclu_autre_agence", label: "Conclu par une autre agence" },
+  { value: "client_desiste", label: "Client s'est désisté" },
+  { value: "sans_reponse", label: "Sans réponse du client" },
+  { value: "autre", label: "Autre" },
+] as const;
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((s) => [s.value, s.label]));
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
+const MOTIF_LABEL: Record<string, string> = Object.fromEntries(MOTIFS_PERDU.map((s) => [s.value, s.label]));
+const isMandat = (t: string) => t.startsWith("mandat_");
+const defaultExclusivite = (t: string): "" | "exclusif" | "non_exclusif" => {
+  if (t === "mandat_gestion") return "exclusif";
+  if (t === "mandat_vente" || t === "mandat_location") return "non_exclusif";
+  return "";
+};
 const ALLOWED = ["admin", "direction", "commercial"] as const;
 const COMMERCIAL_TYPES = ["prospect", "acheteur", "vendeur"];
 
-type Tx = { id: string; contact_id: string; bien_id: string | null; type_transaction: string; statut_opportunite: string; date_visite: string | null; notes: string | null };
+type Tx = {
+  id: string; contact_id: string; bien_id: string | null; type_transaction: string;
+  statut_opportunite: string; date_visite: string | null; notes: string | null;
+  exclusivite: string | null; motif_perdu: string | null;
+  date_debut_mandat: string | null; date_fin_mandat: string | null; duree_indeterminee: boolean;
+};
 type Contact = { id: string; nom: string; prenom: string | null; type_contact: string | null };
 type Bien = { id: string; titre: string };
+
 
 function TransactionsPage() {
   const navigate = useNavigate();
