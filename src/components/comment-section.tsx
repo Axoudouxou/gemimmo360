@@ -8,13 +8,14 @@ import { toast } from "sonner";
 type Comment = { id: string; auteur: string; contenu: string; created_at: string };
 type Profile = { id: string; email: string | null };
 
-type CommentTable = "travaux_commentaires" | "reclamations_commentaires" | "impayes_commentaires";
-type FkColumn = "travaux_id" | "reclamation_id" | "impaye_id";
+type CommentTable = "travaux_commentaires" | "reclamations_commentaires" | "impayes_commentaires" | "activite_commentaires";
+type FkColumn = "travaux_id" | "reclamation_id" | "impaye_id" | "activite_id";
 
 type EntityCtx =
   | { entityType: "travaux"; entityId: string; link: string }
   | { entityType: "reclamation"; entityId: string; link: string }
   | { entityType: "impaye"; entityId: string; link: string }
+  | { entityType: "activite"; entityId: string; link: string }
   | { entityType?: undefined; entityId?: undefined; link?: undefined };
 
 function localPart(email: string | null | undefined) {
