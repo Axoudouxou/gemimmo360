@@ -355,12 +355,13 @@ function NouvelleActiviteLieeDialog({
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (u.user) setAssigne((prev) => prev || u.user!.id);
-      const [p, b, l, ct, c] = await Promise.all([
+      const [p, b, l, ct, c, tx] = await Promise.all([
         supabase.from("profiles").select("id, email").order("email"),
         supabase.from("biens").select("id, titre").order("titre").limit(300),
         supabase.from("lots").select("id, label, bien_id").order("label").limit(500),
         supabase.from("contrats").select("id, lot_id, date_debut, statut").order("date_debut", { ascending: false }).limit(300),
         supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(500),
+        supabase.from("transactions_commerciales").select("id, contact_id, bien_id, type_transaction, statut_opportunite").order("created_at", { ascending: false }).limit(300),
       ]);
       setProfiles(((p.data ?? []) as Array<{ id: string; email: string | null }>)
         .map((r) => ({ id: r.id, label: r.email ?? r.id.slice(0, 8) })));
@@ -372,6 +373,8 @@ function NouvelleActiviteLieeDialog({
         .map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
       setContacts(((c.data ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>)
         .map((r) => ({ id: r.id, label: `${r.nom ?? ""} ${r.prenom ?? ""}`.trim() || r.id.slice(0, 8) })));
+      setTransactions(((tx.data ?? []) as Array<{ id: string; type_transaction: string | null; statut_opportunite: string | null }>)
+        .map((r) => ({ id: r.id, label: `${r.type_transaction ?? ""} · ${r.statut_opportunite ?? ""}` })));
     })();
   }, [open]);
 
