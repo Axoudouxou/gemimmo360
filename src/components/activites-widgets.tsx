@@ -347,7 +347,8 @@ function NouvelleActiviteLieeDialog({
     setLotId(defaults.lotId ?? "");
     setContratId(defaults.contratId ?? "");
     setContactId(defaults.contactId ?? "");
-  }, [open, defaults.bienId, defaults.lotId, defaults.contratId, defaults.contactId]);
+    setTransactionId(defaults.transactionId ?? "");
+  }, [open, defaults.bienId, defaults.lotId, defaults.contratId, defaults.contactId, defaults.transactionId]);
 
   useEffect(() => {
     if (!open) return;
