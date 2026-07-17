@@ -73,6 +73,7 @@ export type Database = {
           statut: string
           titre: string
           transaction_id: string | null
+          travaux_id: string | null
           type_activite: string
           updated_at: string
         }
@@ -95,6 +96,7 @@ export type Database = {
           statut?: string
           titre: string
           transaction_id?: string | null
+          travaux_id?: string | null
           type_activite?: string
           updated_at?: string
         }
@@ -117,6 +119,7 @@ export type Database = {
           statut?: string
           titre?: string
           transaction_id?: string | null
+          travaux_id?: string | null
           type_activite?: string
           updated_at?: string
         }
@@ -175,6 +178,13 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions_commerciales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_travaux_id_fkey"
+            columns: ["travaux_id"]
+            isOneToOne: false
+            referencedRelation: "travaux"
             referencedColumns: ["id"]
           },
         ]
@@ -1165,6 +1175,7 @@ export type Database = {
           description: string | null
           etat_des_lieux_id: string | null
           id: string
+          motif_refus: string | null
           notes: string | null
           origine: string | null
           prestataire_id: string | null
@@ -1185,6 +1196,7 @@ export type Database = {
           description?: string | null
           etat_des_lieux_id?: string | null
           id?: string
+          motif_refus?: string | null
           notes?: string | null
           origine?: string | null
           prestataire_id?: string | null
@@ -1205,6 +1217,7 @@ export type Database = {
           description?: string | null
           etat_des_lieux_id?: string | null
           id?: string
+          motif_refus?: string | null
           notes?: string | null
           origine?: string | null
           prestataire_id?: string | null
@@ -1261,6 +1274,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "travaux_commentaires_travaux_id_fkey"
+            columns: ["travaux_id"]
+            isOneToOne: false
+            referencedRelation: "travaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      travaux_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ_modifie: string
+          created_at: string
+          id: string
+          nouvelle_valeur: string | null
+          travaux_id: string
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          travaux_id: string
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie?: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          travaux_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travaux_historique_travaux_id_fkey"
             columns: ["travaux_id"]
             isOneToOne: false
             referencedRelation: "travaux"
