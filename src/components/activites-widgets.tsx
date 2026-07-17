@@ -34,6 +34,15 @@ export type Activite = {
   lot_id: string | null;
   contrat_id: string | null;
   contact_id: string | null;
+  transaction_id?: string | null;
+  recurrence?: string | null;
+};
+
+export const RECURRENCE_LABELS: Record<string, string> = {
+  aucune: "Aucune",
+  quotidienne: "Quotidienne",
+  hebdomadaire: "Hebdomadaire",
+  mensuelle: "Mensuelle",
 };
 
 export const TYPE_LABELS: Record<string, string> = {
