@@ -637,22 +637,6 @@ function TransactionDetailDialog({
                 </>
               )}
 
-              {edit.statut_opportunite === "perdu" && (
-                <>
-                  <div className="grid gap-2"><Label>Motif de perte</Label>
-                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
-                      <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
-                      <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  {edit.motif_perdu === "autre" && (
-                    <div className="grid gap-2"><Label>Précisez</Label>
-                      <Textarea rows={2} value={edit.motif_perdu_autre}
-                        onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
-                    </div>
-                  )}
-                </>
-              )}
 
               {tx.notes && (
                 <div>
