@@ -63,6 +63,8 @@ type Tx = {
   statut_opportunite: string; date_visite: string | null; notes: string | null;
   exclusivite: string | null; motif_perdu: string | null;
   date_debut_mandat: string | null; date_fin_mandat: string | null; duree_indeterminee: boolean;
+  montant_estime: number | null; date_cloture_prevue: string | null;
+  gestionnaire_id: string | null;
 };
 type Contact = { id: string; nom: string; prenom: string | null; type_contact: string | null };
 type Bien = { id: string; titre: string };
