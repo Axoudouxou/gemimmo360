@@ -188,7 +188,7 @@ function ImpayesPage() {
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impayes, search, fStatut, dFrom, dTo, contrats, lots, biens, contacts]);
+  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts]);
 
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
