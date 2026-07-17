@@ -59,7 +59,7 @@ const GESTION: NavItem[] = [
 ];
 
 const FINANCE: NavItem[] = [
-  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement"] },
+  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"] },
   { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"] },
 ];
