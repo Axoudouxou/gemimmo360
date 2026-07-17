@@ -74,6 +74,7 @@ function BienDetailPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMandatGem, setHasMandatGem] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ label: "", type_lot: "", statut: "vacant", surface: "", notes: "" });
@@ -131,6 +132,16 @@ function BienDetailPage() {
         .in("lot_id", lotsList.map((l) => l.id)).eq("statut", "actif");
       setActiveContrats((cData ?? []) as Contrat[]);
     } else setActiveContrats([]);
+
+    const { data: mData } = await supabase
+      .from("transactions_commerciales")
+      .select("id")
+      .eq("bien_id", bienId)
+      .eq("type_transaction", "mandat_gestion")
+      .eq("statut_opportunite", "gagne")
+      .limit(1);
+    setHasMandatGem((mData ?? []).length > 0);
+
 
     setLoading(false);
   };
@@ -253,6 +264,9 @@ function BienDetailPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle>{bien.titre}</CardTitle>
                     <Badge variant="secondary">Immeuble</Badge>
+                    {hasMandatGem && (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Sous mandat GEM</Badge>
+                    )}
                     {isStale(bien.updated_at) && (
                       <Badge variant="outline" className="border-amber-500 text-amber-700">
                         <AlertCircle className="mr-1 h-3 w-3" /> À vérifier

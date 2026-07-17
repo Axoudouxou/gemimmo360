@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -23,7 +25,9 @@ export const Route = createFileRoute("/_authenticated/transactions")({
 });
 
 const TYPES = [
-  { value: "mandat", label: "Mandat" },
+  { value: "mandat_location", label: "Mandat location" },
+  { value: "mandat_gestion", label: "Mandat gestion" },
+  { value: "mandat_vente", label: "Mandat vente" },
   { value: "offre", label: "Offre" },
 ] as const;
 const STATUTS = [
@@ -32,14 +36,37 @@ const STATUTS = [
   { value: "gagne", label: "Gagné" },
   { value: "perdu", label: "Perdu" },
 ] as const;
+const MOTIFS_PERDU = [
+  { value: "prix_trop_eleve", label: "Prix trop élevé" },
+  { value: "bien_non_conforme", label: "Bien non conforme aux attentes" },
+  { value: "financement_refuse", label: "Financement refusé" },
+  { value: "delai_trop_long", label: "Délai trop long" },
+  { value: "conclu_autre_agence", label: "Conclu par une autre agence" },
+  { value: "client_desiste", label: "Client s'est désisté" },
+  { value: "sans_reponse", label: "Sans réponse du client" },
+  { value: "autre", label: "Autre" },
+] as const;
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((s) => [s.value, s.label]));
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
+const MOTIF_LABEL: Record<string, string> = Object.fromEntries(MOTIFS_PERDU.map((s) => [s.value, s.label]));
+const isMandat = (t: string) => t.startsWith("mandat_");
+const defaultExclusivite = (t: string): "" | "exclusif" | "non_exclusif" => {
+  if (t === "mandat_gestion") return "exclusif";
+  if (t === "mandat_vente" || t === "mandat_location") return "non_exclusif";
+  return "";
+};
 const ALLOWED = ["admin", "direction", "commercial"] as const;
 const COMMERCIAL_TYPES = ["prospect", "acheteur", "vendeur"];
 
-type Tx = { id: string; contact_id: string; bien_id: string | null; type_transaction: string; statut_opportunite: string; date_visite: string | null; notes: string | null };
+type Tx = {
+  id: string; contact_id: string; bien_id: string | null; type_transaction: string;
+  statut_opportunite: string; date_visite: string | null; notes: string | null;
+  exclusivite: string | null; motif_perdu: string | null;
+  date_debut_mandat: string | null; date_fin_mandat: string | null; duree_indeterminee: boolean;
+};
 type Contact = { id: string; nom: string; prenom: string | null; type_contact: string | null };
 type Bien = { id: string; titre: string };
+
 
 function TransactionsPage() {
   const navigate = useNavigate();
@@ -52,7 +79,12 @@ function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
+  const [form, setForm] = useState({
+    contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
+    exclusivite: "non_exclusif" as "" | "exclusif" | "non_exclusif",
+    motif_perdu: "", motif_perdu_autre: "",
+    date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+  });
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
@@ -133,19 +165,41 @@ function TransactionsPage() {
     return { nbProspectsActifs, enCours, taux };
   }, [items, contacts]);
 
-  const resetForm = () => setForm({ contact_id: "", bien_id: "", type_transaction: "mandat", statut_opportunite: "nouveau", notes: "" });
+  const resetForm = () => setForm({
+    contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
+    exclusivite: "non_exclusif", motif_perdu: "", motif_perdu_autre: "",
+    date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+  });
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
     setSaving(true);
-    const { error } = await supabase.from("transactions_commerciales").insert({
+    const t = form.type_transaction;
+    const motifFinal = form.statut_opportunite === "perdu"
+      ? (form.motif_perdu === "autre" ? (form.motif_perdu_autre.trim() || null) : (form.motif_perdu || null))
+      : null;
+    const payload = {
       contact_id: form.contact_id, bien_id: form.bien_id || null,
-      type_transaction: form.type_transaction, statut_opportunite: form.statut_opportunite,
+      type_transaction: t, statut_opportunite: form.statut_opportunite,
       notes: form.notes.trim() || null,
-    });
+      exclusivite: isMandat(t) ? (form.exclusivite || null) : null,
+      motif_perdu: motifFinal,
+      date_debut_mandat: t === "mandat_gestion" ? (form.date_debut_mandat || null) : null,
+      duree_indeterminee: t === "mandat_gestion" ? form.duree_indeterminee : true,
+      date_fin_mandat: t === "mandat_gestion" && !form.duree_indeterminee ? (form.date_fin_mandat || null) : null,
+    };
+    const { error } = await supabase.from("transactions_commerciales").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
+  };
+
+  const setType = (v: string) => {
+    setForm((f) => ({
+      ...f,
+      type_transaction: v,
+      exclusivite: isMandat(v) ? defaultExclusivite(v) : "",
+    }));
   };
 
   const fmt = (d: Date | null) => d ? format(d, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—";
@@ -194,7 +248,7 @@ function TransactionsPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Type</Label>
-                        <Select value={form.type_transaction} onValueChange={(v) => setForm({ ...form, type_transaction: v })}>
+                        <Select value={form.type_transaction} onValueChange={setType}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>{TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                         </Select>
@@ -206,6 +260,75 @@ function TransactionsPage() {
                         </Select>
                       </div>
                     </div>
+
+                    {isMandat(form.type_transaction) && (
+                      <div className="grid gap-2"><Label>Exclusivité</Label>
+                        <Select
+                          value={form.exclusivite || ""}
+                          onValueChange={(v) => setForm({ ...form, exclusivite: v as "exclusif" | "non_exclusif" })}
+                          disabled={form.type_transaction === "mandat_gestion"}
+                        >
+                          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="exclusif">Exclusif</SelectItem>
+                            <SelectItem value="non_exclusif">Non exclusif</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {form.type_transaction === "mandat_gestion" && (
+                          <p className="text-xs text-muted-foreground">Un mandat de gestion est toujours exclusif.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {form.type_transaction === "mandat_gestion" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Date de début du mandat</Label>
+                            <Input type="date" value={form.date_debut_mandat}
+                              onChange={(e) => setForm({ ...form, date_debut_mandat: e.target.value })} />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Date de fin</Label>
+                            <Input type="date" value={form.date_fin_mandat}
+                              disabled={form.duree_indeterminee}
+                              onChange={(e) => setForm({ ...form, date_fin_mandat: e.target.value })} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="duree-indet"
+                            checked={form.duree_indeterminee}
+                            onCheckedChange={(v) => setForm({ ...form, duree_indeterminee: !!v, date_fin_mandat: v ? "" : form.date_fin_mandat })}
+                          />
+                          <Label htmlFor="duree-indet" className="cursor-pointer">Durée indéterminée</Label>
+                        </div>
+                        {!form.bien_id && (
+                          <p className="text-xs text-amber-700 flex items-start gap-1">
+                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            Rattachez un bien pour activer le badge de mandat.
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {form.statut_opportunite === "perdu" && (
+                      <>
+                        <div className="grid gap-2"><Label>Motif de perte</Label>
+                          <Select value={form.motif_perdu} onValueChange={(v) => setForm({ ...form, motif_perdu: v })}>
+                            <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
+                            <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        {form.motif_perdu === "autre" && (
+                          <div className="grid gap-2"><Label>Précisez</Label>
+                            <Textarea rows={2} value={form.motif_perdu_autre}
+                              onChange={(e) => setForm({ ...form, motif_perdu_autre: e.target.value })} />
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
                     <p className="text-xs text-muted-foreground">Les visites sont désormais des activités liées à la transaction (créées depuis la fiche détail).</p>
                   </div>
@@ -275,12 +398,61 @@ function TransactionDetailDialog({
   onChanged: () => void;
 }) {
   const [openNew, setOpenNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [edit, setEdit] = useState({
+    statut_opportunite: "nouveau",
+    exclusivite: "" as "" | "exclusif" | "non_exclusif",
+    motif_perdu: "",
+    motif_perdu_autre: "",
+    date_debut_mandat: "",
+    duree_indeterminee: true,
+    date_fin_mandat: "",
+  });
+
+  useEffect(() => {
+    if (!tx) return;
+    const m = tx.motif_perdu;
+    const knownMotif = m && MOTIFS_PERDU.some((x) => x.value === m);
+    setEdit({
+      statut_opportunite: tx.statut_opportunite,
+      exclusivite: (tx.exclusivite as "" | "exclusif" | "non_exclusif") ?? "",
+      motif_perdu: knownMotif ? (m as string) : (m ? "autre" : ""),
+      motif_perdu_autre: knownMotif ? "" : (m ?? ""),
+      date_debut_mandat: tx.date_debut_mandat ?? "",
+      duree_indeterminee: tx.duree_indeterminee ?? true,
+      date_fin_mandat: tx.date_fin_mandat ?? "",
+    });
+  }, [tx]);
+
   const now = new Date();
   const visits = activites.filter((a) => a.type_activite === "visite" && a.date_debut);
   const past = visits.filter((a) => new Date(a.date_debut!) <= now).sort((a, b) => (b.date_debut! > a.date_debut! ? 1 : -1));
   const upcoming = visits.filter((a) => new Date(a.date_debut!) > now).sort((a, b) => (a.date_debut! > b.date_debut! ? 1 : -1));
   const last = past[0]?.date_debut ? new Date(past[0].date_debut) : null;
-  const next = upcoming[0]?.date_debut ? new Date(upcoming[0].date_debut) : null;
+  const nextVisit = upcoming[0]?.date_debut ? new Date(upcoming[0].date_debut) : null;
+
+  const handleSave = async () => {
+    if (!tx) return;
+    setSaving(true);
+    const t = tx.type_transaction;
+    const motifFinal = edit.statut_opportunite === "perdu"
+      ? (edit.motif_perdu === "autre" ? (edit.motif_perdu_autre.trim() || null) : (edit.motif_perdu || null))
+      : null;
+    const payload = {
+      statut_opportunite: edit.statut_opportunite,
+      exclusivite: isMandat(t) ? (edit.exclusivite || null) : null,
+      motif_perdu: motifFinal,
+      date_debut_mandat: t === "mandat_gestion" ? (edit.date_debut_mandat || null) : null,
+      duree_indeterminee: t === "mandat_gestion" ? edit.duree_indeterminee : true,
+      date_fin_mandat: t === "mandat_gestion" && !edit.duree_indeterminee ? (edit.date_fin_mandat || null) : null,
+    };
+    const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Transaction mise à jour");
+    onChanged();
+    onClose();
+  };
 
   return (
     <Dialog open={!!tx} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -294,10 +466,87 @@ function TransactionDetailDialog({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground">Type</div><div><Badge variant="outline">{TYPE_LABEL[tx.type_transaction] ?? tx.type_transaction}</Badge></div></div>
-                <div><div className="text-xs text-muted-foreground">Statut</div><div><Badge>{STATUT_LABEL[tx.statut_opportunite] ?? tx.statut_opportunite}</Badge></div></div>
                 <div><div className="text-xs text-muted-foreground">Dernière visite</div><div>{last ? format(last, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Prochaine visite</div><div>{next ? format(next, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Prochaine visite</div><div>{nextVisit ? format(nextVisit, "d MMM yyyy 'à' HH:mm", { locale: fr }) : "—"}</div></div>
               </div>
+
+              <div className="grid gap-2">
+                <Label>Statut</Label>
+                <Select value={edit.statut_opportunite} onValueChange={(v) => setEdit({ ...edit, statut_opportunite: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+
+              {isMandat(tx.type_transaction) && (
+                <div className="grid gap-2">
+                  <Label>Exclusivité</Label>
+                  <Select
+                    value={edit.exclusivite || ""}
+                    onValueChange={(v) => setEdit({ ...edit, exclusivite: v as "exclusif" | "non_exclusif" })}
+                    disabled={tx.type_transaction === "mandat_gestion"}
+                  >
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exclusif">Exclusif</SelectItem>
+                      <SelectItem value="non_exclusif">Non exclusif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {tx.type_transaction === "mandat_gestion" && (
+                    <p className="text-xs text-muted-foreground">Un mandat de gestion est toujours exclusif.</p>
+                  )}
+                </div>
+              )}
+
+              {tx.type_transaction === "mandat_gestion" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Date de début du mandat</Label>
+                      <Input type="date" value={edit.date_debut_mandat}
+                        onChange={(e) => setEdit({ ...edit, date_debut_mandat: e.target.value })} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Date de fin</Label>
+                      <Input type="date" value={edit.date_fin_mandat}
+                        disabled={edit.duree_indeterminee}
+                        onChange={(e) => setEdit({ ...edit, date_fin_mandat: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="edit-duree-indet"
+                      checked={edit.duree_indeterminee}
+                      onCheckedChange={(v) => setEdit({ ...edit, duree_indeterminee: !!v, date_fin_mandat: v ? "" : edit.date_fin_mandat })}
+                    />
+                    <Label htmlFor="edit-duree-indet" className="cursor-pointer">Durée indéterminée</Label>
+                  </div>
+                  {!tx.bien_id && (
+                    <p className="text-xs text-amber-700 flex items-start gap-1">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      Rattachez un bien pour activer le badge de mandat.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {edit.statut_opportunite === "perdu" && (
+                <>
+                  <div className="grid gap-2"><Label>Motif de perte</Label>
+                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
+                      <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
+                      <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  {edit.motif_perdu === "autre" && (
+                    <div className="grid gap-2"><Label>Précisez</Label>
+                      <Textarea rows={2} value={edit.motif_perdu_autre}
+                        onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
+                    </div>
+                  )}
+                </>
+              )}
+
               {tx.notes && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Notes</div>
@@ -338,6 +587,7 @@ function TransactionDetailDialog({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Fermer</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? "..." : "Enregistrer"}</Button>
             </DialogFooter>
             <NouvelleActiviteLieeDialog
               open={openNew}
@@ -351,3 +601,4 @@ function TransactionDetailDialog({
     </Dialog>
   );
 }
+
