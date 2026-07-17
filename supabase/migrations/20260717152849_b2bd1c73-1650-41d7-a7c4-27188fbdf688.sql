@@ -1,0 +1,2 @@
+ALTER TABLE public.contrats DROP CONSTRAINT contrats_statut_check;
+ALTER TABLE public.contrats ADD CONSTRAINT contrats_statut_check CHECK (statut = ANY (ARRAY['actif'::text, 'termine'::text, 'renouvellement'::text, 'resilie'::text, 'brouillon'::text, 'resilié'::text]));

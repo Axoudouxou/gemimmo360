@@ -39,7 +39,7 @@ type Edl = { id: string; type: string; date_realisation: string; observations: s
 const STATUTS = [
   { value: "actif", label: "Actif" },
   { value: "termine", label: "Terminé" },
-  { value: "resilié", label: "Résilié" },
+  { value: "resilie", label: "Résilié" },
   { value: "brouillon", label: "Brouillon" },
 ] as const;
 
@@ -153,11 +153,65 @@ function ContratDetailPage() {
   const handleEnd = async () => {
     if (!contrat || !lot) return;
     setEndSaving(true);
-    const { error } = await supabase.from("contrats").update({ statut: "termine", date_fin: endDate }).eq("id", contratId);
-    if (!error) await supabase.from("lots").update({ statut: "vacant" }).eq("id", lot.id);
+    const { error } = await supabase.from("contrats").update({ statut: "resilie", date_fin: endDate }).eq("id", contratId);
+    if (error) {
+      setEndSaving(false);
+      return toast.error(error.message);
+    }
+    await supabase.from("lots").update({ statut: "vacant" }).eq("id", lot.id);
+
+    // Créer les deux tâches automatiques
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const creator = userRes.user?.id ?? null;
+      const locLabel = locataire ? locName(locataire) : "locataire";
+      const bienLotLabel = `${bien?.titre ?? "bien"}${lot?.label ? ` – ${lot.label}` : ""}`;
+      const cautionLabel = contrat.depot_garantie != null
+        ? `${Number(contrat.depot_garantie).toLocaleString("fr-FR")} FCFA`
+        : "montant non renseigné";
+
+      const [{ data: techUser }, { data: recUser }] = await Promise.all([
+        supabase.from("profiles").select("id").eq("role", "technique").limit(1).maybeSingle(),
+        supabase.from("profiles").select("id").eq("role", "recouvrement").limit(1).maybeSingle(),
+      ]);
+
+      const dateFin = endDate;
+      const dateFinPlus45 = new Date(new Date(endDate).getTime() + 45 * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10);
+
+      const tasks: any[] = [
+        {
+          titre: `État des lieux de sortie – ${locLabel} – ${bienLotLabel}`,
+          type_activite: "tache",
+          priorite: "urgente",
+          statut: "a_faire",
+          date_debut: dateFin,
+          assigne_a: techUser?.id ?? null,
+          created_by: creator,
+          contrat_id: contratId,
+          bien_id: bien?.id ?? null,
+          lot_id: lot.id,
+        },
+        {
+          titre: `Décompte de sortie et remboursement caution – ${locLabel} – ${bienLotLabel} – Caution : ${cautionLabel}`,
+          type_activite: "tache",
+          priorite: "normale",
+          statut: "a_faire",
+          date_debut: dateFinPlus45,
+          assigne_a: recUser?.id ?? null,
+          created_by: creator,
+          contrat_id: contratId,
+          bien_id: bien?.id ?? null,
+          lot_id: lot.id,
+        },
+      ];
+      await supabase.from("activites").insert(tasks);
+    } catch (e) {
+      console.error("Création tâches résiliation:", e);
+    }
+
     setEndSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Contrat terminé, lot repassé en vacant");
+    toast.success("Contrat résilié, lot repassé en vacant, tâches créées");
     setEndOpen(false);
     load();
   };
