@@ -544,6 +544,47 @@ function TransactionDetailDialog({
                 </Select>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Montant estimé (€)</Label>
+                  <Input type="number" min="0" step="0.01" value={edit.montant_estime}
+                    onChange={(e) => setEdit({ ...edit, montant_estime: e.target.value })} />
+                </div>
+                <div className="grid gap-2"><Label>Date de clôture prévue</Label>
+                  <Input type="date" value={edit.date_cloture_prevue}
+                    onChange={(e) => setEdit({ ...edit, date_cloture_prevue: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="grid gap-2"><Label>Gestionnaire</Label>
+                {canEditGestionnaire ? (
+                  <SearchableSelect
+                    value={edit.gestionnaire_id}
+                    onChange={(v) => setEdit({ ...edit, gestionnaire_id: v })}
+                    options={profiles.map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+                    placeholder="Choisir un gestionnaire..."
+                  />
+                ) : (
+                  <Input value={profiles.find((p) => p.id === edit.gestionnaire_id)?.email ?? "—"} disabled />
+                )}
+              </div>
+
+              {edit.statut_opportunite === "perdu" && (
+                <>
+                  <div className="grid gap-2"><Label>Motif de perte</Label>
+                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
+                      <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
+                      <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  {edit.motif_perdu === "autre" && (
+                    <div className="grid gap-2"><Label>Précisez</Label>
+                      <Textarea rows={2} value={edit.motif_perdu_autre}
+                        onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
+                    </div>
+                  )}
+                </>
+              )}
+
               {isMandat(tx.type_transaction) && (
                 <div className="grid gap-2">
                   <Label>Exclusivité</Label>
