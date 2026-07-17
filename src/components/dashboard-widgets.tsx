@@ -93,14 +93,21 @@ export function OccupationGauge({ scope }: { scope?: { gestionnaire_id?: string 
 
 /* ------------------------ PIPELINE FUNNEL ------------------------ */
 export function PipelineFunnel({ scope }: { scope?: { contact_creator?: string } }) {
-  const [rows, setRows] = useState<{ label: string; value: number }[]>([]);
+  const [rows, setRows] = useState<{ label: string; value: number; montant: number }[]>([]);
+  const [totalPipeline, setTotalPipeline] = useState(0);
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("transactions_commerciales").select("statut_opportunite");
+      const { data } = await supabase
+        .from("transactions_commerciales")
+        .select("statut_opportunite, montant_estime");
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((r: { statut_opportunite: string | null }) => {
+      const sums: Record<string, number> = {};
+      let pipeline = 0;
+      (data ?? []).forEach((r: { statut_opportunite: string | null; montant_estime: number | null }) => {
         const k = (r.statut_opportunite ?? "prospect").toLowerCase();
         counts[k] = (counts[k] ?? 0) + 1;
+        sums[k] = (sums[k] ?? 0) + (r.montant_estime ?? 0);
+        if (k !== "gagne" && k !== "perdu") pipeline += r.montant_estime ?? 0;
       });
       const order = [
         { key: "prospect", label: "Prospects" },
@@ -108,16 +115,23 @@ export function PipelineFunnel({ scope }: { scope?: { contact_creator?: string }
         { key: "mandat", label: "Mandats" },
         { key: "gagne", label: "Gagné" },
       ];
-      setRows(order.map((o) => ({ label: o.label, value: counts[o.key] ?? 0 })));
+      setRows(order.map((o) => ({ label: o.label, value: counts[o.key] ?? 0, montant: sums[o.key] ?? 0 })));
+      setTotalPipeline(pipeline);
     })();
     void scope;
   }, [scope?.contact_creator]);
 
   const max = Math.max(1, ...rows.map((r) => r.value));
+  const fmtEuro = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm">Pipeline commercial</CardTitle></CardHeader>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span>Pipeline commercial</span>
+          <span className="text-xs font-normal text-muted-foreground">Total : {fmtEuro(totalPipeline)}</span>
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-2">
         {rows.map((r, i) => {
           const prev = i > 0 ? rows[i - 1].value : r.value;
@@ -126,7 +140,9 @@ export function PipelineFunnel({ scope }: { scope?: { contact_creator?: string }
             <div key={r.label}>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="font-medium">{r.label}</span>
-                <span className="text-muted-foreground">{r.value} {i > 0 && `(${conv}%)`}</span>
+                <span className="text-muted-foreground">
+                  {r.value} {i > 0 && `(${conv}%)`} · {fmtEuro(r.montant)}
+                </span>
               </div>
               <div className="h-6 bg-muted rounded overflow-hidden">
                 <div className="h-full" style={{ width: `${(r.value / max) * 100}%`, background: COLORS[i] }} />

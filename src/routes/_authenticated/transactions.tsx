@@ -63,6 +63,8 @@ type Tx = {
   statut_opportunite: string; date_visite: string | null; notes: string | null;
   exclusivite: string | null; motif_perdu: string | null;
   date_debut_mandat: string | null; date_fin_mandat: string | null; duree_indeterminee: boolean;
+  montant_estime: number | null; date_cloture_prevue: string | null;
+  gestionnaire_id: string | null;
 };
 type Contact = { id: string; nom: string; prenom: string | null; type_contact: string | null };
 type Bien = { id: string; titre: string };
@@ -79,11 +81,15 @@ function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uid, setUid] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<{ id: string; email: string | null }[]>([]);
   const [form, setForm] = useState({
     contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
     exclusivite: "non_exclusif" as "" | "exclusif" | "non_exclusif",
     motif_perdu: "", motif_perdu_autre: "",
     date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+    montant_estime: "", date_cloture_prevue: "",
+    gestionnaire_id: "",
   });
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
@@ -93,16 +99,21 @@ function TransactionsPage() {
   useEffect(() => {
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user?.id;
-      if (!uid) { setChecked(true); return; }
-      const { data: p } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
+      const u = userRes.user?.id ?? null;
+      setUid(u);
+      if (!u) { setChecked(true); return; }
+      const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
       if (!r || !(ALLOWED as readonly string[]).includes(r)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
+      // Load profiles list for gestionnaire selection (admin/direction only need the picker)
+      const { data: profs } = await supabase.from("profiles").select("id, email").order("email");
+      setProfiles((profs ?? []) as { id: string; email: string | null }[]);
     })();
   }, [navigate]);
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,10 +180,23 @@ function TransactionsPage() {
     contact_id: "", bien_id: "", type_transaction: "mandat_vente", statut_opportunite: "nouveau", notes: "",
     exclusivite: "non_exclusif", motif_perdu: "", motif_perdu_autre: "",
     date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
+    montant_estime: "", date_cloture_prevue: "",
+    gestionnaire_id: role === "commercial" ? (uid ?? "") : "",
   });
+
+  // Prefill gestionnaire when the current user is commercial
+  useEffect(() => {
+    if (role === "commercial" && uid) {
+      setForm((f) => (f.gestionnaire_id ? f : { ...f, gestionnaire_id: uid }));
+    }
+  }, [role, uid]);
+
+  const canEditGestionnaire = role === "admin" || role === "direction";
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
+    if (!form.gestionnaire_id) return toast.error("Le gestionnaire est obligatoire");
     setSaving(true);
     const t = form.type_transaction;
     const motifFinal = form.statut_opportunite === "perdu"
@@ -187,12 +211,16 @@ function TransactionsPage() {
       date_debut_mandat: t === "mandat_gestion" ? (form.date_debut_mandat || null) : null,
       duree_indeterminee: t === "mandat_gestion" ? form.duree_indeterminee : true,
       date_fin_mandat: t === "mandat_gestion" && !form.duree_indeterminee ? (form.date_fin_mandat || null) : null,
+      montant_estime: form.montant_estime ? Number(form.montant_estime) : null,
+      date_cloture_prevue: form.date_cloture_prevue || null,
+      gestionnaire_id: form.gestionnaire_id,
     };
     const { error } = await supabase.from("transactions_commerciales").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
   };
+
 
   const setType = (v: string) => {
     setForm((f) => ({
@@ -259,6 +287,29 @@ function TransactionsPage() {
                           <SelectContent>{STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2"><Label htmlFor="montant">Montant estimé (€)</Label>
+                        <Input id="montant" type="number" min="0" step="0.01" value={form.montant_estime}
+                          onChange={(e) => setForm({ ...form, montant_estime: e.target.value })} />
+                      </div>
+                      <div className="grid gap-2"><Label>Date de clôture prévue</Label>
+                        <Input type="date" value={form.date_cloture_prevue}
+                          onChange={(e) => setForm({ ...form, date_cloture_prevue: e.target.value })} />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2"><Label>Gestionnaire *</Label>
+                      {canEditGestionnaire ? (
+                        <SearchableSelect
+                          value={form.gestionnaire_id}
+                          onChange={(v) => setForm({ ...form, gestionnaire_id: v })}
+                          options={profiles.map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+                          placeholder="Choisir un gestionnaire..."
+                        />
+                      ) : (
+                        <Input value={profiles.find((p) => p.id === form.gestionnaire_id)?.email ?? "—"} disabled />
+                      )}
                     </div>
 
                     {isMandat(form.type_transaction) && (
@@ -376,6 +427,8 @@ function TransactionsPage() {
           bienTitre={bienTitre}
           activites={activites.filter((a) => detail && a.transaction_id === detail.id)}
           onChanged={load}
+          profiles={profiles}
+          canEditGestionnaire={role === "admin" || role === "direction"}
         />
       </main>
     </div>
@@ -389,6 +442,8 @@ function TransactionDetailDialog({
   bienTitre,
   activites,
   onChanged,
+  profiles,
+  canEditGestionnaire,
 }: {
   tx: Tx | null;
   onClose: () => void;
@@ -396,6 +451,8 @@ function TransactionDetailDialog({
   bienTitre: (id: string | null) => string;
   activites: Activite[];
   onChanged: () => void;
+  profiles: { id: string; email: string | null }[];
+  canEditGestionnaire: boolean;
 }) {
   const [openNew, setOpenNew] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -407,6 +464,9 @@ function TransactionDetailDialog({
     date_debut_mandat: "",
     duree_indeterminee: true,
     date_fin_mandat: "",
+    montant_estime: "",
+    date_cloture_prevue: "",
+    gestionnaire_id: "",
   });
 
   useEffect(() => {
@@ -421,6 +481,9 @@ function TransactionDetailDialog({
       date_debut_mandat: tx.date_debut_mandat ?? "",
       duree_indeterminee: tx.duree_indeterminee ?? true,
       date_fin_mandat: tx.date_fin_mandat ?? "",
+      montant_estime: tx.montant_estime != null ? String(tx.montant_estime) : "",
+      date_cloture_prevue: tx.date_cloture_prevue ?? "",
+      gestionnaire_id: tx.gestionnaire_id ?? "",
     });
   }, [tx]);
 
@@ -445,6 +508,9 @@ function TransactionDetailDialog({
       date_debut_mandat: t === "mandat_gestion" ? (edit.date_debut_mandat || null) : null,
       duree_indeterminee: t === "mandat_gestion" ? edit.duree_indeterminee : true,
       date_fin_mandat: t === "mandat_gestion" && !edit.duree_indeterminee ? (edit.date_fin_mandat || null) : null,
+      montant_estime: edit.montant_estime ? Number(edit.montant_estime) : null,
+      date_cloture_prevue: edit.date_cloture_prevue || null,
+      gestionnaire_id: edit.gestionnaire_id || null,
     };
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
     setSaving(false);
@@ -477,6 +543,47 @@ function TransactionDetailDialog({
                   <SelectContent>{STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2"><Label>Montant estimé (€)</Label>
+                  <Input type="number" min="0" step="0.01" value={edit.montant_estime}
+                    onChange={(e) => setEdit({ ...edit, montant_estime: e.target.value })} />
+                </div>
+                <div className="grid gap-2"><Label>Date de clôture prévue</Label>
+                  <Input type="date" value={edit.date_cloture_prevue}
+                    onChange={(e) => setEdit({ ...edit, date_cloture_prevue: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="grid gap-2"><Label>Gestionnaire</Label>
+                {canEditGestionnaire ? (
+                  <SearchableSelect
+                    value={edit.gestionnaire_id}
+                    onChange={(v) => setEdit({ ...edit, gestionnaire_id: v })}
+                    options={profiles.map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+                    placeholder="Choisir un gestionnaire..."
+                  />
+                ) : (
+                  <Input value={profiles.find((p) => p.id === edit.gestionnaire_id)?.email ?? "—"} disabled />
+                )}
+              </div>
+
+              {edit.statut_opportunite === "perdu" && (
+                <>
+                  <div className="grid gap-2"><Label>Motif de perte</Label>
+                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
+                      <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
+                      <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  {edit.motif_perdu === "autre" && (
+                    <div className="grid gap-2"><Label>Précisez</Label>
+                      <Textarea rows={2} value={edit.motif_perdu_autre}
+                        onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
+                    </div>
+                  )}
+                </>
+              )}
 
               {isMandat(tx.type_transaction) && (
                 <div className="grid gap-2">
@@ -530,22 +637,6 @@ function TransactionDetailDialog({
                 </>
               )}
 
-              {edit.statut_opportunite === "perdu" && (
-                <>
-                  <div className="grid gap-2"><Label>Motif de perte</Label>
-                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
-                      <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
-                      <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  {edit.motif_perdu === "autre" && (
-                    <div className="grid gap-2"><Label>Précisez</Label>
-                      <Textarea rows={2} value={edit.motif_perdu_autre}
-                        onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
-                    </div>
-                  )}
-                </>
-              )}
 
               {tx.notes && (
                 <div>

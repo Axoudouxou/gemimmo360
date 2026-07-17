@@ -1118,12 +1118,15 @@ export type Database = {
           bien_id: string | null
           contact_id: string
           created_at: string
+          date_cloture_prevue: string | null
           date_debut_mandat: string | null
           date_fin_mandat: string | null
           date_visite: string | null
           duree_indeterminee: boolean
           exclusivite: string | null
+          gestionnaire_id: string | null
           id: string
+          montant_estime: number | null
           motif_perdu: string | null
           notes: string | null
           statut_opportunite: string
@@ -1133,12 +1136,15 @@ export type Database = {
           bien_id?: string | null
           contact_id: string
           created_at?: string
+          date_cloture_prevue?: string | null
           date_debut_mandat?: string | null
           date_fin_mandat?: string | null
           date_visite?: string | null
           duree_indeterminee?: boolean
           exclusivite?: string | null
+          gestionnaire_id?: string | null
           id?: string
+          montant_estime?: number | null
           motif_perdu?: string | null
           notes?: string | null
           statut_opportunite?: string
@@ -1148,12 +1154,15 @@ export type Database = {
           bien_id?: string | null
           contact_id?: string
           created_at?: string
+          date_cloture_prevue?: string | null
           date_debut_mandat?: string | null
           date_fin_mandat?: string | null
           date_visite?: string | null
           duree_indeterminee?: boolean
           exclusivite?: string | null
+          gestionnaire_id?: string | null
           id?: string
+          montant_estime?: number | null
           motif_perdu?: string | null
           notes?: string | null
           statut_opportunite?: string
@@ -1172,6 +1181,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_commerciales_gestionnaire_id_fkey"
+            columns: ["gestionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
