@@ -74,6 +74,7 @@ function BienDetailPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [bailleurs, setBailleurs] = useState<Bailleur[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMandatGem, setHasMandatGem] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ label: "", type_lot: "", statut: "vacant", surface: "", notes: "" });
