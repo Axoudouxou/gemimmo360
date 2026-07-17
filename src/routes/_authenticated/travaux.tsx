@@ -169,7 +169,7 @@ function TravauxPage() {
                       <TableCell>{t.titre}</TableCell>
                       <TableCell className="text-xs">{profEmail(t.assigne_a)}</TableCell>
                       <TableCell className="text-xs">{prestataire(t.prestataire_id)?.nom ?? "—"}</TableCell>
-                      <TableCell><Badge>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
+                      <TableCell><Badge variant={STATUT_VARIANT[t.statut] ?? "default"}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
