@@ -264,6 +264,9 @@ function BienDetailPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle>{bien.titre}</CardTitle>
                     <Badge variant="secondary">Immeuble</Badge>
+                    {hasMandatGem && (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Sous mandat GEM</Badge>
+                    )}
                     {isStale(bien.updated_at) && (
                       <Badge variant="outline" className="border-amber-500 text-amber-700">
                         <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
