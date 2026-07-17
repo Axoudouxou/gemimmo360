@@ -379,7 +379,16 @@ function ImpayesPage() {
           </CardContent>
         </Card>
 
-        <ImpayeDetailDialog impaye={selected} open={detailOpen} onOpenChange={setDetailOpen} />
+        <ImpayeDetailDialog
+          impaye={selected}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          role={role ?? undefined}
+          onUpdated={(u) => {
+            setSelected(u);
+            setImpayes((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+          }}
+        />
       </main>
     </div>
   );
