@@ -224,7 +224,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
           {rec.description && <div className="bg-muted/40 rounded p-2 whitespace-pre-wrap">{rec.description}</div>}
 
           <div className="border-t pt-3">
-            <CommentSection table="reclamations_commentaires" fkColumn="reclamation_id" recordId={rec.id} canComment={perms.canComment} />
+            <CommentSection table="reclamations_commentaires" fkColumn="reclamation_id" recordId={rec.id} canComment={perms.canComment} entityType="reclamation" entityId={rec.id} link={`/reclamations?open=${rec.id}`} entityTitle={rec.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">
