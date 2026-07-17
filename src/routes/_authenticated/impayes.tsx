@@ -178,6 +178,7 @@ function ImpayesPage() {
     const q = search.trim().toLowerCase();
     return impayes.filter((i) => {
       if (fStatut !== "all" && i.statut !== fStatut) return false;
+      if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
       if (q) {
