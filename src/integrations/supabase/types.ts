@@ -64,6 +64,7 @@ export type Database = {
           date_debut: string | null
           date_fin: string | null
           id: string
+          impaye_id: string | null
           lieu: string | null
           lot_id: string | null
           notes: string | null
@@ -85,6 +86,7 @@ export type Database = {
           date_debut?: string | null
           date_fin?: string | null
           id?: string
+          impaye_id?: string | null
           lieu?: string | null
           lot_id?: string | null
           notes?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           date_debut?: string | null
           date_fin?: string | null
           id?: string
+          impaye_id?: string | null
           lieu?: string | null
           lot_id?: string | null
           notes?: string | null
@@ -151,6 +154,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_impaye_id_fkey"
+            columns: ["impaye_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
             referencedColumns: ["id"]
           },
           {
@@ -659,34 +669,49 @@ export type Database = {
         Row: {
           contrat_id: string
           created_at: string
+          date_acte_commissaire: string | null
+          date_assignation: string | null
           date_derniere_relance: string | null
           date_echeance: string
+          date_mise_en_demeure: string | null
+          etape_traitement: string
           id: string
           montant_du: number
           montant_paye: number
           notes: string | null
+          service_en_charge: string
           statut: string
         }
         Insert: {
           contrat_id: string
           created_at?: string
+          date_acte_commissaire?: string | null
+          date_assignation?: string | null
           date_derniere_relance?: string | null
           date_echeance: string
+          date_mise_en_demeure?: string | null
+          etape_traitement?: string
           id?: string
           montant_du: number
           montant_paye?: number
           notes?: string | null
+          service_en_charge?: string
           statut?: string
         }
         Update: {
           contrat_id?: string
           created_at?: string
+          date_acte_commissaire?: string | null
+          date_assignation?: string | null
           date_derniere_relance?: string | null
           date_echeance?: string
+          date_mise_en_demeure?: string | null
+          etape_traitement?: string
           id?: string
           montant_du?: number
           montant_paye?: number
           notes?: string | null
+          service_en_charge?: string
           statut?: string
         }
         Relationships: [
@@ -724,6 +749,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "impayes_commentaires_impaye_id_fkey"
+            columns: ["impaye_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impayes_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ_modifie: string
+          created_at: string
+          id: string
+          impaye_id: string
+          nouvelle_valeur: string | null
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie: string
+          created_at?: string
+          id?: string
+          impaye_id: string
+          nouvelle_valeur?: string | null
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie?: string
+          created_at?: string
+          id?: string
+          impaye_id?: string
+          nouvelle_valeur?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impayes_historique_impaye_id_fkey"
             columns: ["impaye_id"]
             isOneToOne: false
             referencedRelation: "impayes"

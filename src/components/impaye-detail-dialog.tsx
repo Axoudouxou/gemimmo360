@@ -21,11 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, X, History } from "lucide-react";
+import { Pencil, X, History, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { CommentSection } from "@/components/comment-section";
 
-type Impaye = {
+export type Impaye = {
   id: string;
   contrat_id: string;
   montant_du: number;
@@ -34,6 +34,11 @@ type Impaye = {
   statut: string;
   date_derniere_relance: string | null;
   notes: string | null;
+  etape_traitement?: string | null;
+  service_en_charge?: string | null;
+  date_mise_en_demeure?: string | null;
+  date_acte_commissaire?: string | null;
+  date_assignation?: string | null;
 };
 
 type Details = {
@@ -45,10 +50,11 @@ type Details = {
 
 type HistoryRow = {
   id: string;
-  ancien_statut: string | null;
-  nouveau_statut: string;
-  changed_by: string | null;
-  changed_at: string;
+  champ_modifie: string;
+  ancienne_valeur: string | null;
+  nouvelle_valeur: string | null;
+  auteur: string | null;
+  created_at: string;
 };
 
 const STATUTS = [
@@ -60,6 +66,27 @@ const STATUT_LABEL: Record<string, string> = Object.fromEntries(
   STATUTS.map((s) => [s.value, s.label]),
 );
 
+const ETAPE_LABEL: Record<string, string> = {
+  recouvrement: "Recouvrement",
+  transfere_juridique: "Transféré au juridique",
+  mise_en_demeure: "Mise en demeure",
+  procedure_judiciaire: "Procédure judiciaire",
+  resolu: "Résolu",
+};
+const SERVICE_LABEL: Record<string, string> = {
+  recouvrement: "Recouvrement",
+  juridique: "Juridique",
+};
+const CHAMP_LABEL: Record<string, string> = {
+  creation: "Création",
+  statut: "Statut",
+  etape_traitement: "Étape",
+  service_en_charge: "Service",
+  date_mise_en_demeure: "Mise en demeure",
+  date_acte_commissaire: "Acte de commissaire",
+  date_assignation: "Assignation",
+};
+
 const WRITE_ROLES = new Set([
   "admin",
   "direction",
@@ -68,12 +95,24 @@ const WRITE_ROLES = new Set([
   "gestion_locative",
   "juridique",
 ]);
+const TRANSFER_ROLES = new Set(["admin", "direction", "recouvrement"]);
+const JURIDIQUE_ROLES = new Set(["admin", "direction", "juridique"]);
 
-const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
+const fmtDate = (d: string | null | undefined) =>
+  d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const fmtDateTime = (d: string | null) =>
   d ? new Date(d).toLocaleString("fr-FR") : "—";
 const fmtMoney = (n: number | null) =>
   n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA";
+
+const formatValue = (champ: string, v: string | null): string => {
+  if (!v) return "—";
+  if (champ === "statut") return STATUT_LABEL[v] ?? v;
+  if (champ === "etape_traitement") return ETAPE_LABEL[v] ?? v;
+  if (champ === "service_en_charge") return SERVICE_LABEL[v] ?? v;
+  if (champ.startsWith("date_")) return new Date(v).toLocaleDateString("fr-FR");
+  return v;
+};
 
 type Props = {
   impaye: Impaye | null;
@@ -97,11 +136,18 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
     statut: "",
     montant_paye: "",
     date_derniere_relance: "",
+    date_mise_en_demeure: "",
+    date_acte_commissaire: "",
+    date_assignation: "",
   });
   const [saving, setSaving] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const canWrite = useMemo(() => (role ? WRITE_ROLES.has(role) : false), [role]);
   const canComment = role !== "en_attente";
+  const canTransfer = role ? TRANSFER_ROLES.has(role) : false;
+  const canEditJuridique = role ? JURIDIQUE_ROLES.has(role) : false;
+  const service = impaye?.service_en_charge ?? "recouvrement";
 
   useEffect(() => {
     if (!open || !impaye) return;
@@ -110,6 +156,9 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
       statut: impaye.statut,
       montant_paye: String(impaye.montant_paye ?? 0),
       date_derniere_relance: impaye.date_derniere_relance ?? "",
+      date_mise_en_demeure: impaye.date_mise_en_demeure ?? "",
+      date_acte_commissaire: impaye.date_acte_commissaire ?? "",
+      date_assignation: impaye.date_assignation ?? "",
     });
     (async () => {
       const { data: c } = await supabase
@@ -145,30 +194,38 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
         }
       }
       setDetails({ contrat: (c ?? null) as Details["contrat"], lot, bien, locataire });
-
-      const { data: h } = await supabase
-        .from("impayes_statut_historique")
-        .select("id, ancien_statut, nouveau_statut, changed_by, changed_at")
-        .eq("impaye_id", impaye.id)
-        .order("changed_at", { ascending: false });
-      const rows = (h ?? []) as HistoryRow[];
-      setHistory(rows);
-      const ids = Array.from(
-        new Set(rows.map((r) => r.changed_by).filter((v): v is string => !!v)),
-      );
-      if (ids.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, email")
-          .in("id", ids);
-        setAuthors(
-          new Map(((profs ?? []) as { id: string; email: string | null }[]).map((p) => [p.id, p.email ?? "—"])),
-        );
-      } else {
-        setAuthors(new Map());
-      }
+      await loadHistory(impaye.id);
     })();
   }, [open, impaye]);
+
+  async function loadHistory(id: string) {
+    const { data: h } = await supabase
+      .from("impayes_historique" as never)
+      .select("id, champ_modifie, ancienne_valeur, nouvelle_valeur, auteur, created_at")
+      .eq("impaye_id", id)
+      .order("created_at", { ascending: false });
+    const rows = (h ?? []) as unknown as HistoryRow[];
+    setHistory(rows);
+    const ids = Array.from(
+      new Set(rows.map((r) => r.auteur).filter((v): v is string => !!v)),
+    );
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", ids);
+      setAuthors(
+        new Map(
+          ((profs ?? []) as { id: string; email: string | null }[]).map((p) => [
+            p.id,
+            p.email ?? "—",
+          ]),
+        ),
+      );
+    } else {
+      setAuthors(new Map());
+    }
+  }
 
   if (!impaye) return null;
   const reste = Number(impaye.montant_du) - Number(impaye.montant_paye);
@@ -176,14 +233,26 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
   async function handleSave() {
     if (!impaye) return;
     setSaving(true);
-    const payload = {
+    const payload: Record<string, unknown> = {
       statut: form.statut,
       montant_paye: form.montant_paye === "" ? 0 : Number(form.montant_paye),
       date_derniere_relance: form.date_derniere_relance || null,
     };
+    // Juridical dates only when in juridique service and role allowed
+    if (service === "juridique" && canEditJuridique) {
+      payload.date_mise_en_demeure = form.date_mise_en_demeure || null;
+      payload.date_acte_commissaire = form.date_acte_commissaire || null;
+      payload.date_assignation = form.date_assignation || null;
+      // Auto-update etape based on newly set dates
+      let etape = impaye.etape_traitement ?? "transfere_juridique";
+      if (form.date_assignation) etape = "procedure_judiciaire";
+      else if (form.date_acte_commissaire) etape = "procedure_judiciaire";
+      else if (form.date_mise_en_demeure) etape = "mise_en_demeure";
+      payload.etape_traitement = etape;
+    }
     const { data, error } = await supabase
       .from("impayes")
-      .update(payload)
+      .update(payload as never)
       .eq("id", impaye.id)
       .select()
       .maybeSingle();
@@ -191,7 +260,68 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
     if (error) return toast.error(error.message);
     toast.success("Impayé mis à jour");
     setEditing(false);
-    if (data && onUpdated) onUpdated(data as Impaye);
+    if (data && onUpdated) onUpdated(data as unknown as Impaye);
+    await loadHistory(impaye.id);
+  }
+
+  async function handleTransferJuridique() {
+    if (!impaye) return;
+    setTransferring(true);
+
+    // Find a juridique user to assign
+    const { data: juridiques } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("role", "juridique")
+      .limit(1);
+    const assignee = (juridiques ?? [])[0]?.id ?? null;
+
+    // Priority based on delay
+    const echeance = new Date(impaye.date_echeance);
+    const days = Math.floor((Date.now() - echeance.getTime()) / (1000 * 60 * 60 * 24));
+    const priorite = days > 25 ? "urgente" : "normale";
+
+    const locNom = details.locataire
+      ? `${details.locataire.nom}${details.locataire.prenom ? " " + details.locataire.prenom : ""}`
+      : "locataire";
+    const bienTxt = details.bien
+      ? `${details.bien.titre}${details.lot ? " — " + details.lot.label : ""}`
+      : (details.lot?.label ?? "—");
+    const titre = `Impayé transféré – ${locNom} – ${bienTxt} – ${fmtMoney(reste)}`;
+
+    // Update impayé
+    const { data: updated, error } = await supabase
+      .from("impayes")
+      .update({
+        service_en_charge: "juridique",
+        etape_traitement: "transfere_juridique",
+      } as never)
+      .eq("id", impaye.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      setTransferring(false);
+      return toast.error(error.message);
+    }
+
+    // Create linked activité
+    const { data: userRes } = await supabase.auth.getUser();
+    await supabase.from("activites").insert({
+      titre,
+      type_activite: "tache",
+      date_debut: new Date().toISOString(),
+      priorite,
+      statut: "a_faire",
+      assigne_a: assignee,
+      created_by: userRes.user?.id ?? null,
+      impaye_id: impaye.id,
+    } as never);
+
+    setTransferring(false);
+    toast.success("Impayé transféré au juridique");
+    if (updated && onUpdated) onUpdated(updated as unknown as Impaye);
+    await loadHistory(impaye.id);
   }
 
   return (
@@ -203,6 +333,14 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
             <Badge variant={impaye.statut === "en_retard" ? "destructive" : "default"}>
               {STATUT_LABEL[impaye.statut] ?? impaye.statut}
             </Badge>
+            <Badge variant="outline">
+              {SERVICE_LABEL[service] ?? service}
+            </Badge>
+            {impaye.etape_traitement && (
+              <Badge variant="secondary">
+                {ETAPE_LABEL[impaye.etape_traitement] ?? impaye.etape_traitement}
+              </Badge>
+            )}
           </div>
           <DialogDescription>Échéance du {fmtDate(impaye.date_echeance)}</DialogDescription>
         </DialogHeader>
@@ -302,6 +440,23 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
             </div>
           </div>
 
+          {service === "juridique" && (
+            <div className="grid grid-cols-3 gap-3 rounded-md border p-3 bg-amber-500/5">
+              <div>
+                <div className="text-xs text-muted-foreground">Mise en demeure</div>
+                <div>{fmtDate(impaye.date_mise_en_demeure)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Acte de commissaire</div>
+                <div>{fmtDate(impaye.date_acte_commissaire)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Assignation</div>
+                <div>{fmtDate(impaye.date_assignation)}</div>
+              </div>
+            </div>
+          )}
+
           {impaye.notes && (
             <div>
               <div className="text-xs text-muted-foreground mb-1">Notes</div>
@@ -353,6 +508,45 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
                     }
                   />
                 </div>
+                {service === "juridique" && canEditJuridique && (
+                  <>
+                    <div className="grid gap-2 col-span-2 pt-2">
+                      <div className="text-xs font-semibold text-muted-foreground">
+                        Dates juridiques
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Mise en demeure</Label>
+                      <Input
+                        type="date"
+                        value={form.date_mise_en_demeure}
+                        onChange={(e) =>
+                          setForm({ ...form, date_mise_en_demeure: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Acte de commissaire</Label>
+                      <Input
+                        type="date"
+                        value={form.date_acte_commissaire}
+                        onChange={(e) =>
+                          setForm({ ...form, date_acte_commissaire: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2 col-span-2">
+                      <Label>Assignation</Label>
+                      <Input
+                        type="date"
+                        value={form.date_assignation}
+                        onChange={(e) =>
+                          setForm({ ...form, date_assignation: e.target.value })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
@@ -367,7 +561,7 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
 
           <div className="border-t pt-3">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-              <History className="h-4 w-4" /> Historique des statuts
+              <History className="h-4 w-4" /> Historique
             </h4>
             {history.length === 0 ? (
               <p className="text-xs text-muted-foreground">Aucun changement enregistré.</p>
@@ -379,25 +573,30 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
                     className="text-xs rounded-md border px-2 py-1.5 bg-muted/20 flex items-center justify-between gap-2"
                   >
                     <span>
-                      {h.ancien_statut ? (
+                      <span className="font-medium">
+                        {CHAMP_LABEL[h.champ_modifie] ?? h.champ_modifie}
+                      </span>
+                      {h.champ_modifie === "creation" ? (
                         <>
+                          {" : "}
+                          {formatValue("statut", h.nouvelle_valeur)}
+                        </>
+                      ) : (
+                        <>
+                          {" : "}
                           <span className="text-muted-foreground">
-                            {STATUT_LABEL[h.ancien_statut] ?? h.ancien_statut}
+                            {formatValue(h.champ_modifie, h.ancienne_valeur)}
                           </span>{" "}
                           →{" "}
                           <span className="font-medium">
-                            {STATUT_LABEL[h.nouveau_statut] ?? h.nouveau_statut}
+                            {formatValue(h.champ_modifie, h.nouvelle_valeur)}
                           </span>
                         </>
-                      ) : (
-                        <span className="font-medium">
-                          Création : {STATUT_LABEL[h.nouveau_statut] ?? h.nouveau_statut}
-                        </span>
                       )}
                     </span>
-                    <span className="text-muted-foreground">
-                      {h.changed_by ? authors.get(h.changed_by) ?? "—" : "—"} •{" "}
-                      {fmtDateTime(h.changed_at)}
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {h.auteur ? authors.get(h.auteur) ?? "—" : "—"} •{" "}
+                      {fmtDateTime(h.created_at)}
                     </span>
                   </li>
                 ))}
@@ -420,6 +619,17 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
         </div>
 
         <DialogFooter className="gap-2">
+          {canTransfer && service === "recouvrement" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleTransferJuridique}
+              disabled={transferring}
+            >
+              <Scale className="mr-2 h-4 w-4" />
+              {transferring ? "Transfert..." : "Transférer au juridique"}
+            </Button>
+          )}
           {canWrite && !editing && (
             <Button size="sm" onClick={() => setEditing(true)}>
               <Pencil className="mr-2 h-4 w-4" /> Modifier

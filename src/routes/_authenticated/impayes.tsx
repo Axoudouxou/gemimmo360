@@ -56,6 +56,11 @@ type Impaye = {
   statut: string;
   date_derniere_relance: string | null;
   notes: string | null;
+  service_en_charge?: string | null;
+  etape_traitement?: string | null;
+  date_mise_en_demeure?: string | null;
+  date_acte_commissaire?: string | null;
+  date_assignation?: string | null;
 };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
@@ -80,6 +85,8 @@ function ImpayesPage() {
   const [fStatut, setFStatut] = useState("all");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
+
+  const [fService, setFService] = useState("all");
 
   const [form, setForm] = useState({
     contrat_id: "",
@@ -171,6 +178,7 @@ function ImpayesPage() {
     const q = search.trim().toLowerCase();
     return impayes.filter((i) => {
       if (fStatut !== "all" && i.statut !== fStatut) return false;
+      if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
       if (q) {
@@ -180,7 +188,7 @@ function ImpayesPage() {
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impayes, search, fStatut, dFrom, dTo, contrats, lots, biens, contacts]);
+  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts]);
 
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
@@ -329,9 +337,10 @@ function ImpayesPage() {
               searchPlaceholder="Bien ou locataire..."
               selects={[
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "service", label: "Service en charge", value: fService, onChange: setFService, options: [{ value: "recouvrement", label: "Recouvrement" }, { value: "juridique", label: "Juridique" }] },
               ]}
               dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFStatut("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFStatut("all"); setFService("all"); setDFrom(""); setDTo(""); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
