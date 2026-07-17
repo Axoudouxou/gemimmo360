@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/calendrier")({
     lot_id: typeof s.lot_id === "string" ? s.lot_id : undefined,
     contrat_id: typeof s.contrat_id === "string" ? s.contrat_id : undefined,
     contact_id: typeof s.contact_id === "string" ? s.contact_id : undefined,
+    open: typeof s.open === "string" ? s.open : undefined,
   }),
   component: CalendrierPage,
 });
