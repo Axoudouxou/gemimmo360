@@ -502,6 +502,9 @@ function TransactionDetailDialog({
       date_debut_mandat: t === "mandat_gestion" ? (edit.date_debut_mandat || null) : null,
       duree_indeterminee: t === "mandat_gestion" ? edit.duree_indeterminee : true,
       date_fin_mandat: t === "mandat_gestion" && !edit.duree_indeterminee ? (edit.date_fin_mandat || null) : null,
+      montant_estime: edit.montant_estime ? Number(edit.montant_estime) : null,
+      date_cloture_prevue: edit.date_cloture_prevue || null,
+      gestionnaire_id: edit.gestionnaire_id || null,
     };
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
     setSaving(false);
