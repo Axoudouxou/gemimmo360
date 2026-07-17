@@ -97,10 +97,10 @@ function TravauxPage() {
   // Auto-open detail from ?open=<id>
   const routeSearch = Route.useSearch();
   useEffect(() => {
-    if (!routeSearch.open || items.length === 0) return;
-    const found = items.find((t) => t.id === routeSearch.open);
+    if (!routeSearch.open || travaux.length === 0) return;
+    const found = travaux.find((t: Travail) => t.id === routeSearch.open);
     if (found) setDetail(found);
-  }, [routeSearch.open, items]);
+  }, [routeSearch.open, travaux]);
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
