@@ -263,10 +263,11 @@ export function ActivitesLiees(props: LinkedProps) {
     else if (props.lotId) q = q.eq("lot_id", props.lotId);
     else if (props.contratId) q = q.eq("contrat_id", props.contratId);
     else if (props.contactId) q = q.eq("contact_id", props.contactId);
+    else if (props.transactionId) q = q.eq("transaction_id", props.transactionId);
     else return;
     const { data } = await q;
     setItems((data ?? []) as Activite[]);
-  }, [props.bienId, props.lotId, props.contratId, props.contactId]);
+  }, [props.bienId, props.lotId, props.contratId, props.contactId, props.transactionId]);
 
   useEffect(() => {
     load();
