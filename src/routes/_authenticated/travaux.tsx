@@ -210,21 +210,104 @@ function TravauxPage() {
   );
 }
 
-function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClose, onEdit, onDeleted }: {
+type HistoryRow = {
+  id: string;
+  champ_modifie: string;
+  ancienne_valeur: string | null;
+  nouvelle_valeur: string | null;
+  auteur: string | null;
+  created_at: string;
+};
+
+const CHAMP_TRAVAUX_LABEL: Record<string, string> = {
+  creation: "Création",
+  statut: "Statut",
+  motif_refus: "Motif de refus",
+};
+
+function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClose, onEdit, onDeleted, onStatusChanged }: {
   travail: Travail; uid: string; role: string;
   biens: Bien[]; profiles: Profile[]; prestataires: Contact[];
   onClose: () => void; onEdit: () => void; onDeleted: () => void;
+  onStatusChanged: (updated: Travail) => void;
 }) {
   const perms = computePerms(role, travail.created_by, uid);
   const bien = biens.find((b) => b.id === travail.bien_id);
   const assigne = travail.assigne_a ? profiles.find((p) => p.id === travail.assigne_a) : null;
   const prest = travail.prestataire_id ? prestataires.find((p) => p.id === travail.prestataire_id) : null;
 
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [authors, setAuthors] = useState<Map<string, string>>(new Map());
+  const [busy, setBusy] = useState(false);
+  const [refuseOpen, setRefuseOpen] = useState(false);
+  const [motif, setMotif] = useState("");
+
+  const canSubmit =
+    travail.statut === "planifie" &&
+    travail.budget_prevu != null &&
+    (role === "technique" || role === "admin" || role === "direction");
+  const canDecide = travail.statut === "en_attente_validation" && role === "direction";
+
+  const loadHistory = async () => {
+    const { data } = await supabase
+      .from("travaux_historique" as never)
+      .select("id, champ_modifie, ancienne_valeur, nouvelle_valeur, auteur, created_at")
+      .eq("travaux_id", travail.id)
+      .order("created_at", { ascending: false });
+    const rows = (data ?? []) as unknown as HistoryRow[];
+    setHistory(rows);
+    const ids = Array.from(new Set(rows.map((r) => r.auteur).filter((v): v is string => !!v)));
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, email").in("id", ids);
+      setAuthors(new Map(((profs ?? []) as { id: string; email: string | null }[]).map((p) => [p.id, p.email ?? "—"])));
+    } else {
+      setAuthors(new Map());
+    }
+  };
+  useEffect(() => { loadHistory(); }, [travail.id]);
+
   const handleDelete = async () => {
     if (!confirm("Supprimer ces travaux ?")) return;
     const { error } = await supabase.from("travaux").delete().eq("id", travail.id);
     if (error) return toast.error(error.message);
     toast.success("Supprimé"); onDeleted();
+  };
+
+  const updateStatut = async (patch: Record<string, unknown>, successMsg: string) => {
+    setBusy(true);
+    const { data, error } = await (supabase.from("travaux") as never as { update: (p: unknown) => { eq: (c: string, v: string) => { select: () => { maybeSingle: () => Promise<{ data: Travail | null; error: { message: string } | null }> } } } })
+      .update(patch).eq("id", travail.id).select().maybeSingle();
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(successMsg);
+    if (data) onStatusChanged(data);
+    await loadHistory();
+  };
+
+  const handleSubmit = async () => {
+    if (!travail.budget_prevu) return toast.error("Budget prévu requis");
+    // Find a direction user
+    const { data: directions } = await supabase.from("profiles").select("id").eq("role", "direction").limit(1);
+    const assignee = (directions ?? [])[0]?.id ?? null;
+    await updateStatut({ statut: "en_attente_validation" }, "Soumis pour validation");
+    // Create activity
+    const { data: userRes } = await supabase.auth.getUser();
+    await supabase.from("activites").insert({
+      titre: `Validation devis – ${travail.titre} – ${bien?.titre ?? "—"} – ${fmtMoney(travail.budget_prevu)}`,
+      type_activite: "tache",
+      date_debut: new Date().toISOString(),
+      priorite: "urgente",
+      statut: "a_faire",
+      assigne_a: assignee,
+      created_by: userRes.user?.id ?? null,
+      travaux_id: travail.id,
+    } as never);
+  };
+
+  const handleValider = () => updateStatut({ statut: "valide", motif_refus: null }, "Devis validé");
+  const handleRefuser = async () => {
+    await updateStatut({ statut: "refuse", motif_refus: motif.trim() || null }, "Devis refusé");
+    setRefuseOpen(false); setMotif("");
   };
 
   return (
@@ -235,7 +318,8 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           <DialogDescription>Fiche travaux en lecture.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm">
-          <div className="flex items-center gap-2 flex-wrap"><Badge>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={STATUT_VARIANT[travail.statut] ?? "default"}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
             {travail.origine && <Badge variant="outline">Origine : {travail.origine}</Badge>}
             {travail.charge_financiere && <Badge variant="outline">Charge : {travail.charge_financiere}</Badge>}
           </div>
@@ -249,7 +333,30 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
             <div><span className="text-muted-foreground">Fin : </span>{fmtDate(travail.date_fin)}</div>
           </div>
           {travail.description && <div><span className="text-muted-foreground">Description : </span>{travail.description}</div>}
+          {travail.statut === "refuse" && travail.motif_refus && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+              <div className="text-xs font-semibold text-destructive mb-1">Motif de refus</div>
+              <div className="whitespace-pre-wrap">{travail.motif_refus}</div>
+            </div>
+          )}
           {travail.notes && <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">{travail.notes}</div>}
+
+          {canDecide && !refuseOpen && (
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleValider} disabled={busy}>Valider</Button>
+              <Button size="sm" variant="destructive" onClick={() => setRefuseOpen(true)} disabled={busy}>Refuser</Button>
+            </div>
+          )}
+          {canDecide && refuseOpen && (
+            <div className="border rounded-md p-3 space-y-2 bg-muted/10">
+              <Label>Motif du refus (optionnel)</Label>
+              <Textarea rows={3} value={motif} onChange={(e) => setMotif(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setRefuseOpen(false); setMotif(""); }}>Annuler</Button>
+                <Button size="sm" variant="destructive" onClick={handleRefuser} disabled={busy}>Confirmer le refus</Button>
+              </div>
+            </div>
+          )}
 
           <div className="border-t pt-3">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><FileText className="h-4 w-4" /> Documents</h4>
@@ -257,10 +364,36 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           </div>
 
           <div className="border-t pt-3">
+            <h4 className="font-semibold text-sm mb-2">Historique</h4>
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Aucun changement enregistré.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {history.map((h) => (
+                  <li key={h.id} className="text-xs rounded-md border px-2 py-1.5 bg-muted/20 flex items-center justify-between gap-2">
+                    <span>
+                      <span className="font-medium">{CHAMP_TRAVAUX_LABEL[h.champ_modifie] ?? h.champ_modifie}</span>
+                      {h.champ_modifie === "creation" ? (
+                        <>{" : "}{STATUT_LABEL[h.nouvelle_valeur ?? ""] ?? h.nouvelle_valeur}</>
+                      ) : h.champ_modifie === "statut" ? (
+                        <>{" : "}<span className="text-muted-foreground">{STATUT_LABEL[h.ancienne_valeur ?? ""] ?? h.ancienne_valeur ?? "—"}</span> → <span className="font-medium">{STATUT_LABEL[h.nouvelle_valeur ?? ""] ?? h.nouvelle_valeur}</span></>
+                      ) : (
+                        <>{" : "}{h.nouvelle_valeur ?? "—"}</>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground whitespace-nowrap">{h.auteur ? authors.get(h.auteur) ?? "—" : "—"} • {new Date(h.created_at).toLocaleString("fr-FR")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="border-t pt-3">
             <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} entityType="travaux" entityId={travail.id} link={`/travaux?open=${travail.id}`} entityTitle={travail.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">
+          {canSubmit && <Button size="sm" variant="secondary" onClick={handleSubmit} disabled={busy}>Soumettre pour validation</Button>}
           {perms.canDelete && <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
           {(perms.canEditFull || perms.canEditLimited) && <Button size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>}
           <Button variant="outline" size="sm" onClick={onClose}>Fermer</Button>
