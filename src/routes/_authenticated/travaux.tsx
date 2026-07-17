@@ -26,17 +26,29 @@ export const Route = createFileRoute("/_authenticated/travaux")({
 
 const STATUTS = [
   { value: "planifie", label: "Planifié" },
+  { value: "en_attente_validation", label: "En attente de validation" },
+  { value: "valide", label: "Validé" },
+  { value: "refuse", label: "Refusé" },
   { value: "en_cours", label: "En cours" },
   { value: "termine", label: "Terminé" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
+
+const STATUT_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  planifie: "outline",
+  en_attente_validation: "secondary",
+  valide: "default",
+  refuse: "destructive",
+  en_cours: "default",
+  termine: "default",
+};
 
 type Travail = {
   id: string; bien_id: string; titre: string; description: string | null;
   budget_prevu: number | null; budget_depense: number; statut: string;
   date_debut: string | null; date_fin: string | null;
   origine: string | null; charge_financiere: string | null;
-  notes: string | null;
+  notes: string | null; motif_refus: string | null;
   created_by: string | null; assigne_a: string | null; prestataire_id: string | null;
 };
 type Bien = { id: string; titre: string };
