@@ -387,9 +387,13 @@ function ImpayesPage() {
                           <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
                           <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                           <TableCell>
-                            <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
-                              {STATUT_LABEL[i.statut] ?? i.statut}
-                            </Badge>
+                            {i.etape_traitement === "resolu" ? (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Soldé</Badge>
+                            ) : (
+                              <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
+                                {STATUT_LABEL[i.statut] ?? i.statut}
+                              </Badge>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
