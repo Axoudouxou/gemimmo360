@@ -469,6 +469,7 @@ function TransactionDetailDialog({
   onChanged,
   profiles,
   canEditGestionnaire,
+  canDelete,
 }: {
   tx: Tx | null;
   onClose: () => void;
@@ -479,6 +480,7 @@ function TransactionDetailDialog({
   onChanged: () => void;
   profiles: { id: string; email: string | null }[];
   canEditGestionnaire: boolean;
+  canDelete: boolean;
 }) {
   const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
