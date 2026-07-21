@@ -119,7 +119,7 @@ function TravauxPage() {
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
   const prestataire = (id: string | null) => id ? prestataires.find((p) => p.id === id) : null;
 
-  const canWriteBase = role && role !== "recouvrement" && role !== "en_attente";
+  const canWriteBase = (uid && FULL_ACCESS_USER_IDS.includes(uid)) || (role && role !== "recouvrement" && role !== "en_attente");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
