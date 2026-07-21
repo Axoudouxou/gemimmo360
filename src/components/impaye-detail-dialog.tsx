@@ -243,12 +243,50 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
   if (!impaye) return null;
   const reste = Number(impaye.montant_du) - Number(impaye.montant_paye);
 
+  async function createJuridiqueAlertActivity() {
+    if (!impaye) return;
+    // Avoid duplicates: check for an existing open "Arrêter la procédure" activity for this impayé.
+    const { data: existing } = await supabase
+      .from("activites")
+      .select("id, statut, titre")
+      .eq("impaye_id", impaye.id)
+      .ilike("titre", "Arrêter la procédure%")
+      .limit(5);
+    const hasOpen = ((existing ?? []) as { statut: string }[]).some(
+      (a) => a.statut !== "termine" && a.statut !== "annule",
+    );
+    if (hasOpen) return;
+    const { data: juridiques } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("role", "juridique")
+      .limit(1);
+    const assignee = (juridiques ?? [])[0]?.id ?? null;
+    const locNom = details.locataire
+      ? `${details.locataire.nom}${details.locataire.prenom ? " " + details.locataire.prenom : ""}`
+      : "locataire";
+    const { data: userRes } = await supabase.auth.getUser();
+    await supabase.from("activites").insert({
+      titre: `Arrêter la procédure – ${locNom} – paiement reçu, à confirmer`,
+      type_activite: "tache",
+      date_debut: new Date().toISOString(),
+      priorite: "urgente",
+      statut: "a_faire",
+      assigne_a: assignee,
+      created_by: userRes.user?.id ?? null,
+      impaye_id: impaye.id,
+    } as never);
+  }
+
   async function handleSave() {
     if (!impaye) return;
     setSaving(true);
+    const newMontantPaye = form.montant_paye === "" ? 0 : Number(form.montant_paye);
+    const newReste = Number(impaye.montant_du) - newMontantPaye;
+    const wasResolved = etape === "resolu";
     const payload: Record<string, unknown> = {
       statut: form.statut,
-      montant_paye: form.montant_paye === "" ? 0 : Number(form.montant_paye),
+      montant_paye: newMontantPaye,
       date_derniere_relance: form.date_derniere_relance || null,
     };
     // Juridical dates only when in juridique service and role allowed
@@ -257,11 +295,18 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
       payload.date_acte_commissaire = form.date_acte_commissaire || null;
       payload.date_assignation = form.date_assignation || null;
       // Auto-update etape based on newly set dates
-      let etape = impaye.etape_traitement ?? "transfere_juridique";
-      if (form.date_assignation) etape = "procedure_judiciaire";
-      else if (form.date_acte_commissaire) etape = "procedure_judiciaire";
-      else if (form.date_mise_en_demeure) etape = "mise_en_demeure";
-      payload.etape_traitement = etape;
+      let nextEtape = etape === "recouvrement" ? "transfere_juridique" : etape;
+      if (form.date_assignation) nextEtape = "procedure_judiciaire";
+      else if (form.date_acte_commissaire) nextEtape = "procedure_judiciaire";
+      else if (form.date_mise_en_demeure) nextEtape = "mise_en_demeure";
+      payload.etape_traitement = nextEtape;
+    }
+    // Auto-close only if never escalated (etape recouvrement or null) and fully paid.
+    let autoClosed = false;
+    if (!wasResolved && newReste <= 0 && (etape === "recouvrement" || !impaye.etape_traitement)) {
+      payload.statut = "a_jour";
+      payload.etape_traitement = "resolu";
+      autoClosed = true;
     }
     const { data, error } = await supabase
       .from("impayes")
@@ -271,11 +316,49 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
       .maybeSingle();
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Impayé mis à jour");
     setEditing(false);
+    if (data && onUpdated) onUpdated(data as unknown as Impaye);
+
+    // If fully paid but in a juridique step, create alert activity (do not close).
+    if (!wasResolved && newReste <= 0 && JURIDIQUE_ETAPES.has(etape)) {
+      await createJuridiqueAlertActivity();
+      toast.warning("Paiement reçu — procédure juridique à confirmer");
+    } else if (autoClosed) {
+      toast.success("Impayé soldé et clôturé");
+    } else {
+      toast.success("Impayé mis à jour");
+    }
+    await loadHistory(impaye.id);
+  }
+
+  async function handleConfirmClose() {
+    if (!impaye) return;
+    setClosing(true);
+    const { data, error } = await supabase
+      .from("impayes")
+      .update({ statut: "a_jour", etape_traitement: "resolu" } as never)
+      .eq("id", impaye.id)
+      .select()
+      .maybeSingle();
+    if (error) {
+      setClosing(false);
+      return toast.error(error.message);
+    }
+    // Explicit history entry mentioning procedure stop
+    const { data: userRes } = await supabase.auth.getUser();
+    await supabase.from("impayes_historique" as never).insert({
+      impaye_id: impaye.id,
+      champ_modifie: "cloture_procedure",
+      ancienne_valeur: ETAPE_LABEL[etape] ?? etape,
+      nouvelle_valeur: "Procédure arrêtée suite à paiement",
+      auteur: userRes.user?.id ?? null,
+    } as never);
+    setClosing(false);
+    toast.success("Dossier soldé et procédure clôturée");
     if (data && onUpdated) onUpdated(data as unknown as Impaye);
     await loadHistory(impaye.id);
   }
+
 
   async function handleTransferJuridique() {
     if (!impaye) return;
