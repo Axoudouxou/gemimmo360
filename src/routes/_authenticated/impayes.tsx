@@ -92,8 +92,6 @@ function ImpayesPage() {
   const [dTo, setDTo] = useState("");
 
   const [fService, setFService] = useState("all");
-  const [fStatutDefaultApplied, _setFSDA] = useState(true);
-  void fStatutDefaultApplied; void _setFSDA;
 
   const [form, setForm] = useState({
     contrat_id: "",
