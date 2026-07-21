@@ -87,7 +87,7 @@ function ImpayesPage() {
   const [selected, setSelected] = useState<Impaye | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [fStatut, setFStatut] = useState("all");
+  const [fStatut, setFStatut] = useState("en_retard");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
