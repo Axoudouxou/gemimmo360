@@ -28,7 +28,7 @@ const GEM = "#8AB334";
 const COLORS = ["#8AB334", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#14B8A6", "#EC4899"];
 
 function fmtMoney(n: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n ?? 0);
+  return `${Number(n ?? 0).toLocaleString("fr-FR")} FCFA`;
 }
 
 /* ------------------------ OCCUPATION GAUGE ------------------------ */
