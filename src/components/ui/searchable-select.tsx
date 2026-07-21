@@ -29,6 +29,10 @@ type Props = {
   className?: string;
   allowClear?: boolean;
   id?: string;
+  /** When set, shows a "+ Créer …" row using the current query when it doesn't match an existing label. */
+  onCreateOption?: (query: string) => void;
+  /** Label formatter for the create row. */
+  createLabel?: (query: string) => string;
 };
 
 /**
