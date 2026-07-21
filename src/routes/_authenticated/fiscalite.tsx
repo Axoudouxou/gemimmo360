@@ -30,7 +30,8 @@ export const Route = createFileRoute("/_authenticated/fiscalite")({
 
 const ALLOWED_ROLES = ["admin", "direction", "juridique"];
 
-const TRIMESTRES = ["T1", "T2", "T3", "T4"] as const;
+const TRIMESTRES = ["T1", "T2", "T3", "T4", "annuel"] as const;
+const TRIMESTRE_LABEL: Record<string, string> = { T1: "T1", T2: "T2", T3: "T3", T4: "T4", annuel: "Annuel" };
 const DEFAULT_ECHEANCE: Record<string, string> = { T1: "03-15", T2: "06-15", T3: "09-15", T4: "12-15" };
 
 const IF_STATUTS: { value: string; label: string; badge: string }[] = [
