@@ -299,11 +299,31 @@ function ImpotDialog({
 }) {
   const currentYear = new Date().getFullYear();
   const [form, setForm] = useState<Partial<Impot>>({});
+  const [historique, setHistorique] = useState<ImpotHistoEntry[]>([]);
   useEffect(() => {
-    if (editing) setForm(editing);
-    else setForm({ annee_fiscale: currentYear, trimestre: "T1", statut: "a_retirer", date_echeance: `${currentYear}-03-15` });
+    if (editing) {
+      setForm(editing);
+      supabase
+        .from("impots_fonciers_historique" as never)
+        .select("*")
+        .eq("impot_foncier_id", editing.id)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setHistorique((data as unknown as ImpotHistoEntry[]) ?? []));
+    } else {
+      setForm({ annee_fiscale: currentYear, trimestre: "T1", statut: "a_retirer", date_echeance: `${currentYear}-03-15` });
+      setHistorique([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, open]);
+
+  async function deleteImpot() {
+    if (!editing) return;
+    const { error } = await supabase.from("impots_fonciers").delete().eq("id", editing.id);
+    if (error) throw new Error(error.message);
+    toast.success("Impôt foncier supprimé");
+    await onSaved();
+  }
+
 
   function updateTrimestre(t: string) {
     const yr = form.annee_fiscale ?? currentYear;
