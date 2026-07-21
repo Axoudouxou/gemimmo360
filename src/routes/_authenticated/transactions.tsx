@@ -803,9 +803,29 @@ function TransactionDetailDialog({
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={onClose}>Fermer</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "..." : "Enregistrer"}</Button>
+            <DialogFooter className="gap-2 sm:justify-between">
+              <div>
+                {canDelete && (
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      if (!tx) return;
+                      if (!confirm("Supprimer définitivement cette transaction ?")) return;
+                      const { error } = await supabase.from("transactions_commerciales").delete().eq("id", tx.id);
+                      if (error) return toast.error(error.message);
+                      toast.success("Transaction supprimée");
+                      onChanged();
+                      onClose();
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>Fermer</Button>
+                <Button onClick={handleSave} disabled={saving}>{saving ? "..." : "Enregistrer"}</Button>
+              </div>
             </DialogFooter>
             <NouvelleActiviteLieeDialog
               open={openNew}
