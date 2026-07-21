@@ -21,16 +21,24 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   /** Si fourni, le lot est fixé (fiche Lot). Sinon un sélecteur apparaît. */
   fixedLotId?: string;
+  /** Si fourni, filtre les lots disponibles à ce bien (fiche Transaction). */
+  filterByBienId?: string;
+  /** Si fourni, présélectionne un locataire existant (fiche Transaction). */
+  fixedContactId?: string;
+  /** Loyer pré-rempli (montant estimé transaction). */
+  prefillLoyer?: number | null;
+  /** Lien d'origine (transaction commerciale). */
+  transactionOrigineId?: string;
   onCreated?: (contratId: string) => void;
 };
 
-export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated }: Props) {
+export function NouveauContratDialog({ open, onOpenChange, fixedLotId, filterByBienId, fixedContactId, prefillLoyer, transactionOrigineId, onCreated }: Props) {
   const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [locataires, setLocataires] = useState<Locataire[]>([]);
   const [lotId, setLotId] = useState<string>(fixedLotId ?? "");
   const [mode, setMode] = useState<"existant" | "nouveau">("existant");
-  const [existantId, setExistantId] = useState<string>("");
+  const [existantId, setExistantId] = useState<string>(fixedContactId ?? "");
   const [newLoc, setNewLoc] = useState({ nom: "", prenom: "", telephone: "", email: "", type_entite: "personne" as "personne" | "entreprise" });
   const [form, setForm] = useState({ loyer_mensuel: "", depot_garantie: "", date_debut: new Date().toISOString().slice(0, 10), statut: "actif" });
   const [saving, setSaving] = useState(false);
@@ -40,20 +48,30 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, onCreated
   useEffect(() => {
     if (!open) return;
     setLotId(fixedLotId ?? "");
-    setMode("existant"); setExistantId(""); setConfirmed(false);
+    setMode("existant"); setExistantId(fixedContactId ?? ""); setConfirmed(false);
     setNewLoc({ nom: "", prenom: "", telephone: "", email: "", type_entite: "personne" });
-    setForm({ loyer_mensuel: "", depot_garantie: "", date_debut: new Date().toISOString().slice(0, 10), statut: "actif" });
+    setForm({
+      loyer_mensuel: prefillLoyer != null ? String(prefillLoyer) : "",
+      depot_garantie: "",
+      date_debut: new Date().toISOString().slice(0, 10),
+      statut: "actif",
+    });
     (async () => {
+      const lotsQuery = supabase.from("lots").select("id, label, bien_id, statut").order("label");
       const [{ data: lData }, { data: bData }, { data: locData }] = await Promise.all([
-        supabase.from("lots").select("id, label, bien_id, statut").order("label"),
+        filterByBienId ? lotsQuery.eq("bien_id", filterByBienId) : lotsQuery,
         supabase.from("biens").select("id, titre").order("titre"),
-        supabase.from("contacts").select("id, nom, prenom, type_entite").eq("type_contact", "locataire").eq("archive", false).order("nom"),
+        supabase.from("contacts").select("id, nom, prenom, type_entite").in("type_contact", ["locataire", "prospect"]).eq("archive", false).order("nom"),
       ]);
       setLots((lData ?? []) as Lot[]);
       setBiens((bData ?? []) as Bien[]);
       setLocataires((locData ?? []) as Locataire[]);
+      if (filterByBienId && !fixedLotId) {
+        const vacants = ((lData ?? []) as Lot[]).filter((l) => l.statut === "vacant");
+        if (vacants.length === 1) setLotId(vacants[0].id);
+      }
     })();
-  }, [open, fixedLotId]);
+  }, [open, fixedLotId, filterByBienId, fixedContactId, prefillLoyer]);
 
   useEffect(() => {
     if (!lotId) { setActiveContrat(null); return; }
