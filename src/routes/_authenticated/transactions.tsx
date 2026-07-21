@@ -440,7 +440,7 @@ function TransactionsPage() {
           canDelete={
             role === "admin" || role === "direction" || role === "juridique" ||
             (role === "commercial" && !!detail && detail.gestionnaire_id === uid) ||
-            hasModuleAccess(uid, "transactions")
+            (!!uid && FULL_ACCESS_USER_IDS.includes(uid))
           }
         />
         <NouveauProspectMiniDialog
