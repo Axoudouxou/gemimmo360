@@ -61,7 +61,8 @@ type Bailleur = { id: string; nom: string; prenom: string | null };
 type Bien = { id: string; titre: string };
 type Impot = {
   id: string; bailleur_id: string; bien_id: string; annee_fiscale: number; trimestre: string;
-  date_echeance: string; montant: number | null; statut: string; date_paiement: string | null;
+  date_echeance: string | null; montant: number | null; montant_annuel_total: number | null;
+  statut: string; date_paiement: string | null;
   date_recuperation_recu: string | null; reference_cheque: string | null;
 };
 type Honoraire = {
