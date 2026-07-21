@@ -106,7 +106,7 @@ function TransactionsPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!hasModuleAccess(r, u, ALLOWED)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
       // Load profiles list for gestionnaire selection (admin/direction only need the picker)
