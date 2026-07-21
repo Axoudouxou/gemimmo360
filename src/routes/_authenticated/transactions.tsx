@@ -290,7 +290,7 @@ function TransactionsPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2"><Label htmlFor="montant">Montant estimé (€)</Label>
+                      <div className="grid gap-2"><Label htmlFor="montant">Montant estimé (FCFA)</Label>
                         <Input id="montant" type="number" min="0" step="0.01" value={form.montant_estime}
                           onChange={(e) => setForm({ ...form, montant_estime: e.target.value })} />
                       </div>
