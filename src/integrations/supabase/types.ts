@@ -1012,6 +1012,8 @@ export type Database = {
           id: string
           montant: number | null
           montant_annuel_total: number | null
+          montant_penalite: number | null
+          motif_penalite: string | null
           reference_cheque: string | null
           statut: string
           trimestre: string
@@ -1029,6 +1031,8 @@ export type Database = {
           id?: string
           montant?: number | null
           montant_annuel_total?: number | null
+          montant_penalite?: number | null
+          motif_penalite?: string | null
           reference_cheque?: string | null
           statut?: string
           trimestre: string
@@ -1046,6 +1050,8 @@ export type Database = {
           id?: string
           montant?: number | null
           montant_annuel_total?: number | null
+          montant_penalite?: number | null
+          motif_penalite?: string | null
           reference_cheque?: string | null
           statut?: string
           trimestre?: string
