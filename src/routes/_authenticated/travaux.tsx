@@ -17,6 +17,8 @@ import { CommentSection, computePerms } from "@/components/comment-section";
 import { toast } from "sonner";
 import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
+const CHRISTELLE_EMAIL = "christelle.kouassi@gem-immobilier.org";
+
 export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -44,17 +46,24 @@ const STATUT_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   termine: "default",
 };
 
+const CHARGES = [
+  { value: "bailleur", label: "Bailleur" },
+  { value: "locataire", label: "Locataire" },
+  { value: "gem", label: "GEM" },
+] as const;
+const CHARGE_LABEL: Record<string, string> = Object.fromEntries(CHARGES.map((c) => [c.value, c.label]));
+
 type Travail = {
   id: string; bien_id: string; titre: string; description: string | null;
   budget_prevu: number | null; budget_depense: number; statut: string;
   date_debut: string | null; date_fin: string | null;
   origine: string | null; charge_financiere: string | null;
   notes: string | null; motif_refus: string | null;
-  created_by: string | null; assigne_a: string | null; prestataire_id: string | null;
+  reference_cheque: string | null;
+  created_by: string | null; assigne_a: string | null;
 };
 type Bien = { id: string; titre: string };
 type Profile = { id: string; email: string | null };
-type Contact = { id: string; nom: string; prenom: string | null };
 
 const fmtMoney = (n: number | null) => n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA";
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
@@ -62,10 +71,10 @@ const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("fr-FR"
 function TravauxPage() {
   const [uid, setUid] = useState<string>("");
   const [role, setRole] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [travaux, setTravaux] = useState<Travail[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [prestataires, setPrestataires] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [detail, setDetail] = useState<Travail | null>(null);
@@ -83,6 +92,7 @@ function TravauxPage() {
       const { data: userRes } = await supabase.auth.getUser();
       const u = userRes.user?.id ?? "";
       setUid(u);
+      setEmail(userRes.user?.email ?? "");
       if (u) {
         const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
         setRole(p?.role ?? "");
@@ -92,17 +102,15 @@ function TravauxPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: tData, error }, { data: bData }, { data: pData }, { data: prData }] = await Promise.all([
+    const [{ data: tData, error }, { data: bData }, { data: pData }] = await Promise.all([
       supabase.from("travaux").select("*").order("created_at", { ascending: false }),
       supabase.from("biens").select("id, titre").order("titre"),
       supabase.from("profiles").select("id, email").order("email"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "prestataire").eq("archive", false).order("nom"),
     ]);
     if (error) toast.error(error.message);
-    else setTravaux((tData ?? []) as Travail[]);
+    else setTravaux((tData ?? []) as unknown as Travail[]);
     setBiens((bData ?? []) as Bien[]);
     setProfiles((pData ?? []) as Profile[]);
-    setPrestataires((prData ?? []) as Contact[]);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -117,7 +125,6 @@ function TravauxPage() {
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
-  const prestataire = (id: string | null) => id ? prestataires.find((p) => p.id === id) : null;
 
   const canWriteBase = (uid && FULL_ACCESS_USER_IDS.includes(uid)) || (role && role !== "recouvrement" && role !== "en_attente");
 
@@ -162,14 +169,14 @@ function TravauxPage() {
             />
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucun chantier.</p> : (
               <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Assigné</TableHead><TableHead>Prestataire</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Bien</TableHead><TableHead>Titre</TableHead><TableHead>Assigné</TableHead><TableHead>À la charge de</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filtered.map((t) => (
                     <TableRow key={t.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetail(t)}>
                       <TableCell className="font-medium">{bienTitre(t.bien_id)}</TableCell>
                       <TableCell>{t.titre}</TableCell>
                       <TableCell className="text-xs">{profEmail(t.assigne_a)}</TableCell>
-                      <TableCell className="text-xs">{prestataire(t.prestataire_id)?.nom ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{t.charge_financiere ? CHARGE_LABEL[t.charge_financiere] ?? t.charge_financiere : "—"}</TableCell>
                       <TableCell><Badge variant={STATUT_VARIANT[t.statut] ?? "default"}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
                     </TableRow>
                   ))}
@@ -184,9 +191,9 @@ function TravauxPage() {
             travail={detail}
             uid={uid}
             role={role}
+            email={email}
             biens={biens}
             profiles={profiles}
-            prestataires={prestataires}
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
@@ -201,7 +208,6 @@ function TravauxPage() {
             role={role}
             biens={biens}
             profiles={profiles}
-            prestataires={prestataires}
             onClose={() => { setCreating(false); setEditing(null); }}
             onSaved={() => { setCreating(false); setEditing(null); load(); }}
           />
@@ -226,22 +232,28 @@ const CHAMP_TRAVAUX_LABEL: Record<string, string> = {
   motif_refus: "Motif de refus",
 };
 
-function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClose, onEdit, onDeleted, onStatusChanged }: {
-  travail: Travail; uid: string; role: string;
-  biens: Bien[]; profiles: Profile[]; prestataires: Contact[];
+function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onEdit, onDeleted, onStatusChanged }: {
+  travail: Travail; uid: string; role: string; email: string;
+  biens: Bien[]; profiles: Profile[];
   onClose: () => void; onEdit: () => void; onDeleted: () => void;
   onStatusChanged: (updated: Travail) => void;
 }) {
   const perms = computePerms(role, travail.created_by, uid);
   const bien = biens.find((b) => b.id === travail.bien_id);
   const assigne = travail.assigne_a ? profiles.find((p) => p.id === travail.assigne_a) : null;
-  const prest = travail.prestataire_id ? prestataires.find((p) => p.id === travail.prestataire_id) : null;
+
+  const isChristelle = email.toLowerCase() === CHRISTELLE_EMAIL;
+  const canEditRefCheque = perms.canEditFull || perms.canEditLimited || isChristelle;
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [authors, setAuthors] = useState<Map<string, string>>(new Map());
   const [busy, setBusy] = useState(false);
   const [refuseOpen, setRefuseOpen] = useState(false);
   const [motif, setMotif] = useState("");
+  const [refCheque, setRefCheque] = useState(travail.reference_cheque ?? "");
+  const [savingRef, setSavingRef] = useState(false);
+
+  useEffect(() => { setRefCheque(travail.reference_cheque ?? ""); }, [travail.id, travail.reference_cheque]);
 
   const canSubmit =
     travail.statut === "planifie" &&
@@ -276,22 +288,31 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
 
   const updateStatut = async (patch: Record<string, unknown>, successMsg: string) => {
     setBusy(true);
-    const { data, error } = await (supabase.from("travaux") as never as { update: (p: unknown) => { eq: (c: string, v: string) => { select: () => { maybeSingle: () => Promise<{ data: Travail | null; error: { message: string } | null }> } } } })
+    const { data, error } = await (supabase.from("travaux") as any)
       .update(patch).eq("id", travail.id).select().maybeSingle();
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(successMsg);
-    if (data) onStatusChanged(data);
+    if (data) onStatusChanged(data as Travail);
     await loadHistory();
+  };
+
+  const saveRefCheque = async () => {
+    setSavingRef(true);
+    const { data, error } = await (supabase.from("travaux") as any)
+      .update({ reference_cheque: refCheque.trim() || null })
+      .eq("id", travail.id).select().maybeSingle();
+    setSavingRef(false);
+    if (error) return toast.error(error.message);
+    toast.success("Référence chèque enregistrée");
+    if (data) onStatusChanged(data as Travail);
   };
 
   const handleSubmit = async () => {
     if (!travail.budget_prevu) return toast.error("Budget prévu requis");
-    // Find a direction user
     const { data: directions } = await supabase.from("profiles").select("id").eq("role", "direction").limit(1);
     const assignee = (directions ?? [])[0]?.id ?? null;
     await updateStatut({ statut: "en_attente_validation" }, "Soumis pour validation");
-    // Create activity
     const { data: userRes } = await supabase.auth.getUser();
     await supabase.from("activites").insert({
       titre: `Validation devis – ${travail.titre} – ${bien?.titre ?? "—"} – ${fmtMoney(travail.budget_prevu)}`,
@@ -322,17 +343,31 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={STATUT_VARIANT[travail.statut] ?? "default"}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
             {travail.origine && <Badge variant="outline">Origine : {travail.origine}</Badge>}
-            {travail.charge_financiere && <Badge variant="outline">Charge : {travail.charge_financiere}</Badge>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><span className="text-muted-foreground">Bien : </span>{bien?.titre ?? "—"}</div>
             <div><span className="text-muted-foreground">Assigné à : </span>{assigne?.email ?? "—"}</div>
-            <div><span className="text-muted-foreground">Prestataire : </span>{prest ? <Link to="/contacts/$contactId" params={{ contactId: prest.id }} className="underline">{prest.nom}{prest.prenom ? ` ${prest.prenom}` : ""}</Link> : "—"}</div>
+            <div><span className="text-muted-foreground">À la charge de : </span>{travail.charge_financiere ? CHARGE_LABEL[travail.charge_financiere] ?? travail.charge_financiere : "—"}</div>
             <div><span className="text-muted-foreground">Budget prévu : </span>{fmtMoney(travail.budget_prevu)}</div>
             <div><span className="text-muted-foreground">Budget dépensé : </span>{fmtMoney(travail.budget_depense)}</div>
             <div><span className="text-muted-foreground">Début : </span>{fmtDate(travail.date_debut)}</div>
             <div><span className="text-muted-foreground">Fin : </span>{fmtDate(travail.date_fin)}</div>
           </div>
+
+          <div className="rounded-md border p-3 bg-muted/10 space-y-2">
+            <Label className="text-xs text-muted-foreground">Référence chèque</Label>
+            {canEditRefCheque ? (
+              <div className="flex gap-2">
+                <Input value={refCheque} onChange={(e) => setRefCheque(e.target.value)} placeholder="N° ou référence du chèque" />
+                <Button size="sm" onClick={saveRefCheque} disabled={savingRef || refCheque === (travail.reference_cheque ?? "")}>
+                  {savingRef ? "..." : "Enregistrer"}
+                </Button>
+              </div>
+            ) : (
+              <div className="text-sm">{travail.reference_cheque || "—"}</div>
+            )}
+          </div>
+
           {travail.description && <div><span className="text-muted-foreground">Description : </span>{travail.description}</div>}
           {travail.statut === "refuse" && travail.motif_refus && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
@@ -390,7 +425,7 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
           </div>
 
           <div className="border-t pt-3">
-            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment} entityType="travaux" entityId={travail.id} link={`/travaux?open=${travail.id}`} entityTitle={travail.titre} />
+            <CommentSection table="travaux_commentaires" fkColumn="travaux_id" recordId={travail.id} canComment={perms.canComment || isChristelle} entityType="travaux" entityId={travail.id} link={`/travaux?open=${travail.id}`} entityTitle={travail.titre} />
           </div>
         </div>
         <DialogFooter className="gap-2">
@@ -404,9 +439,9 @@ function DetailDialog({ travail, uid, role, biens, profiles, prestataires, onClo
   );
 }
 
-function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose, onSaved }: {
+function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
   initial: Travail | null; uid: string; role: string;
-  biens: Bien[]; profiles: Profile[]; prestataires: Contact[];
+  biens: Bien[]; profiles: Profile[];
   onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
@@ -423,23 +458,26 @@ function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose
     date_debut: initial?.date_debut ?? "",
     date_fin: initial?.date_fin ?? "",
     assigne_a: initial?.assigne_a ?? "",
-    prestataire_id: initial?.prestataire_id ?? "",
+    charge_financiere: initial?.charge_financiere ?? "",
+    reference_cheque: initial?.reference_cheque ?? "",
   }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.bien_id || !form.titre) return toast.error("Bien et titre obligatoires");
+    if (!form.charge_financiere) return toast.error("Le champ « À la charge de » est obligatoire");
     setSaving(true);
     if (isEdit) {
       const patch: Record<string, any> = limited
         ? {
             statut: form.statut,
             assigne_a: form.assigne_a || null,
-            prestataire_id: form.prestataire_id || null,
+            charge_financiere: form.charge_financiere,
             date_debut: form.date_debut || null,
             date_fin: form.date_fin || null,
             budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
             budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
+            reference_cheque: form.reference_cheque.trim() || null,
           }
         : {
             bien_id: form.bien_id,
@@ -447,28 +485,30 @@ function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose
             description: form.description.trim() || null,
             statut: form.statut,
             assigne_a: form.assigne_a || null,
-            prestataire_id: form.prestataire_id || null,
+            charge_financiere: form.charge_financiere,
             date_debut: form.date_debut || null,
             date_fin: form.date_fin || null,
             budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
             budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
+            reference_cheque: form.reference_cheque.trim() || null,
           };
       const { error } = await (supabase.from("travaux") as any).update(patch).eq("id", initial!.id);
       setSaving(false);
       if (error) return toast.error(error.message);
       toast.success("Modifié"); onSaved();
     } else {
-      const { error } = await supabase.from("travaux").insert({
+      const { error } = await (supabase.from("travaux") as any).insert({
         bien_id: form.bien_id,
         titre: form.titre.trim(),
         description: form.description.trim() || null,
         statut: form.statut,
         assigne_a: form.assigne_a || null,
-        prestataire_id: form.prestataire_id || null,
+        charge_financiere: form.charge_financiere,
         date_debut: form.date_debut || null,
         date_fin: form.date_fin || null,
         budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
         budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
+        reference_cheque: form.reference_cheque.trim() || null,
         created_by: uid,
       });
       setSaving(false);
@@ -483,7 +523,7 @@ function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{isEdit ? "Modifier les travaux" : "Nouveaux travaux"}</DialogTitle>
-            <DialogDescription>{limited ? "En tant que profil technique : statut, assignation, prestataire, dates et budget uniquement." : "Renseignez les informations."}</DialogDescription>
+            <DialogDescription>{limited ? "En tant que profil technique : statut, assignation, charge financière, dates et budget uniquement." : "Renseignez les informations."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>Bien *</Label>
@@ -501,12 +541,15 @@ function EditDialog({ initial, uid, role, biens, profiles, prestataires, onClose
                   <SelectContent><SelectItem value="none">—</SelectItem>{profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.email ?? p.id}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2"><Label>Prestataire</Label>
-                <Select value={form.prestataire_id || "none"} onValueChange={(v) => setForm({ ...form, prestataire_id: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">—</SelectItem>{prestataires.map((p) => <SelectItem key={p.id} value={p.id}>{p.nom}{p.prenom ? ` ${p.prenom}` : ""}</SelectItem>)}</SelectContent>
+              <div className="grid gap-2"><Label>À la charge de *</Label>
+                <Select value={form.charge_financiere} onValueChange={(v) => setForm({ ...form, charge_financiere: v })}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                  <SelectContent>{CHARGES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid gap-2"><Label>Référence chèque</Label>
+              <Input value={form.reference_cheque} onChange={(e) => setForm({ ...form, reference_cheque: e.target.value })} placeholder="N° ou référence du chèque" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2"><Label>Budget prévu</Label><Input type="number" min="0" step="0.01" value={form.budget_prevu} onChange={(e) => setForm({ ...form, budget_prevu: e.target.value })} /></div>
