@@ -70,8 +70,9 @@ function EDLPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? !(NO_ACCESS as readonly string[]).includes(role) : false;
-  const isPrivileged = role ? (PRIVILEGED as readonly string[]).includes(role) : false;
+  const isOverride = !!uid && FULL_ACCESS_USER_IDS.includes(uid);
+  const canWrite = isOverride || (role ? !(NO_ACCESS as readonly string[]).includes(role) : false);
+  const isPrivileged = isOverride || (role ? (PRIVILEGED as readonly string[]).includes(role) : false);
   const canEdit = (e: EDL) => isPrivileged || (!!uid && e.created_by === uid);
 
   useEffect(() => {
