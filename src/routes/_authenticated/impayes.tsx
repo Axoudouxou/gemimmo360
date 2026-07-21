@@ -414,6 +414,10 @@ function ImpayesPage() {
             setSelected(u);
             setImpayes((prev) => prev.map((x) => (x.id === u.id ? u : x)));
           }}
+          onDeleted={(id) => {
+            setImpayes((prev) => prev.filter((x) => x.id !== id));
+            setSelected(null);
+          }}
         />
       </main>
     </div>
