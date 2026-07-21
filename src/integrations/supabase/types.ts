@@ -63,8 +63,10 @@ export type Database = {
           created_by: string | null
           date_debut: string | null
           date_fin: string | null
+          honoraire_id: string | null
           id: string
           impaye_id: string | null
+          impot_foncier_id: string | null
           lieu: string | null
           lot_id: string | null
           notes: string | null
@@ -86,8 +88,10 @@ export type Database = {
           created_by?: string | null
           date_debut?: string | null
           date_fin?: string | null
+          honoraire_id?: string | null
           id?: string
           impaye_id?: string | null
+          impot_foncier_id?: string | null
           lieu?: string | null
           lot_id?: string | null
           notes?: string | null
@@ -109,8 +113,10 @@ export type Database = {
           created_by?: string | null
           date_debut?: string | null
           date_fin?: string | null
+          honoraire_id?: string | null
           id?: string
           impaye_id?: string | null
+          impot_foncier_id?: string | null
           lieu?: string | null
           lot_id?: string | null
           notes?: string | null
@@ -160,10 +166,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "activites_honoraire_id_fkey"
+            columns: ["honoraire_id"]
+            isOneToOne: false
+            referencedRelation: "honoraires_fiscaux"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "activites_impaye_id_fkey"
             columns: ["impaye_id"]
             isOneToOne: false
             referencedRelation: "impayes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activites_impot_foncier_id_fkey"
+            columns: ["impot_foncier_id"]
+            isOneToOne: false
+            referencedRelation: "impots_fonciers"
             referencedColumns: ["id"]
           },
           {
@@ -675,6 +695,105 @@ export type Database = {
           },
         ]
       }
+      honoraires_fiscaux: {
+        Row: {
+          bailleur_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          montant: number
+          periode: string | null
+          periode_fin: string | null
+          statut: string
+          type_honoraire: string
+          updated_at: string
+        }
+        Insert: {
+          bailleur_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          montant?: number
+          periode?: string | null
+          periode_fin?: string | null
+          statut?: string
+          type_honoraire: string
+          updated_at?: string
+        }
+        Update: {
+          bailleur_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          montant?: number
+          periode?: string | null
+          periode_fin?: string | null
+          statut?: string
+          type_honoraire?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "honoraires_fiscaux_bailleur_id_fkey"
+            columns: ["bailleur_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "honoraires_fiscaux_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      honoraires_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ_modifie: string
+          created_at: string
+          honoraire_id: string
+          id: string
+          nouvelle_valeur: string | null
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie: string
+          created_at?: string
+          honoraire_id: string
+          id?: string
+          nouvelle_valeur?: string | null
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie?: string
+          created_at?: string
+          honoraire_id?: string
+          id?: string
+          nouvelle_valeur?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "honoraires_historique_auteur_fkey"
+            columns: ["auteur"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "honoraires_historique_honoraire_id_fkey"
+            columns: ["honoraire_id"]
+            isOneToOne: false
+            referencedRelation: "honoraires_fiscaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impayes: {
         Row: {
           contrat_id: string
@@ -874,6 +993,79 @@ export type Database = {
           {
             foreignKeyName: "imports_importe_par_fkey"
             columns: ["importe_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      impots_fonciers: {
+        Row: {
+          annee_fiscale: number
+          bailleur_id: string
+          bien_id: string
+          created_at: string
+          created_by: string | null
+          date_echeance: string
+          date_paiement: string | null
+          date_recuperation_recu: string | null
+          id: string
+          montant: number | null
+          reference_cheque: string | null
+          statut: string
+          trimestre: string
+          updated_at: string
+        }
+        Insert: {
+          annee_fiscale: number
+          bailleur_id: string
+          bien_id: string
+          created_at?: string
+          created_by?: string | null
+          date_echeance: string
+          date_paiement?: string | null
+          date_recuperation_recu?: string | null
+          id?: string
+          montant?: number | null
+          reference_cheque?: string | null
+          statut?: string
+          trimestre: string
+          updated_at?: string
+        }
+        Update: {
+          annee_fiscale?: number
+          bailleur_id?: string
+          bien_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_echeance?: string
+          date_paiement?: string | null
+          date_recuperation_recu?: string | null
+          id?: string
+          montant?: number | null
+          reference_cheque?: string | null
+          statut?: string
+          trimestre?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impots_fonciers_bailleur_id_fkey"
+            columns: ["bailleur_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impots_fonciers_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impots_fonciers_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1373,6 +1565,9 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      generate_honoraires_reminders: { Args: never; Returns: undefined }
+      generate_quarterly_if_tasks: { Args: never; Returns: undefined }
+      get_juridique_assignee: { Args: never; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_christelle_kouassi: { Args: never; Returns: boolean }
       log_impaye_cloture: {
