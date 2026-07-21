@@ -19,6 +19,7 @@ import { hasModuleAccess } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   head: () => ({ meta: [{ title: "Transactions — Agence Immobilière" }] }),
@@ -426,6 +427,7 @@ function TransactionsPage() {
           onClose={() => setDetail(null)}
           contactName={contactName}
           bienTitre={bienTitre}
+          contacts={contacts}
           activites={activites.filter((a) => detail && a.transaction_id === detail.id)}
           onChanged={load}
           profiles={profiles}
@@ -441,6 +443,7 @@ function TransactionDetailDialog({
   onClose,
   contactName,
   bienTitre,
+  contacts,
   activites,
   onChanged,
   profiles,
@@ -450,12 +453,17 @@ function TransactionDetailDialog({
   onClose: () => void;
   contactName: (id: string) => string;
   bienTitre: (id: string | null) => string;
+  contacts: Contact[];
   activites: Activite[];
   onChanged: () => void;
   profiles: { id: string; email: string | null }[];
   canEditGestionnaire: boolean;
 }) {
+  const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
+  const [openContrat, setOpenContrat] = useState(false);
+  const [linkedContratId, setLinkedContratId] = useState<string | null>(null);
+  const [bienStatut, setBienStatut] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState({
     statut_opportunite: "nouveau",
@@ -488,6 +496,19 @@ function TransactionDetailDialog({
     });
   }, [tx]);
 
+  // Fetch linked contract + bien statut for action buttons
+  useEffect(() => {
+    if (!tx) { setLinkedContratId(null); setBienStatut(null); return; }
+    (async () => {
+      const [{ data: contrat }, { data: bien }] = await Promise.all([
+        supabase.from("contrats").select("id").eq("transaction_origine_id", tx.id).maybeSingle(),
+        tx.bien_id ? supabase.from("biens").select("statut").eq("id", tx.bien_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      setLinkedContratId((contrat as { id: string } | null)?.id ?? null);
+      setBienStatut((bien as { statut: string } | null)?.statut ?? null);
+    })();
+  }, [tx]);
+
   const now = new Date();
   const visits = activites.filter((a) => a.type_activite === "visite" && a.date_debut);
   const past = visits.filter((a) => new Date(a.date_debut!) <= now).sort((a, b) => (b.date_debut! > a.date_debut! ? 1 : -1));
@@ -514,12 +535,47 @@ function TransactionDetailDialog({
       gestionnaire_id: edit.gestionnaire_id || null,
     };
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
+    if (error) { setSaving(false); return toast.error(error.message); }
+    // Auto-conversion prospect → bailleur pour mandat_gestion gagné
+    if (edit.statut_opportunite === "gagne" && t === "mandat_gestion") {
+      const c = contacts.find((x) => x.id === tx.contact_id);
+      if (c && c.type_contact === "prospect") {
+        await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
+      }
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Transaction mise à jour");
     onChanged();
     onClose();
   };
+
+  const markBienSold = async () => {
+    if (!tx?.bien_id) return;
+    if (!confirm("Marquer ce bien et tous ses lots comme vendus ?")) return;
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from("biens").update({ statut: "vendu" }).eq("id", tx.bien_id),
+      supabase.from("lots").update({ statut: "vendu" }).eq("bien_id", tx.bien_id),
+    ]);
+    if (e1 || e2) return toast.error((e1 || e2)!.message);
+    // Convert prospect → bailleur (vendeur)
+    const c = contacts.find((x) => x.id === tx.contact_id);
+    if (c?.type_contact === "prospect") {
+      await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
+    }
+    setBienStatut("vendu");
+    toast.success("Bien marqué comme vendu");
+    onChanged();
+  };
+
+  const showCreateContrat = tx?.statut_opportunite === "gagne"
+    && tx.bien_id
+    && (tx.type_transaction === "mandat_location" || tx.type_transaction === "offre")
+    && !linkedContratId;
+  const showViewContrat = !!linkedContratId;
+  const showMarkSold = tx?.statut_opportunite === "gagne"
+    && tx.type_transaction === "mandat_vente"
+    && tx.bien_id
+    && bienStatut !== "vendu";
 
   return (
     <Dialog open={!!tx} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -676,6 +732,29 @@ function TransactionDetailDialog({
                   </ul>
                 )}
               </div>
+
+              {(showCreateContrat || showViewContrat || showMarkSold) && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-sm font-semibold mb-2">Actions "Gagné"</div>
+                  <div className="flex flex-wrap gap-2">
+                    {showCreateContrat && (
+                      <Button size="sm" onClick={() => setOpenContrat(true)}>
+                        Créer le contrat associé
+                      </Button>
+                    )}
+                    {showViewContrat && (
+                      <Button size="sm" variant="outline" onClick={() => navigate({ to: "/contrats/$contratId", params: { contratId: linkedContratId! } })}>
+                        Voir le contrat
+                      </Button>
+                    )}
+                    {showMarkSold && (
+                      <Button size="sm" variant="destructive" onClick={markBienSold}>
+                        Marquer le bien comme vendu
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Fermer</Button>
@@ -687,7 +766,17 @@ function TransactionDetailDialog({
               defaults={{ transactionId: tx.id }}
               onSaved={() => { setOpenNew(false); onChanged(); }}
             />
+            <NouveauContratDialog
+              open={openContrat}
+              onOpenChange={setOpenContrat}
+              fixedContactId={tx.contact_id}
+              filterByBienId={tx.bien_id ?? undefined}
+              prefillLoyer={tx.montant_estime ?? null}
+              transactionOrigineId={tx.id}
+              onCreated={(cid) => { setLinkedContratId(cid); onChanged(); }}
+            />
           </>
+
         )}
       </DialogContent>
     </Dialog>

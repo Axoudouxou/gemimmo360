@@ -515,6 +515,7 @@ export type Database = {
           loyer_mensuel: number | null
           notes: string | null
           statut: string
+          transaction_origine_id: string | null
           updated_at: string
         }
         Insert: {
@@ -528,6 +529,7 @@ export type Database = {
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
+          transaction_origine_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -541,6 +543,7 @@ export type Database = {
           loyer_mensuel?: number | null
           notes?: string | null
           statut?: string
+          transaction_origine_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -556,6 +559,13 @@ export type Database = {
             columns: ["lot_id"]
             isOneToOne: false
             referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrats_transaction_origine_id_fkey"
+            columns: ["transaction_origine_id"]
+            isOneToOne: false
+            referencedRelation: "transactions_commerciales"
             referencedColumns: ["id"]
           },
         ]
