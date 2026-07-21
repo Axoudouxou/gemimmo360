@@ -496,6 +496,19 @@ function TransactionDetailDialog({
     });
   }, [tx]);
 
+  // Fetch linked contract + bien statut for action buttons
+  useEffect(() => {
+    if (!tx) { setLinkedContratId(null); setBienStatut(null); return; }
+    (async () => {
+      const [{ data: contrat }, { data: bien }] = await Promise.all([
+        supabase.from("contrats").select("id").eq("transaction_origine_id", tx.id).maybeSingle(),
+        tx.bien_id ? supabase.from("biens").select("statut").eq("id", tx.bien_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      setLinkedContratId((contrat as { id: string } | null)?.id ?? null);
+      setBienStatut((bien as { statut: string } | null)?.statut ?? null);
+    })();
+  }, [tx]);
+
   const now = new Date();
   const visits = activites.filter((a) => a.type_activite === "visite" && a.date_debut);
   const past = visits.filter((a) => new Date(a.date_debut!) <= now).sort((a, b) => (b.date_debut! > a.date_debut! ? 1 : -1));
