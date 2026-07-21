@@ -97,6 +97,8 @@ function TransactionsPage() {
   const [fType, setFType] = useState("all");
   const [fStatut, setFStatut] = useState("all");
   const [detail, setDetail] = useState<Tx | null>(null);
+  const [prospectOpen, setProspectOpen] = useState(false);
+  const [prospectInitial, setProspectInitial] = useState("");
 
   useEffect(() => {
     (async () => {
