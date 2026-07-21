@@ -291,7 +291,11 @@ function ImpotDialog({
 
   function updateTrimestre(t: string) {
     const yr = form.annee_fiscale ?? currentYear;
-    setForm({ ...form, trimestre: t, date_echeance: `${yr}-${DEFAULT_ECHEANCE[t]}` });
+    if (t === "annuel") {
+      setForm({ ...form, trimestre: t, date_echeance: "" });
+    } else {
+      setForm({ ...form, trimestre: t, date_echeance: `${yr}-${DEFAULT_ECHEANCE[t]}` });
+    }
   }
 
   async function save() {
@@ -306,6 +310,7 @@ function ImpotDialog({
       trimestre: form.trimestre,
       date_echeance: form.date_echeance,
       montant: form.montant != null && form.montant !== ("" as unknown) ? Number(form.montant) : null,
+      montant_annuel_total: form.montant_annuel_total != null && form.montant_annuel_total !== ("" as unknown) ? Number(form.montant_annuel_total) : null,
       statut: form.statut ?? "a_retirer",
       date_paiement: form.date_paiement || null,
       date_recuperation_recu: form.date_recuperation_recu || null,
