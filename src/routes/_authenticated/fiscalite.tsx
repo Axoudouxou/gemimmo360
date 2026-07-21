@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteZone } from "@/components/delete-zone";
+import { DocumentsSection } from "@/components/documents-section";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/fiscalite")({
   head: () => ({
