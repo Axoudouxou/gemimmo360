@@ -238,12 +238,15 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
   onClose: () => void; onEdit: () => void; onDeleted: () => void;
   onStatusChanged: (updated: Travail) => void;
 }) {
-  const perms = computePerms(role, travail.created_by, uid);
+  const isChristelle = email.toLowerCase() === CHRISTELLE_EMAIL;
+  const basePerms = computePerms(role, travail.created_by, uid);
+  const perms = isChristelle
+    ? { canRead: true, canComment: true, canEditFull: true, canEditLimited: false, canDelete: true }
+    : basePerms;
   const bien = biens.find((b) => b.id === travail.bien_id);
   const assigne = travail.assigne_a ? profiles.find((p) => p.id === travail.assigne_a) : null;
 
-  const isChristelle = email.toLowerCase() === CHRISTELLE_EMAIL;
-  const canEditRefCheque = perms.canEditFull || perms.canEditLimited || isChristelle;
+  const canEditRefCheque = perms.canEditFull || perms.canEditLimited;
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [authors, setAuthors] = useState<Map<string, string>>(new Map());
