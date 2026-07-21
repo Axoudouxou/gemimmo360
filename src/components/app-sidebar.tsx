@@ -90,6 +90,7 @@ export function AppSidebar() {
       const { data: userRes } = await supabase.auth.getUser();
       const user = userRes.user;
       if (!user) return;
+      setUserId(user.id);
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
