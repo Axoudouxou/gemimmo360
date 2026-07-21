@@ -48,6 +48,8 @@ export function SearchableSelect({
   className,
   allowClear = true,
   id,
+  onCreateOption,
+  createLabel,
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
