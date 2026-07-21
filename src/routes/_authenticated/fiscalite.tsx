@@ -355,7 +355,13 @@ function ImpotDialog({
               <Label>Trimestre *</Label>
               <Select value={form.trimestre ?? ""} onValueChange={updateTrimestre}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>{TRIMESTRES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {TRIMESTRES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t === "annuel" ? "Paiement unique (annuel)" : t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           </div>
@@ -368,6 +374,15 @@ function ImpotDialog({
               <Label>Montant (FCFA)</Label>
               <Input type="number" value={form.montant ?? ""} onChange={(e) => setForm({ ...form, montant: e.target.value === "" ? null : Number(e.target.value) })} />
             </div>
+          </div>
+          <div>
+            <Label>Montant annuel total (si connu, FCFA)</Label>
+            <Input
+              type="number"
+              value={form.montant_annuel_total ?? ""}
+              onChange={(e) => setForm({ ...form, montant_annuel_total: e.target.value === "" ? null : Number(e.target.value) })}
+              placeholder="Montant total pour l'année fiscale"
+            />
           </div>
           <div>
             <Label>Statut</Label>
