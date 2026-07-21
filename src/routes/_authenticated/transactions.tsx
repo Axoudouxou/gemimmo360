@@ -15,6 +15,7 @@ import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { hasModuleAccess } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
