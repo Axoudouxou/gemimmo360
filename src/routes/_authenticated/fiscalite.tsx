@@ -65,6 +65,7 @@ type Impot = {
   date_echeance: string | null; montant: number | null; montant_annuel_total: number | null;
   statut: string; date_paiement: string | null;
   date_recuperation_recu: string | null; reference_cheque: string | null;
+  montant_penalite: number | null; motif_penalite: string | null;
 };
 type Honoraire = {
   id: string; bailleur_id: string; type_honoraire: string; montant: number; periode: string | null;
@@ -84,6 +85,8 @@ const IF_CHAMP_LABEL: Record<string, string> = {
   statut: "Statut",
   montant: "Montant",
   montant_annuel_total: "Montant annuel total",
+  montant_penalite: "Pénalité",
+  motif_penalite: "Motif pénalité",
   date_echeance: "Date d'échéance",
   date_paiement: "Date de paiement",
   date_recuperation_recu: "Date récup. reçu",
