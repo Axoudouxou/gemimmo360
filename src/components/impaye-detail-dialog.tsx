@@ -157,6 +157,7 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
   const canComment = role !== "en_attente";
   const canTransfer = role ? TRANSFER_ROLES.has(role) : false;
   const canEditJuridique = role ? JURIDIQUE_ROLES.has(role) : false;
+  const canDelete = role === "admin";
   const service = impaye?.service_en_charge ?? "recouvrement";
   const etape = impaye?.etape_traitement ?? "recouvrement";
   const isResolved = etape === "resolu";
