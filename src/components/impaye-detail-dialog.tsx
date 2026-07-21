@@ -128,9 +128,10 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   role?: string;
   onUpdated?: (updated: Impaye) => void;
+  onDeleted?: (id: string) => void;
 };
 
-export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated }: Props) {
+export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated, onDeleted }: Props) {
   const [details, setDetails] = useState<Details>({
     contrat: null,
     lot: null,
