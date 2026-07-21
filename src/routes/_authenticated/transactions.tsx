@@ -478,8 +478,10 @@ function TransactionDetailDialog({
   const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
   const [openContrat, setOpenContrat] = useState(false);
+  const [openBien, setOpenBien] = useState(false);
   const [linkedContratId, setLinkedContratId] = useState<string | null>(null);
   const [bienStatut, setBienStatut] = useState<string | null>(null);
+  const [lotCount, setLotCount] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState({
     statut_opportunite: "nouveau",
