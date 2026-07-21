@@ -122,7 +122,7 @@ export function PipelineFunnel({ scope }: { scope?: { contact_creator?: string }
   }, [scope?.contact_creator]);
 
   const max = Math.max(1, ...rows.map((r) => r.value));
-  const fmtEuro = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  const fmtEuro = (n: number) => `${Number(n ?? 0).toLocaleString("fr-FR")} FCFA`;
 
   return (
     <Card>
