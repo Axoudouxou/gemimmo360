@@ -449,6 +449,50 @@ function ImpotDialog({
             <Input value={form.reference_cheque ?? ""} onChange={(e) => setForm({ ...form, reference_cheque: e.target.value })} />
           </div>
 
+          <div className="border-t pt-3 space-y-3">
+            <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-500">Pénalité (si applicable)</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Montant de la pénalité (FCFA)</Label>
+                <Input
+                  type="number"
+                  value={form.montant_penalite ?? ""}
+                  onChange={(e) => setForm({ ...form, montant_penalite: e.target.value === "" ? null : Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Motif</Label>
+                <Input
+                  value={form.motif_penalite ?? ""}
+                  placeholder="Retard de paiement, redressement…"
+                  onChange={(e) => setForm({ ...form, motif_penalite: e.target.value })}
+                />
+              </div>
+            </div>
+            {form.montant_penalite != null && Number(form.montant_penalite) > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 text-sm">
+                <div className="text-amber-800 dark:text-amber-300">
+                  Pénalité : <span className="font-semibold">{Number(form.montant_penalite).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+                <div className="text-amber-900 dark:text-amber-200 font-semibold">
+                  Total à payer : {(Number(form.montant ?? 0) + Number(form.montant_penalite ?? 0)).toLocaleString("fr-FR")} FCFA
+                </div>
+              </div>
+            )}
+          </div>
+
+          {editing && (
+            <div className="border-t pt-3">
+              <DocumentsSection
+                bucket="impots-fonciers-documents"
+                recordId={editing.id}
+                canWrite={true}
+                title="Documents"
+                description="Avis d'imposition, reçus, justificatifs (PDF)."
+              />
+            </div>
+          )}
+
           {editing && (
             <div className="border-t pt-3">
               <h4 className="text-sm font-semibold mb-2">Historique</h4>
