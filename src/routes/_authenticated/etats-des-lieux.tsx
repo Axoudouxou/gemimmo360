@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
+import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   head: () => ({ meta: [{ title: "États des lieux — Agence Immobilière" }] }),
