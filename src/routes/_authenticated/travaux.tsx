@@ -15,6 +15,7 @@ import { Building2, ArrowLeft, Plus, FileText, Pencil, Trash2 } from "lucide-rea
 import { DocumentsSection } from "@/components/documents-section";
 import { CommentSection, computePerms } from "@/components/comment-section";
 import { toast } from "sonner";
+import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
