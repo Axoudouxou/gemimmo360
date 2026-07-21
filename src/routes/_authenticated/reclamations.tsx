@@ -65,7 +65,7 @@ function ReclamationsPage() {
   const [fPrio, setFPrio] = useState("all");
   const [fBien, setFBien] = useState("all");
 
-  const canWriteBase = role && role !== "recouvrement" && role !== "en_attente";
+  const canWriteBase = (uid && FULL_ACCESS_USER_IDS.includes(uid)) || (role && role !== "recouvrement" && role !== "en_attente");
 
   useEffect(() => {
     (async () => {
