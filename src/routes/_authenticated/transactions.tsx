@@ -427,6 +427,7 @@ function TransactionsPage() {
           onClose={() => setDetail(null)}
           contactName={contactName}
           bienTitre={bienTitre}
+          contacts={contacts}
           activites={activites.filter((a) => detail && a.transaction_id === detail.id)}
           onChanged={load}
           profiles={profiles}
@@ -442,6 +443,7 @@ function TransactionDetailDialog({
   onClose,
   contactName,
   bienTitre,
+  contacts,
   activites,
   onChanged,
   profiles,
@@ -451,6 +453,7 @@ function TransactionDetailDialog({
   onClose: () => void;
   contactName: (id: string) => string;
   bienTitre: (id: string | null) => string;
+  contacts: Contact[];
   activites: Activite[];
   onChanged: () => void;
   profiles: { id: string; email: string | null }[];
