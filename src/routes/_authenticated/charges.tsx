@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { hasModuleAccess } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/charges")({
   head: () => ({ meta: [{ title: "Charges — Agence Immobilière" }] }),
