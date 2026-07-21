@@ -84,7 +84,7 @@ function EDLPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || (NO_ACCESS as readonly string[]).includes(r)) {
+      if (!FULL_ACCESS_USER_IDS.includes(u) && (!r || (NO_ACCESS as readonly string[]).includes(r))) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
