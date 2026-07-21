@@ -30,7 +30,8 @@ export const Route = createFileRoute("/_authenticated/fiscalite")({
 
 const ALLOWED_ROLES = ["admin", "direction", "juridique"];
 
-const TRIMESTRES = ["T1", "T2", "T3", "T4"] as const;
+const TRIMESTRES = ["T1", "T2", "T3", "T4", "annuel"] as const;
+const TRIMESTRE_LABEL: Record<string, string> = { T1: "T1", T2: "T2", T3: "T3", T4: "T4", annuel: "Annuel" };
 const DEFAULT_ECHEANCE: Record<string, string> = { T1: "03-15", T2: "06-15", T3: "09-15", T4: "12-15" };
 
 const IF_STATUTS: { value: string; label: string; badge: string }[] = [
@@ -60,7 +61,8 @@ type Bailleur = { id: string; nom: string; prenom: string | null };
 type Bien = { id: string; titre: string };
 type Impot = {
   id: string; bailleur_id: string; bien_id: string; annee_fiscale: number; trimestre: string;
-  date_echeance: string; montant: number | null; statut: string; date_paiement: string | null;
+  date_echeance: string | null; montant: number | null; montant_annuel_total: number | null;
+  statut: string; date_paiement: string | null;
   date_recuperation_recu: string | null; reference_cheque: string | null;
 };
 type Honoraire = {
@@ -154,23 +156,33 @@ function PlanningIF({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Impot | null>(null);
 
-  const groups = useMemo(() => {
-    const byQuarter = new Map<string, Impot[]>();
-    for (const i of impots) {
-      const key = `${i.annee_fiscale} ${i.trimestre}`;
-      const arr = byQuarter.get(key) ?? [];
-      arr.push(i);
-      byQuarter.set(key, arr);
-    }
-    return Array.from(byQuarter.entries()).sort(([a], [b]) => b.localeCompare(a));
-  }, [impots]);
-
   const bailleurMap = new Map(bailleurs.map((b) => [b.id, b]));
   const bienMap = new Map(biens.map((b) => [b.id, b]));
 
+  // Two group types:
+  // - annuel groups: key = `${year}::annuel`
+  // - quarterly groups by (year, bailleur, bien): key = `${year}::${bailleur}::${bien}`
+  const groups = useMemo(() => {
+    const map = new Map<string, { kind: "annuel" | "quarterly"; year: number; bailleur_id?: string; bien_id?: string; items: Impot[] }>();
+    for (const i of impots) {
+      if (i.trimestre === "annuel") {
+        const key = `${i.annee_fiscale}::annuel`;
+        const g = map.get(key) ?? { kind: "annuel" as const, year: i.annee_fiscale, items: [] };
+        g.items.push(i);
+        map.set(key, g);
+      } else {
+        const key = `${i.annee_fiscale}::${i.bailleur_id}::${i.bien_id}`;
+        const g = map.get(key) ?? { kind: "quarterly" as const, year: i.annee_fiscale, bailleur_id: i.bailleur_id, bien_id: i.bien_id, items: [] };
+        g.items.push(i);
+        map.set(key, g);
+      }
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a));
+  }, [impots]);
+
   function statutBadge(i: Impot) {
     const s = IF_STATUT_LABEL[i.statut];
-    const isLate = i.statut !== "paye" && i.statut !== "recu_recupere" && new Date(i.date_echeance) < new Date();
+    const isLate = i.statut !== "paye" && i.statut !== "recu_recupere" && i.date_echeance && new Date(i.date_echeance) < new Date();
     if (isLate) return <Badge className="bg-red-600 hover:bg-red-600 text-white">En retard</Badge>;
     return <Badge className={`${s?.badge ?? "bg-slate-500"} hover:opacity-90 text-white`}>{s?.label ?? i.statut}</Badge>;
   }
@@ -178,7 +190,7 @@ function PlanningIF({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">Regroupés par trimestre puis par bailleur.</p>
+        <p className="text-sm text-muted-foreground">Regroupés par année et par bailleur/bien.</p>
         <Button onClick={() => { setEditing(null); setOpen(true); }}>
           <Plus className="h-4 w-4 mr-1" /> Nouvel impôt foncier
         </Button>
@@ -188,42 +200,68 @@ function PlanningIF({
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Aucun impôt foncier enregistré.</CardContent></Card>
       )}
 
-      {groups.map(([key, list]) => (
-        <Card key={key}>
-          <CardHeader>
-            <CardTitle className="text-base">{key}</CardTitle>
-            <CardDescription>{list.length} enregistrement(s)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bailleur</TableHead>
-                  <TableHead>Bien</TableHead>
-                  <TableHead>Échéance</TableHead>
-                  <TableHead>Montant</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.map((i) => (
-                  <TableRow key={i.id}>
-                    <TableCell>{bailleurLabel(bailleurMap.get(i.bailleur_id))}</TableCell>
-                    <TableCell>{bienMap.get(i.bien_id)?.titre ?? "—"}</TableCell>
-                    <TableCell>{new Date(i.date_echeance).toLocaleDateString("fr-FR")}</TableCell>
-                    <TableCell>{i.montant ? `${Number(i.montant).toLocaleString("fr-FR")} FCFA` : "—"}</TableCell>
-                    <TableCell>{statutBadge(i)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => { setEditing(i); setOpen(true); }}>Ouvrir</Button>
-                    </TableCell>
+      {groups.map(([key, g]) => {
+        const isAnnuel = g.kind === "annuel";
+        const title = isAnnuel
+          ? `${g.year} — Paiement annuel`
+          : `${g.year} — ${bailleurLabel(bailleurMap.get(g.bailleur_id!))} • ${bienMap.get(g.bien_id!)?.titre ?? "—"}`;
+        // Compute totals for quarterly group
+        const annuelTotal = !isAnnuel
+          ? (g.items.map((i) => i.montant_annuel_total).find((v) => v != null) ?? null)
+          : null;
+        const paid = !isAnnuel
+          ? g.items.filter((i) => i.statut === "paye" || i.statut === "recu_recupere").reduce((s, i) => s + Number(i.montant ?? 0), 0)
+          : 0;
+        const remaining = annuelTotal != null ? Math.max(Number(annuelTotal) - paid, 0) : null;
+
+        return (
+          <Card key={key}>
+            <CardHeader>
+              <CardTitle className="text-base">{title}</CardTitle>
+              <CardDescription>
+                {g.items.length} enregistrement(s)
+                {!isAnnuel && annuelTotal != null && (
+                  <span className="block mt-1 text-foreground">
+                    Montant annuel total : <strong>{Number(annuelTotal).toLocaleString("fr-FR")} FCFA</strong>
+                    {" — Payé : "}<strong>{paid.toLocaleString("fr-FR")} FCFA</strong>
+                    {remaining != null && <>{" — Reste : "}<strong>{remaining.toLocaleString("fr-FR")} FCFA</strong></>}
+                  </span>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {isAnnuel && <TableHead>Bailleur</TableHead>}
+                    {isAnnuel && <TableHead>Bien</TableHead>}
+                    {!isAnnuel && <TableHead>Trimestre</TableHead>}
+                    <TableHead>Échéance</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
+                </TableHeader>
+                <TableBody>
+                  {g.items.map((i) => (
+                    <TableRow key={i.id}>
+                      {isAnnuel && <TableCell>{bailleurLabel(bailleurMap.get(i.bailleur_id))}</TableCell>}
+                      {isAnnuel && <TableCell>{bienMap.get(i.bien_id)?.titre ?? "—"}</TableCell>}
+                      {!isAnnuel && <TableCell>{TRIMESTRE_LABEL[i.trimestre] ?? i.trimestre}</TableCell>}
+                      <TableCell>{i.date_echeance ? new Date(i.date_echeance).toLocaleDateString("fr-FR") : "—"}</TableCell>
+                      <TableCell>{i.montant ? `${Number(i.montant).toLocaleString("fr-FR")} FCFA` : "—"}</TableCell>
+                      <TableCell>{statutBadge(i)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(i); setOpen(true); }}>Ouvrir</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       <ImpotDialog
         open={open}
@@ -253,7 +291,11 @@ function ImpotDialog({
 
   function updateTrimestre(t: string) {
     const yr = form.annee_fiscale ?? currentYear;
-    setForm({ ...form, trimestre: t, date_echeance: `${yr}-${DEFAULT_ECHEANCE[t]}` });
+    if (t === "annuel") {
+      setForm({ ...form, trimestre: t, date_echeance: "" });
+    } else {
+      setForm({ ...form, trimestre: t, date_echeance: `${yr}-${DEFAULT_ECHEANCE[t]}` });
+    }
   }
 
   async function save() {
@@ -268,6 +310,7 @@ function ImpotDialog({
       trimestre: form.trimestre,
       date_echeance: form.date_echeance,
       montant: form.montant != null && form.montant !== ("" as unknown) ? Number(form.montant) : null,
+      montant_annuel_total: form.montant_annuel_total != null && form.montant_annuel_total !== ("" as unknown) ? Number(form.montant_annuel_total) : null,
       statut: form.statut ?? "a_retirer",
       date_paiement: form.date_paiement || null,
       date_recuperation_recu: form.date_recuperation_recu || null,
@@ -312,7 +355,13 @@ function ImpotDialog({
               <Label>Trimestre *</Label>
               <Select value={form.trimestre ?? ""} onValueChange={updateTrimestre}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>{TRIMESTRES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {TRIMESTRES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t === "annuel" ? "Paiement unique (annuel)" : t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           </div>
@@ -325,6 +374,15 @@ function ImpotDialog({
               <Label>Montant (FCFA)</Label>
               <Input type="number" value={form.montant ?? ""} onChange={(e) => setForm({ ...form, montant: e.target.value === "" ? null : Number(e.target.value) })} />
             </div>
+          </div>
+          <div>
+            <Label>Montant annuel total (si connu, FCFA)</Label>
+            <Input
+              type="number"
+              value={form.montant_annuel_total ?? ""}
+              onChange={(e) => setForm({ ...form, montant_annuel_total: e.target.value === "" ? null : Number(e.target.value) })}
+              placeholder="Montant total pour l'année fiscale"
+            />
           </div>
           <div>
             <Label>Statut</Label>
