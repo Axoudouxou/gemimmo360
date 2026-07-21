@@ -823,7 +823,7 @@ function TransactionDetailDialog({
               defaultOperation={tx.type_transaction === "mandat_vente" ? "vente" : "location"}
               onCreated={async (bienId) => {
                 const { error } = await supabase.from("transactions_commerciales").update({ bien_id: bienId }).eq("id", tx.id);
-                if (error) return toast.error(error.message);
+                if (error) { toast.error(error.message); return; }
                 toast.success("Bien créé et lié à la transaction");
                 setOpenBien(false);
                 onChanged();
