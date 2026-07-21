@@ -1,0 +1,3 @@
+CREATE POLICY "christelle_full_charges" ON public.charges FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
+
+CREATE POLICY "christelle_full_transactions" ON public.transactions_commerciales FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
