@@ -74,6 +74,21 @@ type HistoEntry = {
   id: string; honoraire_id: string; champ_modifie: string; ancienne_valeur: string | null;
   nouvelle_valeur: string | null; auteur: string | null; created_at: string;
 };
+type ImpotHistoEntry = {
+  id: string; impot_foncier_id: string; champ_modifie: string; ancienne_valeur: string | null;
+  nouvelle_valeur: string | null; auteur: string | null; created_at: string;
+};
+
+const IF_CHAMP_LABEL: Record<string, string> = {
+  creation: "Création",
+  statut: "Statut",
+  montant: "Montant",
+  montant_annuel_total: "Montant annuel total",
+  date_echeance: "Date d'échéance",
+  date_paiement: "Date de paiement",
+  date_recuperation_recu: "Date récup. reçu",
+};
+
 
 function bailleurLabel(b: Bailleur | undefined) {
   if (!b) return "—";
