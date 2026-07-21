@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { CommentSection, computePerms } from "@/components/comment-section";
 import { toast } from "sonner";
+import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/reclamations")({
   head: () => ({ meta: [{ title: "Réclamations — Agence Immobilière" }] }),
