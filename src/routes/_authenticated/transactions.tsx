@@ -760,10 +760,15 @@ function TransactionDetailDialog({
                 )}
               </div>
 
-              {(showCreateContrat || showViewContrat || showMarkSold) && (
-                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
-                  <div className="text-sm font-semibold mb-2">Actions "Gagné"</div>
+              {(showCreateBien || showCreateContrat || showViewContrat || showMarkSold || showNoLotWarning) && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                  <div className="text-sm font-semibold">Actions "Gagné"</div>
                   <div className="flex flex-wrap gap-2">
+                    {showCreateBien && (
+                      <Button size="sm" onClick={() => setOpenBien(true)}>
+                        Créer le bien associé
+                      </Button>
+                    )}
                     {showCreateContrat && (
                       <Button size="sm" onClick={() => setOpenContrat(true)}>
                         Créer le contrat associé
@@ -780,6 +785,14 @@ function TransactionDetailDialog({
                       </Button>
                     )}
                   </div>
+                  {showNoLotWarning && tx?.bien_id && (
+                    <p className="text-xs text-amber-800 flex items-start gap-1">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        Ce bien n'a pas encore de lot — <Link to="/biens/$bienId" params={{ bienId: tx.bien_id }} className="underline font-medium">créez-en un depuis sa fiche</Link> avant de pouvoir créer un contrat.
+                      </span>
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -801,6 +814,20 @@ function TransactionDetailDialog({
               prefillLoyer={tx.montant_estime ?? null}
               transactionOrigineId={tx.id}
               onCreated={(cid) => { setLinkedContratId(cid); onChanged(); }}
+            />
+            <NouveauBienMiniDialog
+              open={openBien}
+              onOpenChange={setOpenBien}
+              bailleurId={(tx.type_transaction === "mandat_gestion" || tx.type_transaction === "mandat_vente") ? tx.contact_id : null}
+              gestionnaireId={tx.gestionnaire_id}
+              defaultOperation={tx.type_transaction === "mandat_vente" ? "vente" : "location"}
+              onCreated={async (bienId) => {
+                const { error } = await supabase.from("transactions_commerciales").update({ bien_id: bienId }).eq("id", tx.id);
+                if (error) return toast.error(error.message);
+                toast.success("Bien créé et lié à la transaction");
+                setOpenBien(false);
+                onChanged();
+              }}
             />
           </>
 
