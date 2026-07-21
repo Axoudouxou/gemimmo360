@@ -438,6 +438,17 @@ function TransactionsPage() {
           profiles={profiles}
           canEditGestionnaire={role === "admin" || role === "direction"}
         />
+        <NouveauProspectMiniDialog
+          open={prospectOpen}
+          onOpenChange={setProspectOpen}
+          initialName={prospectInitial}
+          gestionnaireId={form.gestionnaire_id || null}
+          onCreated={async (id) => {
+            await load();
+            setForm((f) => ({ ...f, contact_id: id }));
+            setProspectOpen(false);
+          }}
+        />
       </main>
     </div>
   );
