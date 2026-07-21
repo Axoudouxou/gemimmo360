@@ -345,14 +345,12 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
       return toast.error(error.message);
     }
     // Explicit history entry mentioning procedure stop
-    const { data: userRes } = await supabase.auth.getUser();
-    await supabase.from("impayes_historique" as never).insert({
-      impaye_id: impaye.id,
-      champ_modifie: "cloture_procedure",
-      ancienne_valeur: ETAPE_LABEL[etape] ?? etape,
-      nouvelle_valeur: "Procédure arrêtée suite à paiement",
-      auteur: userRes.user?.id ?? null,
+    await supabase.rpc("log_impaye_cloture" as never, {
+      _impaye_id: impaye.id,
+      _from_etape: ETAPE_LABEL[etape] ?? etape,
+      _note: "Procédure arrêtée suite à paiement",
     } as never);
+
     setClosing(false);
     toast.success("Dossier soldé et procédure clôturée");
     if (data && onUpdated) onUpdated(data as unknown as Impaye);
