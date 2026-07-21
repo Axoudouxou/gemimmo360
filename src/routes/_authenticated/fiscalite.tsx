@@ -596,6 +596,14 @@ function HonoraireDialog({
     await onSaved();
   }
 
+  async function deleteHonoraire() {
+    if (!editing) return;
+    const { error } = await supabase.from("honoraires_fiscaux").delete().eq("id", editing.id);
+    if (error) throw new Error(error.message);
+    toast.success("Honoraire supprimé");
+    await onSaved();
+  }
+
   const bailleurOptions = bailleurs.map((b) => ({ value: b.id, label: bailleurLabel(b) }));
 
   return (
