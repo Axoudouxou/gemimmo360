@@ -83,6 +83,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [role, setRole] = useState<string>("");
+  const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
     (async () => {
