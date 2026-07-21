@@ -799,3 +799,117 @@ function TransactionDetailDialog({
   );
 }
 
+function NouveauProspectMiniDialog({
+  open,
+  onOpenChange,
+  initialName,
+  gestionnaireId,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initialName: string;
+  gestionnaireId: string | null;
+  onCreated: (id: string) => void | Promise<void>;
+}) {
+  const [typeEntite, setTypeEntite] = useState<"personne" | "entreprise">("personne");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [telephone, setTelephone] = useState("");
+  const [email, setEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const q = (initialName || "").trim();
+    // Heuristic split: "Nom Prénom…" → nom = first token, prenom = rest (personne).
+    if (typeEntite === "personne") {
+      const parts = q.split(/\s+/);
+      setNom(parts[0] ?? "");
+      setPrenom(parts.slice(1).join(" "));
+    } else {
+      setNom(q);
+      setPrenom("");
+    }
+    setTelephone("");
+    setEmail("");
+  }, [open, initialName, typeEntite]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nom.trim()) return toast.error("Le nom est obligatoire");
+    setSaving(true);
+    const { data, error } = await supabase.from("contacts").insert({
+      nom: nom.trim(),
+      prenom: prenom.trim() || null,
+      telephone: telephone.trim() || null,
+      email: email.trim() || null,
+      type_contact: "prospect",
+      type_entite: typeEntite,
+      gestionnaire_id: gestionnaireId,
+      source: "saisie_directe",
+    }).select("id").single();
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Prospect créé");
+    await onCreated(data!.id);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSave}>
+          <DialogHeader>
+            <DialogTitle>Nouveau prospect</DialogTitle>
+            <DialogDescription>Créé au sein de la transaction. Type verrouillé sur « Prospect ».</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Type</Label>
+                <Select value={typeEntite} onValueChange={(v) => setTypeEntite(v as "personne" | "entreprise")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personne">Personne</SelectItem>
+                    <SelectItem value="entreprise">Entreprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Rôle</Label>
+                <Input value="Prospect" disabled />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>{typeEntite === "entreprise" ? "Raison sociale *" : "Nom *"}</Label>
+                <Input value={nom} onChange={(e) => setNom(e.target.value)} required />
+              </div>
+              {typeEntite === "personne" && (
+                <div className="grid gap-2">
+                  <Label>Prénom</Label>
+                  <Input value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Téléphone</Label>
+                <Input value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" disabled={saving}>{saving ? "..." : "Créer le prospect"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
