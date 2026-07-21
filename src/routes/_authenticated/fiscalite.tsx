@@ -354,6 +354,8 @@ function ImpotDialog({
       date_paiement: form.date_paiement || null,
       date_recuperation_recu: form.date_recuperation_recu || null,
       reference_cheque: form.reference_cheque || null,
+      montant_penalite: form.montant_penalite != null && form.montant_penalite !== ("" as unknown) ? Number(form.montant_penalite) : null,
+      motif_penalite: form.motif_penalite || null,
     };
     let err;
     if (editing) {
