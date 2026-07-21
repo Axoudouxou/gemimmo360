@@ -516,14 +516,16 @@ function TransactionDetailDialog({
 
   // Fetch linked contract + bien statut for action buttons
   useEffect(() => {
-    if (!tx) { setLinkedContratId(null); setBienStatut(null); return; }
+    if (!tx) { setLinkedContratId(null); setBienStatut(null); setLotCount(0); return; }
     (async () => {
-      const [{ data: contrat }, { data: bien }] = await Promise.all([
+      const [{ data: contrat }, { data: bien }, lotsRes] = await Promise.all([
         supabase.from("contrats").select("id").eq("transaction_origine_id", tx.id).maybeSingle(),
         tx.bien_id ? supabase.from("biens").select("statut").eq("id", tx.bien_id).maybeSingle() : Promise.resolve({ data: null }),
+        tx.bien_id ? supabase.from("lots").select("id", { count: "exact", head: true }).eq("bien_id", tx.bien_id) : Promise.resolve({ count: 0 as number | null }),
       ]);
       setLinkedContratId((contrat as { id: string } | null)?.id ?? null);
       setBienStatut((bien as { statut: string } | null)?.statut ?? null);
+      setLotCount(((lotsRes as { count: number | null }).count) ?? 0);
     })();
   }, [tx]);
 
