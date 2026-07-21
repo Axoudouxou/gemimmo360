@@ -732,6 +732,29 @@ function TransactionDetailDialog({
                   </ul>
                 )}
               </div>
+
+              {(showCreateContrat || showViewContrat || showMarkSold) && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-sm font-semibold mb-2">Actions "Gagné"</div>
+                  <div className="flex flex-wrap gap-2">
+                    {showCreateContrat && (
+                      <Button size="sm" onClick={() => setOpenContrat(true)}>
+                        Créer le contrat associé
+                      </Button>
+                    )}
+                    {showViewContrat && (
+                      <Button size="sm" variant="outline" onClick={() => navigate({ to: "/contrats/$contratId", params: { contratId: linkedContratId! } })}>
+                        Voir le contrat
+                      </Button>
+                    )}
+                    {showMarkSold && (
+                      <Button size="sm" variant="destructive" onClick={markBienSold}>
+                        Marquer le bien comme vendu
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Fermer</Button>
@@ -743,7 +766,17 @@ function TransactionDetailDialog({
               defaults={{ transactionId: tx.id }}
               onSaved={() => { setOpenNew(false); onChanged(); }}
             />
+            <NouveauContratDialog
+              open={openContrat}
+              onOpenChange={setOpenContrat}
+              fixedContactId={tx.contact_id}
+              filterByBienId={tx.bien_id ?? undefined}
+              prefillLoyer={tx.montant_estime ?? null}
+              transactionOrigineId={tx.id}
+              onCreated={(cid) => { setLinkedContratId(cid); onChanged(); }}
+            />
           </>
+
         )}
       </DialogContent>
     </Dialog>
