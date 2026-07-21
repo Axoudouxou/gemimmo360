@@ -951,3 +951,110 @@ function NouveauProspectMiniDialog({
   );
 }
 
+const BIEN_TYPES = [
+  { value: "immeuble", label: "Immeuble" },
+  { value: "appartement", label: "Appartement" },
+  { value: "maison", label: "Maison" },
+  { value: "local_commercial", label: "Local commercial" },
+  { value: "terrain", label: "Terrain" },
+] as const;
+
+function NouveauBienMiniDialog({
+  open,
+  onOpenChange,
+  bailleurId,
+  gestionnaireId,
+  defaultOperation,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  bailleurId: string | null;
+  gestionnaireId: string | null;
+  defaultOperation: "location" | "vente";
+  onCreated: (bienId: string) => void | Promise<void>;
+}) {
+  const [titre, setTitre] = useState("");
+  const [adresse, setAdresse] = useState("");
+  const [typeBien, setTypeBien] = useState<string>("");
+  const [surface, setSurface] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitre(""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
+  }, [open]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!titre.trim()) return toast.error("Le titre est obligatoire");
+    setSaving(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from("biens").insert({
+      titre: titre.trim(),
+      adresse: adresse.trim() || null,
+      type_bien: typeBien || null,
+      statut: "vacant",
+      type_operation: defaultOperation,
+      surface: surface ? Number(surface) : null,
+      bailleur_id: bailleurId,
+      notes: notes.trim() || null,
+      gestionnaire_id: gestionnaireId || userRes.user?.id || null,
+    }).select("id").single();
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await onCreated(data!.id);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSave}>
+          <DialogHeader>
+            <DialogTitle>Nouveau bien</DialogTitle>
+            <DialogDescription>Créé depuis la transaction. Bailleur et gestionnaire pré-remplis.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Titre *</Label>
+              <Input value={titre} onChange={(e) => setTitre(e.target.value)} required />
+            </div>
+            <div className="grid gap-2">
+              <Label>Adresse</Label>
+              <Input value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Type de bien</Label>
+                <Select value={typeBien} onValueChange={setTypeBien}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                  <SelectContent>
+                    {BIEN_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Surface (m²)</Label>
+                <Input type="number" min="0" step="0.01" value={surface} onChange={(e) => setSurface(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Opération : {defaultOperation === "vente" ? "Vente" : "Location"} · Statut initial : Vacant · Après création, pensez à ajouter les lots depuis la fiche du bien.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" disabled={saving}>{saving ? "..." : "Créer le bien"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
