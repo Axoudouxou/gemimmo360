@@ -535,12 +535,47 @@ function TransactionDetailDialog({
       gestionnaire_id: edit.gestionnaire_id || null,
     };
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
+    if (error) { setSaving(false); return toast.error(error.message); }
+    // Auto-conversion prospect → bailleur pour mandat_gestion gagné
+    if (edit.statut_opportunite === "gagne" && t === "mandat_gestion") {
+      const c = contacts.find((x) => x.id === tx.contact_id);
+      if (c && c.type_contact === "prospect") {
+        await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
+      }
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Transaction mise à jour");
     onChanged();
     onClose();
   };
+
+  const markBienSold = async () => {
+    if (!tx?.bien_id) return;
+    if (!confirm("Marquer ce bien et tous ses lots comme vendus ?")) return;
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from("biens").update({ statut: "vendu" }).eq("id", tx.bien_id),
+      supabase.from("lots").update({ statut: "vendu" }).eq("bien_id", tx.bien_id),
+    ]);
+    if (e1 || e2) return toast.error((e1 || e2)!.message);
+    // Convert prospect → bailleur (vendeur)
+    const c = contacts.find((x) => x.id === tx.contact_id);
+    if (c?.type_contact === "prospect") {
+      await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
+    }
+    setBienStatut("vendu");
+    toast.success("Bien marqué comme vendu");
+    onChanged();
+  };
+
+  const showCreateContrat = tx?.statut_opportunite === "gagne"
+    && tx.bien_id
+    && (tx.type_transaction === "mandat_location" || tx.type_transaction === "offre")
+    && !linkedContratId;
+  const showViewContrat = !!linkedContratId;
+  const showMarkSold = tx?.statut_opportunite === "gagne"
+    && tx.type_transaction === "mandat_vente"
+    && tx.bien_id
+    && bienStatut !== "vendu";
 
   return (
     <Dialog open={!!tx} onOpenChange={(o) => { if (!o) onClose(); }}>
