@@ -19,6 +19,7 @@ import { hasModuleAccess } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   head: () => ({ meta: [{ title: "Transactions — Agence Immobilière" }] }),
