@@ -18,6 +18,7 @@ import {
   CalendarDays,
   LogOut,
   HelpCircle,
+  Landmark,
 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,6 +67,7 @@ const FINANCE: NavItem[] = [
   { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
   { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+  { title: "Fiscalité", url: "/fiscalite", icon: Landmark, roles: ["admin", "direction", "juridique"] },
 ];
 
 const OPS: NavItem[] = [
