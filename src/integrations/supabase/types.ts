@@ -1011,6 +1011,7 @@ export type Database = {
           date_recuperation_recu: string | null
           id: string
           montant: number | null
+          montant_annuel_total: number | null
           reference_cheque: string | null
           statut: string
           trimestre: string
@@ -1027,6 +1028,7 @@ export type Database = {
           date_recuperation_recu?: string | null
           id?: string
           montant?: number | null
+          montant_annuel_total?: number | null
           reference_cheque?: string | null
           statut?: string
           trimestre: string
@@ -1043,6 +1045,7 @@ export type Database = {
           date_recuperation_recu?: string | null
           id?: string
           montant?: number | null
+          montant_annuel_total?: number | null
           reference_cheque?: string | null
           statut?: string
           trimestre?: string
