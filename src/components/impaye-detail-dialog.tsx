@@ -731,7 +731,17 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
         </div>
 
         <DialogFooter className="gap-2">
-          {canTransfer && service === "recouvrement" && (
+          {showJuridiqueAlert && canEditJuridique && (
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleConfirmClose}
+              disabled={closing}
+            >
+              {closing ? "Clôture..." : "Confirmer le solde et clôturer"}
+            </Button>
+          )}
+          {canTransfer && service === "recouvrement" && !isResolved && (
             <Button
               size="sm"
               variant="secondary"
