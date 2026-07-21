@@ -41,8 +41,13 @@ const STATUTS = [
   { value: "a_jour", label: "À jour" },
   { value: "en_retard", label: "En retard" },
   { value: "relance_envoyee", label: "Relance envoyée" },
+  { value: "solde", label: "Soldés (résolus)" },
 ] as const;
-const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
+const STATUT_LABEL: Record<string, string> = {
+  a_jour: "À jour",
+  en_retard: "En retard",
+  relance_envoyee: "Relance envoyée",
+};
 
 const READ_BLOCKED = ["en_attente"] as const;
 const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] as const;
