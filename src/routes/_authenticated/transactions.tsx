@@ -478,8 +478,10 @@ function TransactionDetailDialog({
   const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
   const [openContrat, setOpenContrat] = useState(false);
+  const [openBien, setOpenBien] = useState(false);
   const [linkedContratId, setLinkedContratId] = useState<string | null>(null);
   const [bienStatut, setBienStatut] = useState<string | null>(null);
+  const [lotCount, setLotCount] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState({
     statut_opportunite: "nouveau",
@@ -514,14 +516,16 @@ function TransactionDetailDialog({
 
   // Fetch linked contract + bien statut for action buttons
   useEffect(() => {
-    if (!tx) { setLinkedContratId(null); setBienStatut(null); return; }
+    if (!tx) { setLinkedContratId(null); setBienStatut(null); setLotCount(0); return; }
     (async () => {
-      const [{ data: contrat }, { data: bien }] = await Promise.all([
+      const [{ data: contrat }, { data: bien }, lotsRes] = await Promise.all([
         supabase.from("contrats").select("id").eq("transaction_origine_id", tx.id).maybeSingle(),
         tx.bien_id ? supabase.from("biens").select("statut").eq("id", tx.bien_id).maybeSingle() : Promise.resolve({ data: null }),
+        tx.bien_id ? supabase.from("lots").select("id", { count: "exact", head: true }).eq("bien_id", tx.bien_id) : Promise.resolve({ count: 0 as number | null }),
       ]);
       setLinkedContratId((contrat as { id: string } | null)?.id ?? null);
       setBienStatut((bien as { statut: string } | null)?.statut ?? null);
+      setLotCount(((lotsRes as { count: number | null }).count) ?? 0);
     })();
   }, [tx]);
 
@@ -583,14 +587,21 @@ function TransactionDetailDialog({
     onChanged();
   };
 
-  const showCreateContrat = tx?.statut_opportunite === "gagne"
-    && tx.bien_id
-    && (tx.type_transaction === "mandat_location" || tx.type_transaction === "offre")
+  const isGagne = tx?.statut_opportunite === "gagne";
+  const showCreateBien = !!isGagne && !tx?.bien_id;
+  const showCreateContrat = isGagne
+    && !!tx?.bien_id
+    && lotCount > 0
+    && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre")
     && !linkedContratId;
+  const showNoLotWarning = isGagne
+    && !!tx?.bien_id
+    && lotCount === 0
+    && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre");
   const showViewContrat = !!linkedContratId;
-  const showMarkSold = tx?.statut_opportunite === "gagne"
-    && tx.type_transaction === "mandat_vente"
-    && tx.bien_id
+  const showMarkSold = isGagne
+    && tx?.type_transaction === "mandat_vente"
+    && !!tx?.bien_id
     && bienStatut !== "vendu";
 
   return (
@@ -749,10 +760,15 @@ function TransactionDetailDialog({
                 )}
               </div>
 
-              {(showCreateContrat || showViewContrat || showMarkSold) && (
-                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
-                  <div className="text-sm font-semibold mb-2">Actions "Gagné"</div>
+              {(showCreateBien || showCreateContrat || showViewContrat || showMarkSold || showNoLotWarning) && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                  <div className="text-sm font-semibold">Actions "Gagné"</div>
                   <div className="flex flex-wrap gap-2">
+                    {showCreateBien && (
+                      <Button size="sm" onClick={() => setOpenBien(true)}>
+                        Créer le bien associé
+                      </Button>
+                    )}
                     {showCreateContrat && (
                       <Button size="sm" onClick={() => setOpenContrat(true)}>
                         Créer le contrat associé
@@ -769,6 +785,14 @@ function TransactionDetailDialog({
                       </Button>
                     )}
                   </div>
+                  {showNoLotWarning && tx?.bien_id && (
+                    <p className="text-xs text-amber-800 flex items-start gap-1">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        Ce bien n'a pas encore de lot — <Link to="/biens/$bienId" params={{ bienId: tx.bien_id }} className="underline font-medium">créez-en un depuis sa fiche</Link> avant de pouvoir créer un contrat.
+                      </span>
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -790,6 +814,20 @@ function TransactionDetailDialog({
               prefillLoyer={tx.montant_estime ?? null}
               transactionOrigineId={tx.id}
               onCreated={(cid) => { setLinkedContratId(cid); onChanged(); }}
+            />
+            <NouveauBienMiniDialog
+              open={openBien}
+              onOpenChange={setOpenBien}
+              bailleurId={(tx.type_transaction === "mandat_gestion" || tx.type_transaction === "mandat_vente") ? tx.contact_id : null}
+              gestionnaireId={tx.gestionnaire_id}
+              defaultOperation={tx.type_transaction === "mandat_vente" ? "vente" : "location"}
+              onCreated={async (bienId) => {
+                const { error } = await supabase.from("transactions_commerciales").update({ bien_id: bienId }).eq("id", tx.id);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Bien créé et lié à la transaction");
+                setOpenBien(false);
+                onChanged();
+              }}
             />
           </>
 
@@ -912,4 +950,111 @@ function NouveauProspectMiniDialog({
     </Dialog>
   );
 }
+
+const BIEN_TYPES = [
+  { value: "immeuble", label: "Immeuble" },
+  { value: "appartement", label: "Appartement" },
+  { value: "maison", label: "Maison" },
+  { value: "local_commercial", label: "Local commercial" },
+  { value: "terrain", label: "Terrain" },
+] as const;
+
+function NouveauBienMiniDialog({
+  open,
+  onOpenChange,
+  bailleurId,
+  gestionnaireId,
+  defaultOperation,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  bailleurId: string | null;
+  gestionnaireId: string | null;
+  defaultOperation: "location" | "vente";
+  onCreated: (bienId: string) => void | Promise<void>;
+}) {
+  const [titre, setTitre] = useState("");
+  const [adresse, setAdresse] = useState("");
+  const [typeBien, setTypeBien] = useState<string>("");
+  const [surface, setSurface] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitre(""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
+  }, [open]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!titre.trim()) return toast.error("Le titre est obligatoire");
+    setSaving(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from("biens").insert({
+      titre: titre.trim(),
+      adresse: adresse.trim() || null,
+      type_bien: typeBien || null,
+      statut: "vacant",
+      type_operation: defaultOperation,
+      surface: surface ? Number(surface) : null,
+      bailleur_id: bailleurId,
+      notes: notes.trim() || null,
+      gestionnaire_id: gestionnaireId || userRes.user?.id || null,
+    }).select("id").single();
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await onCreated(data!.id);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSave}>
+          <DialogHeader>
+            <DialogTitle>Nouveau bien</DialogTitle>
+            <DialogDescription>Créé depuis la transaction. Bailleur et gestionnaire pré-remplis.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Titre *</Label>
+              <Input value={titre} onChange={(e) => setTitre(e.target.value)} required />
+            </div>
+            <div className="grid gap-2">
+              <Label>Adresse</Label>
+              <Input value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Type de bien</Label>
+                <Select value={typeBien} onValueChange={setTypeBien}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                  <SelectContent>
+                    {BIEN_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Surface (m²)</Label>
+                <Input type="number" min="0" step="0.01" value={surface} onChange={(e) => setSurface(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Opération : {defaultOperation === "vente" ? "Vente" : "Location"} · Statut initial : Vacant · Après création, pensez à ajouter les lots depuis la fiche du bien.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" disabled={saving}>{saving ? "..." : "Créer le bien"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
