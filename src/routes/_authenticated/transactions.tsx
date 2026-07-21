@@ -437,6 +437,11 @@ function TransactionsPage() {
           onChanged={load}
           profiles={profiles}
           canEditGestionnaire={role === "admin" || role === "direction"}
+          canDelete={
+            role === "admin" || role === "direction" || role === "juridique" ||
+            (role === "commercial" && !!detail && detail.gestionnaire_id === uid) ||
+            hasModuleAccess(uid, "transactions")
+          }
         />
         <NouveauProspectMiniDialog
           open={prospectOpen}
