@@ -124,14 +124,22 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, filterByB
       depot_garantie: form.depot_garantie ? Number(form.depot_garantie) : null,
       date_debut: form.date_debut || null,
       statut: form.statut || "actif",
+      transaction_origine_id: transactionOrigineId ?? null,
     }).select("id").single();
     if (error) {
       setSaving(false);
-      if ((error as any).code === "23505") return toast.error("Ce lot a déjà un contrat actif en cours.");
+      if ((error as { code?: string }).code === "23505") return toast.error("Ce lot a déjà un contrat actif en cours.");
       return toast.error(error.message);
     }
     if ((form.statut || "actif") === "actif") {
       await supabase.from("lots").update({ statut: "loue" }).eq("id", lotId);
+    }
+    // Auto-convert prospect → locataire
+    if (locId) {
+      const { data: c } = await supabase.from("contacts").select("type_contact").eq("id", locId).maybeSingle();
+      if (c?.type_contact === "prospect") {
+        await supabase.from("contacts").update({ type_contact: "locataire" }).eq("id", locId);
+      }
     }
     setSaving(false);
     toast.success(activeContrat ? "Nouveau contrat créé, ancien terminé automatiquement" : "Contrat créé");
