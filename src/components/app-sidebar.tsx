@@ -41,7 +41,11 @@ type NavItem = {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: string[];
+  allowUserIds?: string[];
 };
+
+// Overrides individuels (accès étendu par utilisateur)
+const CHRISTELLE_KOUASSI_ID = "2f7ca4a8-1730-4d83-88fb-3faa423dcaf6";
 
 const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
@@ -60,8 +64,8 @@ const GESTION: NavItem[] = [
 
 const FINANCE: NavItem[] = [
   { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] },
-  { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"] },
-  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"] },
+  { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
 ];
 
 const OPS: NavItem[] = [
@@ -79,12 +83,14 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [role, setRole] = useState<string>("");
+  const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
       const user = userRes.user;
       if (!user) return;
+      setUserId(user.id);
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -100,7 +106,8 @@ export function AppSidebar() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const filter = (items: NavItem[]) => items.filter((i) => !i.roles || i.roles.includes(role));
+  const filter = (items: NavItem[]) =>
+    items.filter((i) => !i.roles || i.roles.includes(role) || (i.allowUserIds?.includes(userId) ?? false));
 
   const renderGroup = (label: string, items: NavItem[]) => {
     const visible = filter(items);
