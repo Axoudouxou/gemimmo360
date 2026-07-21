@@ -149,12 +149,18 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
   });
   const [saving, setSaving] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const canWrite = useMemo(() => (role ? WRITE_ROLES.has(role) : false), [role]);
   const canComment = role !== "en_attente";
   const canTransfer = role ? TRANSFER_ROLES.has(role) : false;
   const canEditJuridique = role ? JURIDIQUE_ROLES.has(role) : false;
   const service = impaye?.service_en_charge ?? "recouvrement";
+  const etape = impaye?.etape_traitement ?? "recouvrement";
+  const isResolved = etape === "resolu";
+  const resteInitial = impaye ? Number(impaye.montant_du) - Number(impaye.montant_paye) : 0;
+  const showJuridiqueAlert =
+    !!impaye && !isResolved && resteInitial <= 0 && JURIDIQUE_ETAPES.has(etape);
 
   useEffect(() => {
     if (!open || !impaye) return;
