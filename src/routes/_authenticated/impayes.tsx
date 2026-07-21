@@ -182,7 +182,15 @@ function ImpayesPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return impayes.filter((i) => {
-      if (fStatut !== "all" && i.statut !== fStatut) return false;
+      const isResolved = i.etape_traitement === "resolu";
+      if (fStatut === "solde") {
+        if (!isResolved) return false;
+      } else if (fStatut === "all") {
+        // include everything
+      } else {
+        if (isResolved) return false;
+        if (i.statut !== fStatut) return false;
+      }
       if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
