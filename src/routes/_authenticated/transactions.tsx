@@ -268,7 +268,10 @@ function TransactionsPage() {
                         onChange={(v) => setForm({ ...form, contact_id: v })}
                         options={commercialContacts.map((c) => ({ value: c.id, label: `${c.nom}${c.prenom ? ` ${c.prenom}` : ""} (${c.type_contact})` }))}
                         placeholder={commercialContacts.length ? "Rechercher un contact..." : "Aucun prospect/acheteur/vendeur"}
+                        onCreateOption={(q) => { setProspectInitial(q); setProspectOpen(true); }}
+                        createLabel={(q) => `+ Créer "${q}" comme nouveau prospect`}
                       />
+
                     </div>
                     <div className="grid gap-2"><Label>Bien concerné</Label>
                       <SearchableSelect
