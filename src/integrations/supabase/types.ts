@@ -1075,6 +1075,51 @@ export type Database = {
           },
         ]
       }
+      impots_fonciers_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ_modifie: string
+          created_at: string
+          id: string
+          impot_foncier_id: string
+          nouvelle_valeur: string | null
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie: string
+          created_at?: string
+          id?: string
+          impot_foncier_id: string
+          nouvelle_valeur?: string | null
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie?: string
+          created_at?: string
+          id?: string
+          impot_foncier_id?: string
+          nouvelle_valeur?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impots_fonciers_historique_auteur_fkey"
+            columns: ["auteur"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impots_fonciers_historique_impot_foncier_id_fkey"
+            columns: ["impot_foncier_id"]
+            isOneToOne: false
+            referencedRelation: "impots_fonciers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           bien_id: string
