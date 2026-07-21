@@ -107,7 +107,7 @@ function EDLPage() {
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && !(NO_ACCESS as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { if (isOverride || (role && !(NO_ACCESS as readonly string[]).includes(role))) load(); }, [role, isOverride]);
 
   const lotLabel = (id: string) => {
     const l = lots.find((x) => x.id === id); if (!l) return "—";
