@@ -587,14 +587,21 @@ function TransactionDetailDialog({
     onChanged();
   };
 
-  const showCreateContrat = tx?.statut_opportunite === "gagne"
-    && tx.bien_id
-    && (tx.type_transaction === "mandat_location" || tx.type_transaction === "offre")
+  const isGagne = tx?.statut_opportunite === "gagne";
+  const showCreateBien = !!isGagne && !tx?.bien_id;
+  const showCreateContrat = isGagne
+    && !!tx?.bien_id
+    && lotCount > 0
+    && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre")
     && !linkedContratId;
+  const showNoLotWarning = isGagne
+    && !!tx?.bien_id
+    && lotCount === 0
+    && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre");
   const showViewContrat = !!linkedContratId;
-  const showMarkSold = tx?.statut_opportunite === "gagne"
-    && tx.type_transaction === "mandat_vente"
-    && tx.bien_id
+  const showMarkSold = isGagne
+    && tx?.type_transaction === "mandat_vente"
+    && !!tx?.bien_id
     && bienStatut !== "vendu";
 
   return (
