@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Landmark } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteZone } from "@/components/delete-zone";
 
 export const Route = createFileRoute("/_authenticated/fiscalite")({
   head: () => ({
