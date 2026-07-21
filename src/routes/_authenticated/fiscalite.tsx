@@ -441,6 +441,38 @@ function ImpotDialog({
             <Label>Référence chèque</Label>
             <Input value={form.reference_cheque ?? ""} onChange={(e) => setForm({ ...form, reference_cheque: e.target.value })} />
           </div>
+
+          {editing && (
+            <div className="border-t pt-3">
+              <h4 className="text-sm font-semibold mb-2">Historique</h4>
+              {historique.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune modification enregistrée.</p>
+              ) : (
+                <ul className="space-y-1 text-xs max-h-48 overflow-y-auto">
+                  {historique.map((h) => (
+                    <li key={h.id} className="text-muted-foreground">
+                      <span className="font-medium text-foreground">{new Date(h.created_at).toLocaleString("fr-FR")}</span>
+                      {" — "}
+                      {h.champ_modifie === "creation"
+                        ? `Création (statut : ${h.nouvelle_valeur ?? "—"})`
+                        : `${IF_CHAMP_LABEL[h.champ_modifie] ?? h.champ_modifie} : ${h.ancienne_valeur ?? "—"} → ${h.nouvelle_valeur ?? "—"}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {editing && (
+            <DeleteZone
+              entityLabel="cet impôt foncier"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'impôt foncier et tout son historique.",
+              })}
+              onDelete={deleteImpot}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
