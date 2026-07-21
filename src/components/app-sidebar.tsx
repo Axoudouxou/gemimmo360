@@ -106,7 +106,8 @@ export function AppSidebar() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const filter = (items: NavItem[]) => items.filter((i) => !i.roles || i.roles.includes(role));
+  const filter = (items: NavItem[]) =>
+    items.filter((i) => !i.roles || i.roles.includes(role) || (i.allowUserIds?.includes(userId) ?? false));
 
   const renderGroup = (label: string, items: NavItem[]) => {
     const visible = filter(items);
