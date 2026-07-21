@@ -66,7 +66,7 @@ function ChargesPage() {
     setBiens((bData ?? []) as Bien[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { (async () => { const { data } = await supabase.auth.getUser(); if (hasModuleAccess(role, data.user?.id ?? null, ALLOWED)) load(); })(); }, [role]);
 
   const resetForm = () => setForm({ bien_id: "", libelle: "", montant: "", date: "", recurrente: false });
   const handleCreate = async (e: React.FormEvent) => {
