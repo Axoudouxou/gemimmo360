@@ -119,7 +119,26 @@ export function SearchableSelect({
             onValueChange={setQuery}
           />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandEmpty>
+              <div className="px-2 py-1.5 text-sm">{emptyText}</div>
+              {onCreateOption && query.trim() && (
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent text-primary"
+                  onClick={() => {
+                    const q = query.trim();
+                    onCreateOption(q);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="truncate">
+                    {createLabel ? createLabel(query.trim()) : `Créer "${query.trim()}"`}
+                  </span>
+                </button>
+              )}
+            </CommandEmpty>
             <CommandGroup>
               {filtered.map((o) => (
                 <CommandItem
@@ -134,6 +153,23 @@ export function SearchableSelect({
                   <span className="truncate">{o.label}</span>
                 </CommandItem>
               ))}
+              {onCreateOption && query.trim() && filtered.length > 0 && !filtered.some((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()) && o.label.toLowerCase() === query.trim().toLowerCase()) && (
+                <CommandItem
+                  key="__create__"
+                  value={`__create__${query}`}
+                  onSelect={() => {
+                    const q = query.trim();
+                    onCreateOption(q);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4 text-primary" />
+                  <span className="truncate text-primary">
+                    {createLabel ? createLabel(query.trim()) : `+ Créer "${query.trim()}"`}
+                  </span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>
