@@ -738,6 +738,18 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
               entityTitle={`Impayé du ${fmtDate(impaye.date_echeance)}`}
             />
           </div>
+
+          {canDelete && (
+            <DeleteZone
+              entityLabel="cet impayé"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'impayé, son historique et ses commentaires. Elle est irréversible et peut concerner un dossier en procédure.",
+                requireTypeToConfirm: true,
+              })}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
 
         <DialogFooter className="gap-2">
