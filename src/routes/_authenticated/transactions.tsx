@@ -459,7 +459,11 @@ function TransactionDetailDialog({
   profiles: { id: string; email: string | null }[];
   canEditGestionnaire: boolean;
 }) {
+  const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
+  const [openContrat, setOpenContrat] = useState(false);
+  const [linkedContratId, setLinkedContratId] = useState<string | null>(null);
+  const [bienStatut, setBienStatut] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState({
     statut_opportunite: "nouveau",
