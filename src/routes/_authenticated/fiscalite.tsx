@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Landmark } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteZone } from "@/components/delete-zone";
 
 export const Route = createFileRoute("/_authenticated/fiscalite")({
   head: () => ({
@@ -73,6 +74,21 @@ type HistoEntry = {
   id: string; honoraire_id: string; champ_modifie: string; ancienne_valeur: string | null;
   nouvelle_valeur: string | null; auteur: string | null; created_at: string;
 };
+type ImpotHistoEntry = {
+  id: string; impot_foncier_id: string; champ_modifie: string; ancienne_valeur: string | null;
+  nouvelle_valeur: string | null; auteur: string | null; created_at: string;
+};
+
+const IF_CHAMP_LABEL: Record<string, string> = {
+  creation: "Création",
+  statut: "Statut",
+  montant: "Montant",
+  montant_annuel_total: "Montant annuel total",
+  date_echeance: "Date d'échéance",
+  date_paiement: "Date de paiement",
+  date_recuperation_recu: "Date récup. reçu",
+};
+
 
 function bailleurLabel(b: Bailleur | undefined) {
   if (!b) return "—";
@@ -283,11 +299,31 @@ function ImpotDialog({
 }) {
   const currentYear = new Date().getFullYear();
   const [form, setForm] = useState<Partial<Impot>>({});
+  const [historique, setHistorique] = useState<ImpotHistoEntry[]>([]);
   useEffect(() => {
-    if (editing) setForm(editing);
-    else setForm({ annee_fiscale: currentYear, trimestre: "T1", statut: "a_retirer", date_echeance: `${currentYear}-03-15` });
+    if (editing) {
+      setForm(editing);
+      supabase
+        .from("impots_fonciers_historique" as never)
+        .select("*")
+        .eq("impot_foncier_id", editing.id)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setHistorique((data as unknown as ImpotHistoEntry[]) ?? []));
+    } else {
+      setForm({ annee_fiscale: currentYear, trimestre: "T1", statut: "a_retirer", date_echeance: `${currentYear}-03-15` });
+      setHistorique([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, open]);
+
+  async function deleteImpot() {
+    if (!editing) return;
+    const { error } = await supabase.from("impots_fonciers").delete().eq("id", editing.id);
+    if (error) throw new Error(error.message);
+    toast.success("Impôt foncier supprimé");
+    await onSaved();
+  }
+
 
   function updateTrimestre(t: string) {
     const yr = form.annee_fiscale ?? currentYear;
@@ -332,10 +368,10 @@ function ImpotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Modifier l'impôt foncier" : "Nouvel impôt foncier"}</DialogTitle>
-          <DialogDescription>Suivi trimestriel par bailleur et par bien.</DialogDescription>
+          <DialogDescription>Suivi trimestriel ou annuel par bailleur et par bien.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -405,6 +441,38 @@ function ImpotDialog({
             <Label>Référence chèque</Label>
             <Input value={form.reference_cheque ?? ""} onChange={(e) => setForm({ ...form, reference_cheque: e.target.value })} />
           </div>
+
+          {editing && (
+            <div className="border-t pt-3">
+              <h4 className="text-sm font-semibold mb-2">Historique</h4>
+              {historique.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune modification enregistrée.</p>
+              ) : (
+                <ul className="space-y-1 text-xs max-h-48 overflow-y-auto">
+                  {historique.map((h) => (
+                    <li key={h.id} className="text-muted-foreground">
+                      <span className="font-medium text-foreground">{new Date(h.created_at).toLocaleString("fr-FR")}</span>
+                      {" — "}
+                      {h.champ_modifie === "creation"
+                        ? `Création (statut : ${h.nouvelle_valeur ?? "—"})`
+                        : `${IF_CHAMP_LABEL[h.champ_modifie] ?? h.champ_modifie} : ${h.ancienne_valeur ?? "—"} → ${h.nouvelle_valeur ?? "—"}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {editing && (
+            <DeleteZone
+              entityLabel="cet impôt foncier"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'impôt foncier et tout son historique.",
+              })}
+              onDelete={deleteImpot}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
@@ -528,6 +596,14 @@ function HonoraireDialog({
     await onSaved();
   }
 
+  async function deleteHonoraire() {
+    if (!editing) return;
+    const { error } = await supabase.from("honoraires_fiscaux").delete().eq("id", editing.id);
+    if (error) throw new Error(error.message);
+    toast.success("Honoraire supprimé");
+    await onSaved();
+  }
+
   const bailleurOptions = bailleurs.map((b) => ({ value: b.id, label: bailleurLabel(b) }));
 
   return (
@@ -592,6 +668,17 @@ function HonoraireDialog({
                 </ul>
               )}
             </div>
+          )}
+
+          {editing && (
+            <DeleteZone
+              entityLabel="cet honoraire"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'honoraire et tout son historique.",
+              })}
+              onDelete={deleteHonoraire}
+            />
           )}
         </div>
         <DialogFooter>

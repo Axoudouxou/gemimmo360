@@ -24,6 +24,7 @@ import {
 import { Pencil, X, History, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { CommentSection } from "@/components/comment-section";
+import { DeleteZone } from "@/components/delete-zone";
 
 export type Impaye = {
   id: string;
@@ -127,9 +128,10 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   role?: string;
   onUpdated?: (updated: Impaye) => void;
+  onDeleted?: (id: string) => void;
 };
 
-export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated }: Props) {
+export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated, onDeleted }: Props) {
   const [details, setDetails] = useState<Details>({
     contrat: null,
     lot: null,
@@ -155,6 +157,7 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
   const canComment = role !== "en_attente";
   const canTransfer = role ? TRANSFER_ROLES.has(role) : false;
   const canEditJuridique = role ? JURIDIQUE_ROLES.has(role) : false;
+  const canDelete = role === "admin";
   const service = impaye?.service_en_charge ?? "recouvrement";
   const etape = impaye?.etape_traitement ?? "recouvrement";
   const isResolved = etape === "resolu";
@@ -416,6 +419,15 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
     toast.success("Impayé transféré au juridique");
     if (updated && onUpdated) onUpdated(updated as unknown as Impaye);
     await loadHistory(impaye.id);
+  }
+
+  async function handleDelete() {
+    if (!impaye) return;
+    const { error } = await supabase.from("impayes").delete().eq("id", impaye.id);
+    if (error) throw new Error(error.message);
+    toast.success("Impayé supprimé");
+    onDeleted?.(impaye.id);
+    onOpenChange(false);
   }
 
   return (
@@ -726,6 +738,18 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
               entityTitle={`Impayé du ${fmtDate(impaye.date_echeance)}`}
             />
           </div>
+
+          {canDelete && (
+            <DeleteZone
+              entityLabel="cet impayé"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'impayé, son historique et ses commentaires. Elle est irréversible et peut concerner un dossier en procédure.",
+                requireTypeToConfirm: true,
+              })}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
 
         <DialogFooter className="gap-2">
