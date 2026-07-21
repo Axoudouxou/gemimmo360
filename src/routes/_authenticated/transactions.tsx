@@ -131,7 +131,7 @@ function TransactionsPage() {
     setActivites((aData ?? []) as Activite[]);
     setLoading(false);
   }, []);
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role, load]);
+  useEffect(() => { if (hasModuleAccess(role, uid, ALLOWED)) load(); }, [role, uid, load]);
 
   const commercialContacts = contacts.filter((c) => c.type_contact && COMMERCIAL_TYPES.includes(c.type_contact));
 
