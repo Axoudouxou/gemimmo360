@@ -49,7 +49,7 @@ function ChargesPage() {
       const r = p?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!hasModuleAccess(r, uid, ALLOWED)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
