@@ -24,6 +24,7 @@ import {
 import { Pencil, X, History, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { CommentSection } from "@/components/comment-section";
+import { DeleteZone } from "@/components/delete-zone";
 
 export type Impaye = {
   id: string;
