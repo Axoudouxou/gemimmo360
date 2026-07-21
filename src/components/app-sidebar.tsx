@@ -41,7 +41,11 @@ type NavItem = {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: string[];
+  allowUserIds?: string[];
 };
+
+// Overrides individuels (accès étendu par utilisateur)
+const CHRISTELLE_KOUASSI_ID = "2f7ca4a8-1730-4d83-88fb-3faa423dcaf6";
 
 const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
