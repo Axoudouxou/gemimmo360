@@ -15,7 +15,7 @@ import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { hasModuleAccess } from "@/lib/access-overrides";
+import { hasModuleAccess, FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
@@ -437,6 +437,11 @@ function TransactionsPage() {
           onChanged={load}
           profiles={profiles}
           canEditGestionnaire={role === "admin" || role === "direction"}
+          canDelete={
+            role === "admin" || role === "direction" || role === "juridique" ||
+            (role === "commercial" && !!detail && detail.gestionnaire_id === uid) ||
+            (!!uid && FULL_ACCESS_USER_IDS.includes(uid))
+          }
         />
         <NouveauProspectMiniDialog
           open={prospectOpen}
@@ -464,6 +469,7 @@ function TransactionDetailDialog({
   onChanged,
   profiles,
   canEditGestionnaire,
+  canDelete,
 }: {
   tx: Tx | null;
   onClose: () => void;
@@ -474,6 +480,7 @@ function TransactionDetailDialog({
   onChanged: () => void;
   profiles: { id: string; email: string | null }[];
   canEditGestionnaire: boolean;
+  canDelete: boolean;
 }) {
   const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
@@ -796,9 +803,29 @@ function TransactionDetailDialog({
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={onClose}>Fermer</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "..." : "Enregistrer"}</Button>
+            <DialogFooter className="gap-2 sm:justify-between">
+              <div>
+                {canDelete && (
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      if (!tx) return;
+                      if (!confirm("Supprimer définitivement cette transaction ?")) return;
+                      const { error } = await supabase.from("transactions_commerciales").delete().eq("id", tx.id);
+                      if (error) return toast.error(error.message);
+                      toast.success("Transaction supprimée");
+                      onChanged();
+                      onClose();
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>Fermer</Button>
+                <Button onClick={handleSave} disabled={saving}>{saving ? "..." : "Enregistrer"}</Button>
+              </div>
             </DialogFooter>
             <NouvelleActiviteLieeDialog
               open={openNew}
