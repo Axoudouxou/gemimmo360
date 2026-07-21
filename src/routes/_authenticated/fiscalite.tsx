@@ -669,6 +669,17 @@ function HonoraireDialog({
               )}
             </div>
           )}
+
+          {editing && (
+            <DeleteZone
+              entityLabel="cet honoraire"
+              checkReferences={async () => ({
+                blocked: false,
+                message: "Cette action supprimera l'honoraire et tout son historique.",
+              })}
+              onDelete={deleteHonoraire}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
