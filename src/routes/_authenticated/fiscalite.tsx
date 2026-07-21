@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteZone } from "@/components/delete-zone";
+import { DocumentsSection } from "@/components/documents-section";
+
 
 export const Route = createFileRoute("/_authenticated/fiscalite")({
   head: () => ({
@@ -65,6 +67,7 @@ type Impot = {
   date_echeance: string | null; montant: number | null; montant_annuel_total: number | null;
   statut: string; date_paiement: string | null;
   date_recuperation_recu: string | null; reference_cheque: string | null;
+  montant_penalite: number | null; motif_penalite: string | null;
 };
 type Honoraire = {
   id: string; bailleur_id: string; type_honoraire: string; montant: number; periode: string | null;
@@ -84,6 +87,8 @@ const IF_CHAMP_LABEL: Record<string, string> = {
   statut: "Statut",
   montant: "Montant",
   montant_annuel_total: "Montant annuel total",
+  montant_penalite: "Pénalité",
+  motif_penalite: "Motif pénalité",
   date_echeance: "Date d'échéance",
   date_paiement: "Date de paiement",
   date_recuperation_recu: "Date récup. reçu",
@@ -351,6 +356,8 @@ function ImpotDialog({
       date_paiement: form.date_paiement || null,
       date_recuperation_recu: form.date_recuperation_recu || null,
       reference_cheque: form.reference_cheque || null,
+      montant_penalite: form.montant_penalite != null && form.montant_penalite !== ("" as unknown) ? Number(form.montant_penalite) : null,
+      motif_penalite: form.motif_penalite || null,
     };
     let err;
     if (editing) {
@@ -441,6 +448,50 @@ function ImpotDialog({
             <Label>Référence chèque</Label>
             <Input value={form.reference_cheque ?? ""} onChange={(e) => setForm({ ...form, reference_cheque: e.target.value })} />
           </div>
+
+          <div className="border-t pt-3 space-y-3">
+            <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-500">Pénalité (si applicable)</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Montant de la pénalité (FCFA)</Label>
+                <Input
+                  type="number"
+                  value={form.montant_penalite ?? ""}
+                  onChange={(e) => setForm({ ...form, montant_penalite: e.target.value === "" ? null : Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Motif</Label>
+                <Input
+                  value={form.motif_penalite ?? ""}
+                  placeholder="Retard de paiement, redressement…"
+                  onChange={(e) => setForm({ ...form, motif_penalite: e.target.value })}
+                />
+              </div>
+            </div>
+            {form.montant_penalite != null && Number(form.montant_penalite) > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 text-sm">
+                <div className="text-amber-800 dark:text-amber-300">
+                  Pénalité : <span className="font-semibold">{Number(form.montant_penalite).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+                <div className="text-amber-900 dark:text-amber-200 font-semibold">
+                  Total à payer : {(Number(form.montant ?? 0) + Number(form.montant_penalite ?? 0)).toLocaleString("fr-FR")} FCFA
+                </div>
+              </div>
+            )}
+          </div>
+
+          {editing && (
+            <div className="border-t pt-3">
+              <DocumentsSection
+                bucket="impots-fonciers-documents"
+                recordId={editing.id}
+                canWrite={true}
+                title="Documents"
+                description="Avis d'imposition, reçus, justificatifs (PDF)."
+              />
+            </div>
+          )}
 
           {editing && (
             <div className="border-t pt-3">
