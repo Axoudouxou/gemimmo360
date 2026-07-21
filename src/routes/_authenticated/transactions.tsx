@@ -260,18 +260,18 @@ function TransactionsPage() {
               <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
               <DialogContent>
                 <form onSubmit={handleCreate}>
-                  <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle><DialogDescription>Prospect, acheteur ou vendeur.</DialogDescription></DialogHeader>
+                  <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle><DialogDescription>Prospect, bailleur, acheteur ou vendeur.</DialogDescription></DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2"><Label>Contact *</Label>
                       <SearchableSelect
                         value={form.contact_id}
                         onChange={(v) => setForm({ ...form, contact_id: v })}
-                        options={commercialContacts.map((c) => ({ value: c.id, label: `${c.nom}${c.prenom ? ` ${c.prenom}` : ""} (${c.type_contact})` }))}
-                        placeholder={commercialContacts.length ? "Rechercher un contact..." : "Aucun prospect/acheteur/vendeur"}
+                        options={contacts.map((c) => ({ value: c.id, label: `${c.nom}${c.prenom ? ` ${c.prenom}` : ""}${c.type_contact ? ` (${c.type_contact})` : ""}` }))}
+                        placeholder={contacts.length ? "Rechercher un contact (prospect, bailleur, acheteur ou vendeur)..." : "Aucun contact"}
                         onCreateOption={(q) => { setProspectInitial(q); setProspectOpen(true); }}
                         createLabel={(q) => `+ Créer "${q}" comme nouveau prospect`}
                       />
-
+                      <p className="text-xs text-muted-foreground">Prospect, bailleur, acheteur ou vendeur</p>
                     </div>
                     <div className="grid gap-2"><Label>Bien concerné</Label>
                       <SearchableSelect
