@@ -41,8 +41,13 @@ const STATUTS = [
   { value: "a_jour", label: "À jour" },
   { value: "en_retard", label: "En retard" },
   { value: "relance_envoyee", label: "Relance envoyée" },
+  { value: "solde", label: "Soldés (résolus)" },
 ] as const;
-const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
+const STATUT_LABEL: Record<string, string> = {
+  a_jour: "À jour",
+  en_retard: "En retard",
+  relance_envoyee: "Relance envoyée",
+};
 
 const READ_BLOCKED = ["en_attente"] as const;
 const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] as const;
@@ -82,7 +87,7 @@ function ImpayesPage() {
   const [selected, setSelected] = useState<Impaye | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [fStatut, setFStatut] = useState("all");
+  const [fStatut, setFStatut] = useState("en_retard");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
@@ -177,7 +182,15 @@ function ImpayesPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return impayes.filter((i) => {
-      if (fStatut !== "all" && i.statut !== fStatut) return false;
+      const isResolved = i.etape_traitement === "resolu";
+      if (fStatut === "solde") {
+        if (!isResolved) return false;
+      } else if (fStatut === "all") {
+        // include everything
+      } else {
+        if (isResolved) return false;
+        if (i.statut !== fStatut) return false;
+      }
       if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
@@ -340,7 +353,7 @@ function ImpayesPage() {
                 { key: "service", label: "Service en charge", value: fService, onChange: setFService, options: [{ value: "recouvrement", label: "Recouvrement" }, { value: "juridique", label: "Juridique" }] },
               ]}
               dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFStatut("all"); setFService("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFStatut("en_retard"); setFService("all"); setDFrom(""); setDTo(""); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
@@ -374,9 +387,13 @@ function ImpayesPage() {
                           <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
                           <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                           <TableCell>
-                            <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
-                              {STATUT_LABEL[i.statut] ?? i.statut}
-                            </Badge>
+                            {i.etape_traitement === "resolu" ? (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Soldé</Badge>
+                            ) : (
+                              <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
+                                {STATUT_LABEL[i.statut] ?? i.statut}
+                              </Badge>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

@@ -1375,6 +1375,10 @@ export type Database = {
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_christelle_kouassi: { Args: never; Returns: boolean }
+      log_impaye_cloture: {
+        Args: { _from_etape: string; _impaye_id: string; _note: string }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
