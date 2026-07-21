@@ -22,6 +22,7 @@ import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authent
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticated/imports'
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
+import { Route as AuthenticatedFiscaliteRouteImport } from './routes/_authenticated/fiscalite'
 import { Route as AuthenticatedEtatsDesLieuxRouteImport } from './routes/_authenticated/etats-des-lieux'
 import { Route as AuthenticatedDoublonsRouteImport } from './routes/_authenticated/doublons'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -104,6 +105,11 @@ const AuthenticatedImportsRoute = AuthenticatedImportsRouteImport.update({
 const AuthenticatedImpayesRoute = AuthenticatedImpayesRouteImport.update({
   id: '/impayes',
   path: '/impayes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFiscaliteRoute = AuthenticatedFiscaliteRouteImport.update({
+  id: '/fiscalite',
+  path: '/fiscalite',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEtatsDesLieuxRoute =
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doublons': typeof AuthenticatedDoublonsRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
+  '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doublons': typeof AuthenticatedDoublonsRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
+  '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -276,6 +284,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/doublons': typeof AuthenticatedDoublonsRoute
   '/_authenticated/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
+  '/_authenticated/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
   '/_authenticated/imports': typeof AuthenticatedImportsRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/doublons'
     | '/etats-des-lieux'
+    | '/fiscalite'
     | '/impayes'
     | '/imports'
     | '/profil'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/doublons'
     | '/etats-des-lieux'
+    | '/fiscalite'
     | '/impayes'
     | '/imports'
     | '/profil'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/doublons'
     | '/_authenticated/etats-des-lieux'
+    | '/_authenticated/fiscalite'
     | '/_authenticated/impayes'
     | '/_authenticated/imports'
     | '/_authenticated/profil'
@@ -497,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/impayes'
       fullPath: '/impayes'
       preLoaderRoute: typeof AuthenticatedImpayesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fiscalite': {
+      id: '/_authenticated/fiscalite'
+      path: '/fiscalite'
+      fullPath: '/fiscalite'
+      preLoaderRoute: typeof AuthenticatedFiscaliteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/etats-des-lieux': {
@@ -628,6 +647,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDoublonsRoute: typeof AuthenticatedDoublonsRoute
   AuthenticatedEtatsDesLieuxRoute: typeof AuthenticatedEtatsDesLieuxRoute
+  AuthenticatedFiscaliteRoute: typeof AuthenticatedFiscaliteRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
   AuthenticatedImportsRoute: typeof AuthenticatedImportsRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
@@ -651,6 +671,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDoublonsRoute: AuthenticatedDoublonsRoute,
   AuthenticatedEtatsDesLieuxRoute: AuthenticatedEtatsDesLieuxRoute,
+  AuthenticatedFiscaliteRoute: AuthenticatedFiscaliteRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
   AuthenticatedImportsRoute: AuthenticatedImportsRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
