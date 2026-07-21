@@ -368,10 +368,10 @@ function ImpotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Modifier l'impôt foncier" : "Nouvel impôt foncier"}</DialogTitle>
-          <DialogDescription>Suivi trimestriel par bailleur et par bien.</DialogDescription>
+          <DialogDescription>Suivi trimestriel ou annuel par bailleur et par bien.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
