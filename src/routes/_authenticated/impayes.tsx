@@ -353,7 +353,7 @@ function ImpayesPage() {
                 { key: "service", label: "Service en charge", value: fService, onChange: setFService, options: [{ value: "recouvrement", label: "Recouvrement" }, { value: "juridique", label: "Juridique" }] },
               ]}
               dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFStatut("all"); setFService("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFStatut("en_retard"); setFService("all"); setDFrom(""); setDTo(""); }}
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>
