@@ -421,6 +421,15 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
     await loadHistory(impaye.id);
   }
 
+  async function handleDelete() {
+    if (!impaye) return;
+    const { error } = await supabase.from("impayes").delete().eq("id", impaye.id);
+    if (error) throw new Error(error.message);
+    toast.success("Impayé supprimé");
+    onDeleted?.(impaye.id);
+    onOpenChange(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
