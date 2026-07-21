@@ -1,0 +1,5 @@
+CREATE POLICY "christelle_full_travaux" ON public.travaux FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
+CREATE POLICY "christelle_full_travaux_comm" ON public.travaux_commentaires FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
+CREATE POLICY "christelle_full_reclamations" ON public.reclamations FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
+CREATE POLICY "christelle_full_reclamations_comm" ON public.reclamations_commentaires FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);
+CREATE POLICY "christelle_full_edl" ON public.etats_des_lieux FOR ALL TO authenticated USING (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid) WITH CHECK (auth.uid() = '2f7ca4a8-1730-4d83-88fb-3faa423dcaf6'::uuid);

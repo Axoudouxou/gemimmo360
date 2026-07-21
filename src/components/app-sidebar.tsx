@@ -59,7 +59,7 @@ const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
   { title: "Contacts", url: "/contacts", icon: ContactIcon },
   { title: "Contrats", url: "/contrats", icon: FileText },
-  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: NON_RECOUVREMENT },
+  { title: "États des lieux", url: "/etats-des-lieux", icon: ClipboardCheck, roles: NON_RECOUVREMENT, allowUserIds: [CHRISTELLE_KOUASSI_ID] },
 ];
 
 const FINANCE: NavItem[] = [
@@ -69,8 +69,8 @@ const FINANCE: NavItem[] = [
 ];
 
 const OPS: NavItem[] = [
-  { title: "Travaux", url: "/travaux", icon: Hammer, roles: NON_RECOUVREMENT },
-  { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning, roles: NON_RECOUVREMENT },
+  { title: "Travaux", url: "/travaux", icon: Hammer, roles: NON_RECOUVREMENT, allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+  { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning, roles: NON_RECOUVREMENT, allowUserIds: [CHRISTELLE_KOUASSI_ID] },
 ];
 
 const ADMIN: NavItem[] = [
