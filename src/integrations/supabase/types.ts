@@ -1209,7 +1209,7 @@ export type Database = {
           motif_refus: string | null
           notes: string | null
           origine: string | null
-          prestataire_id: string | null
+          reference_cheque: string | null
           statut: string
           titre: string
           updated_at: string
@@ -1230,7 +1230,7 @@ export type Database = {
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
-          prestataire_id?: string | null
+          reference_cheque?: string | null
           statut?: string
           titre: string
           updated_at?: string
@@ -1251,7 +1251,7 @@ export type Database = {
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
-          prestataire_id?: string | null
+          reference_cheque?: string | null
           statut?: string
           titre?: string
           updated_at?: string
@@ -1269,13 +1269,6 @@ export type Database = {
             columns: ["etat_des_lieux_id"]
             isOneToOne: false
             referencedRelation: "etats_des_lieux"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "travaux_prestataire_id_fkey"
-            columns: ["prestataire_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -1381,6 +1374,7 @@ export type Database = {
         Returns: number
       }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      is_christelle_kouassi: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
