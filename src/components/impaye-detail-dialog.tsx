@@ -85,7 +85,14 @@ const CHAMP_LABEL: Record<string, string> = {
   date_mise_en_demeure: "Mise en demeure",
   date_acte_commissaire: "Acte de commissaire",
   date_assignation: "Assignation",
+  cloture_procedure: "Clôture",
 };
+
+const JURIDIQUE_ETAPES = new Set([
+  "transfere_juridique",
+  "mise_en_demeure",
+  "procedure_judiciaire",
+]);
 
 const WRITE_ROLES = new Set([
   "admin",
