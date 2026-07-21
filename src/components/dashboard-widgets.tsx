@@ -28,7 +28,7 @@ const GEM = "#8AB334";
 const COLORS = ["#8AB334", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#14B8A6", "#EC4899"];
 
 function fmtMoney(n: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n ?? 0);
+  return `${Number(n ?? 0).toLocaleString("fr-FR")} FCFA`;
 }
 
 /* ------------------------ OCCUPATION GAUGE ------------------------ */
@@ -122,7 +122,7 @@ export function PipelineFunnel({ scope }: { scope?: { contact_creator?: string }
   }, [scope?.contact_creator]);
 
   const max = Math.max(1, ...rows.map((r) => r.value));
-  const fmtEuro = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  const fmtEuro = (n: number) => `${Number(n ?? 0).toLocaleString("fr-FR")} FCFA`;
 
   return (
     <Card>

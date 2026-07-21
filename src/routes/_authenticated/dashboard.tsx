@@ -63,7 +63,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function fmtMoney(n: number | null | undefined) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n ?? 0);
+  return `${Number(n ?? 0).toLocaleString("fr-FR")} FCFA`;
 }
 
 type StatCard = {
