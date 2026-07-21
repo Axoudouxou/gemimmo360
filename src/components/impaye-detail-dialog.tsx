@@ -432,14 +432,30 @@ export function ImpayeDetailDialog({ impaye, open, onOpenChange, role, onUpdated
             <Badge variant="outline">
               {SERVICE_LABEL[service] ?? service}
             </Badge>
-            {impaye.etape_traitement && (
+            {impaye.etape_traitement && !isResolved && (
               <Badge variant="secondary">
                 {ETAPE_LABEL[impaye.etape_traitement] ?? impaye.etape_traitement}
               </Badge>
             )}
+            {isResolved && (
+              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Soldé</Badge>
+            )}
           </div>
           <DialogDescription>Échéance du {fmtDate(impaye.date_echeance)}</DialogDescription>
         </DialogHeader>
+
+        {showJuridiqueAlert && (
+          <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+            <div className="font-semibold text-amber-700 dark:text-amber-400">
+              Paiement reçu — vérifier avant de clôturer la procédure
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Le montant dû a été soldé alors qu'une procédure juridique est en cours.
+              Confirmez la clôture uniquement après vérification.
+            </p>
+          </div>
+        )}
+
 
         <div className="space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3 rounded-md border p-3 bg-muted/30">
