@@ -15,6 +15,7 @@ import { Building2, ArrowLeft, Plus, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { hasModuleAccess } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
@@ -105,7 +106,7 @@ function TransactionsPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!hasModuleAccess(r, u, ALLOWED)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
       // Load profiles list for gestionnaire selection (admin/direction only need the picker)
@@ -130,7 +131,7 @@ function TransactionsPage() {
     setActivites((aData ?? []) as Activite[]);
     setLoading(false);
   }, []);
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role, load]);
+  useEffect(() => { if (hasModuleAccess(role, uid, ALLOWED)) load(); }, [role, uid, load]);
 
   const commercialContacts = contacts.filter((c) => c.type_contact && COMMERCIAL_TYPES.includes(c.type_contact));
 

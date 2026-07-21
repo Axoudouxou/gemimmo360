@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
+import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   head: () => ({ meta: [{ title: "États des lieux — Agence Immobilière" }] }),
@@ -69,8 +70,9 @@ function EDLPage() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
 
-  const canWrite = role ? !(NO_ACCESS as readonly string[]).includes(role) : false;
-  const isPrivileged = role ? (PRIVILEGED as readonly string[]).includes(role) : false;
+  const isOverride = !!uid && FULL_ACCESS_USER_IDS.includes(uid);
+  const canWrite = isOverride || (role ? !(NO_ACCESS as readonly string[]).includes(role) : false);
+  const isPrivileged = isOverride || (role ? (PRIVILEGED as readonly string[]).includes(role) : false);
   const canEdit = (e: EDL) => isPrivileged || (!!uid && e.created_by === uid);
 
   useEffect(() => {
@@ -82,7 +84,7 @@ function EDLPage() {
       const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
       const r = p?.role ?? null;
       setRole(r); setChecked(true);
-      if (!r || (NO_ACCESS as readonly string[]).includes(r)) {
+      if (!FULL_ACCESS_USER_IDS.includes(u) && (!r || (NO_ACCESS as readonly string[]).includes(r))) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
@@ -105,7 +107,7 @@ function EDLPage() {
     setContacts((coData ?? []) as Contact[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && !(NO_ACCESS as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { if (isOverride || (role && !(NO_ACCESS as readonly string[]).includes(role))) load(); }, [role, isOverride]);
 
   const lotLabel = (id: string) => {
     const l = lots.find((x) => x.id === id); if (!l) return "—";

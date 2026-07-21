@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { hasModuleAccess } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/charges")({
   head: () => ({ meta: [{ title: "Charges — Agence Immobilière" }] }),
@@ -48,7 +49,7 @@ function ChargesPage() {
       const r = p?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || !(ALLOWED as readonly string[]).includes(r)) {
+      if (!hasModuleAccess(r, uid, ALLOWED)) {
         toast.error("Accès refusé"); navigate({ to: "/dashboard", replace: true });
       }
     })();
@@ -65,7 +66,7 @@ function ChargesPage() {
     setBiens((bData ?? []) as Bien[]);
     setLoading(false);
   };
-  useEffect(() => { if (role && (ALLOWED as readonly string[]).includes(role)) load(); }, [role]);
+  useEffect(() => { (async () => { const { data } = await supabase.auth.getUser(); if (hasModuleAccess(role, data.user?.id ?? null, ALLOWED)) load(); })(); }, [role]);
 
   const resetForm = () => setForm({ bien_id: "", libelle: "", montant: "", date: "", recurrente: false });
   const handleCreate = async (e: React.FormEvent) => {
