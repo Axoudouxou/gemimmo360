@@ -282,8 +282,12 @@ function TransactionsPage() {
                         onChange={(v) => setForm({ ...form, bien_id: v })}
                         options={biens.map((b) => ({ value: b.id, label: b.titre }))}
                         placeholder="Optionnel..."
+                        onCreateOption={(q) => { setBienMiniInitial(q); setBienMiniOpen(true); }}
+                        createLabel={(q) => `+ Créer "${q}" comme nouveau bien`}
                       />
+                      <p className="text-xs text-muted-foreground">Optionnel — vous pourrez le rattacher plus tard.</p>
                     </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Type</Label>
                         <Select value={form.type_transaction} onValueChange={setType}>
