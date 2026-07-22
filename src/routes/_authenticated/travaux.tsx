@@ -221,6 +221,7 @@ function TravauxPage() {
         {(creating || editing) && (
           <EditDialog
             initial={editing}
+            prefill={creating || undefined}
             uid={uid}
             role={role}
             biens={biens}
