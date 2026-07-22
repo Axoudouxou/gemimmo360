@@ -86,7 +86,7 @@ function TravauxPage() {
 
   const [detail, setDetail] = useState<Travail | null>(null);
   const [editing, setEditing] = useState<Travail | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | Prefill>(false);
 
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
