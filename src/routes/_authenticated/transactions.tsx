@@ -1008,6 +1008,7 @@ function NouveauBienMiniDialog({
   bailleurId,
   gestionnaireId,
   defaultOperation,
+  initialTitre,
   onCreated,
 }: {
   open: boolean;
@@ -1015,6 +1016,7 @@ function NouveauBienMiniDialog({
   bailleurId: string | null;
   gestionnaireId: string | null;
   defaultOperation: "location" | "vente";
+  initialTitre?: string;
   onCreated: (bienId: string) => void | Promise<void>;
 }) {
   const [titre, setTitre] = useState("");
@@ -1026,8 +1028,9 @@ function NouveauBienMiniDialog({
 
   useEffect(() => {
     if (!open) return;
-    setTitre(""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
-  }, [open]);
+    setTitre(initialTitre ?? ""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
+  }, [open, initialTitre]);
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
