@@ -23,9 +23,16 @@ export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     open: typeof s.open === "string" ? s.open : undefined,
+    new: typeof s.new === "string" ? s.new : undefined,
+    bien: typeof s.bien === "string" ? s.bien : undefined,
+    titre: typeof s.titre === "string" ? s.titre : undefined,
+    reclamation: typeof s.reclamation === "string" ? s.reclamation : undefined,
+    origine: typeof s.origine === "string" ? s.origine : undefined,
   }),
   component: TravauxPage,
 });
+
+type Prefill = { bien_id?: string; titre?: string; reclamation_id?: string; origine?: string };
 
 const STATUTS = [
   { value: "planifie", label: "Planifié" },
@@ -79,7 +86,7 @@ function TravauxPage() {
 
   const [detail, setDetail] = useState<Travail | null>(null);
   const [editing, setEditing] = useState<Travail | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | Prefill>(false);
 
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("all");
@@ -115,13 +122,23 @@ function TravauxPage() {
   };
   useEffect(() => { load(); }, []);
 
-  // Auto-open detail from ?open=<id>
+  // Auto-open detail from ?open=<id> ou création préremplie
   const routeSearch = Route.useSearch();
   useEffect(() => {
     if (!routeSearch.open || travaux.length === 0) return;
     const found = travaux.find((t: Travail) => t.id === routeSearch.open);
     if (found) setDetail(found);
   }, [routeSearch.open, travaux]);
+  useEffect(() => {
+    if (routeSearch.new === "1") {
+      setCreating({
+        bien_id: routeSearch.bien,
+        titre: routeSearch.titre,
+        reclamation_id: routeSearch.reclamation,
+        origine: routeSearch.origine,
+      });
+    }
+  }, [routeSearch.new, routeSearch.bien, routeSearch.titre, routeSearch.reclamation, routeSearch.origine]);
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
@@ -153,7 +170,7 @@ function TravauxPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Travaux</CardTitle><CardDescription>Cliquez sur une ligne pour ouvrir la fiche détail.</CardDescription></div>
-            {canWriteBase && <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button>}
+            {canWriteBase && <Button size="sm" onClick={() => setCreating({})}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button>}
           </CardHeader>
           <CardContent>
             <FilterBar
@@ -204,6 +221,7 @@ function TravauxPage() {
         {(creating || editing) && (
           <EditDialog
             initial={editing}
+            prefill={creating || undefined}
             uid={uid}
             role={role}
             biens={biens}
@@ -442,8 +460,8 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
   );
 }
 
-function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
-  initial: Travail | null; uid: string; role: string;
+function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onSaved }: {
+  initial: Travail | null; prefill?: Prefill; uid: string; role: string;
   biens: Bien[]; profiles: Profile[];
   onClose: () => void; onSaved: () => void;
 }) {
@@ -452,8 +470,8 @@ function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
-    bien_id: initial?.bien_id ?? "",
-    titre: initial?.titre ?? "",
+    bien_id: initial?.bien_id ?? prefill?.bien_id ?? "",
+    titre: initial?.titre ?? prefill?.titre ?? "",
     description: initial?.description ?? "",
     budget_prevu: initial?.budget_prevu != null ? String(initial.budget_prevu) : "",
     budget_depense: initial ? String(initial.budget_depense ?? 0) : "0",
@@ -512,6 +530,8 @@ function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
         budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
         budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
         reference_cheque: form.reference_cheque.trim() || null,
+        reclamation_id: prefill?.reclamation_id || null,
+        origine: prefill?.origine || null,
         created_by: uid,
       });
       setSaving(false);
