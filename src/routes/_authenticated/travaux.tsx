@@ -530,6 +530,8 @@ function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onS
         budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
         budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
         reference_cheque: form.reference_cheque.trim() || null,
+        reclamation_id: prefill?.reclamation_id || null,
+        origine: prefill?.origine || null,
         created_by: uid,
       });
       setSaving(false);
