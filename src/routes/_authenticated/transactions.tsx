@@ -99,6 +99,9 @@ function TransactionsPage() {
   const [detail, setDetail] = useState<Tx | null>(null);
   const [prospectOpen, setProspectOpen] = useState(false);
   const [prospectInitial, setProspectInitial] = useState("");
+  const [bienMiniOpen, setBienMiniOpen] = useState(false);
+  const [bienMiniInitial, setBienMiniInitial] = useState("");
+
 
   useEffect(() => {
     (async () => {
