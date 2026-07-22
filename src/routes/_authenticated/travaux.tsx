@@ -23,9 +23,16 @@ export const Route = createFileRoute("/_authenticated/travaux")({
   head: () => ({ meta: [{ title: "Travaux — Agence Immobilière" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     open: typeof s.open === "string" ? s.open : undefined,
+    new: typeof s.new === "string" ? s.new : undefined,
+    bien: typeof s.bien === "string" ? s.bien : undefined,
+    titre: typeof s.titre === "string" ? s.titre : undefined,
+    reclamation: typeof s.reclamation === "string" ? s.reclamation : undefined,
+    origine: typeof s.origine === "string" ? s.origine : undefined,
   }),
   component: TravauxPage,
 });
+
+type Prefill = { bien_id?: string; titre?: string; reclamation_id?: string; origine?: string };
 
 const STATUTS = [
   { value: "planifie", label: "Planifié" },
