@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Download, Trash2, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 
-const MAX_SIZE = 15 * 1024 * 1024;
+const PDF_EXTS = [".pdf"];
+const PDF_MIMES = ["application/pdf"];
 
 type FileItem = {
   name: string;
   created_at: string | null;
-  metadata?: { size?: number } | null;
+  metadata?: { size?: number; mimetype?: string } | null;
 };
 
 export function DocumentsSection({
@@ -19,13 +20,32 @@ export function DocumentsSection({
   canWrite,
   title = "Documents",
   description = "Fichiers PDF joints à cette fiche.",
+  allowedExtensions,
+  allowedMimeTypes,
+  accept,
+  maxSizeMb,
+  buttonLabel,
+  hint,
 }: {
   bucket: string;
   recordId: string;
   canWrite: boolean;
   title?: string;
   description?: string;
+  allowedExtensions?: string[];
+  allowedMimeTypes?: string[];
+  accept?: string;
+  maxSizeMb?: number;
+  buttonLabel?: string;
+  hint?: string;
 }) {
+  const exts = (allowedExtensions ?? PDF_EXTS).map((e) => e.toLowerCase());
+  const mimes = allowedMimeTypes ?? PDF_MIMES;
+  const acceptAttr = accept ?? [...mimes, ...exts].join(",");
+  const maxBytes = (maxSizeMb ?? 15) * 1024 * 1024;
+  const btnLabel = buttonLabel ?? "Ajouter un document";
+  const hintLabel = hint ?? `Extensions autorisées : ${exts.join(", ")} — ${(maxBytes / 1024 / 1024).toFixed(0)} Mo max.`;
+
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -46,15 +66,18 @@ export function DocumentsSection({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      return toast.error("Seuls les fichiers PDF sont acceptés");
+    const lower = file.name.toLowerCase();
+    const extOk = exts.some((ext) => lower.endsWith(ext));
+    const mimeOk = mimes.includes(file.type);
+    if (!extOk && !mimeOk) {
+      return toast.error(`Format non autorisé. Extensions acceptées : ${exts.join(", ")}`);
     }
-    if (file.size > MAX_SIZE) return toast.error("Fichier trop volumineux (max 15 Mo)");
+    if (file.size > maxBytes) return toast.error(`Fichier trop volumineux (max ${(maxBytes / 1024 / 1024).toFixed(0)} Mo)`);
     setUploading(true);
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${recordId}/${Date.now()}_${safeName}`;
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
-      contentType: "application/pdf",
+      contentType: file.type || undefined,
       upsert: false,
     });
     setUploading(false);
@@ -86,9 +109,9 @@ export function DocumentsSection({
         </div>
         {canWrite && (
           <>
-            <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={handleFileChange} />
+            <input ref={inputRef} type="file" accept={acceptAttr} className="hidden" onChange={handleFileChange} />
             <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-              <Upload className="mr-2 h-4 w-4" /> {uploading ? "Envoi..." : "Ajouter un PDF"}
+              <Upload className="mr-2 h-4 w-4" /> {uploading ? "Envoi..." : btnLabel}
             </Button>
           </>
         )}
@@ -126,7 +149,7 @@ export function DocumentsSection({
             ))}
           </ul>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">PDF uniquement, 15 Mo maximum par fichier.</p>
+        <p className="mt-3 text-xs text-muted-foreground">{hintLabel}</p>
       </CardContent>
     </Card>
   );
