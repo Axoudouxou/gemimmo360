@@ -122,13 +122,23 @@ function TravauxPage() {
   };
   useEffect(() => { load(); }, []);
 
-  // Auto-open detail from ?open=<id>
+  // Auto-open detail from ?open=<id> ou création préremplie
   const routeSearch = Route.useSearch();
   useEffect(() => {
     if (!routeSearch.open || travaux.length === 0) return;
     const found = travaux.find((t: Travail) => t.id === routeSearch.open);
     if (found) setDetail(found);
   }, [routeSearch.open, travaux]);
+  useEffect(() => {
+    if (routeSearch.new === "1") {
+      setCreating({
+        bien_id: routeSearch.bien,
+        titre: routeSearch.titre,
+        reclamation_id: routeSearch.reclamation,
+        origine: routeSearch.origine,
+      });
+    }
+  }, [routeSearch.new, routeSearch.bien, routeSearch.titre, routeSearch.reclamation, routeSearch.origine]);
 
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
