@@ -460,8 +460,8 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
   );
 }
 
-function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
-  initial: Travail | null; uid: string; role: string;
+function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onSaved }: {
+  initial: Travail | null; prefill?: Prefill; uid: string; role: string;
   biens: Bien[]; profiles: Profile[];
   onClose: () => void; onSaved: () => void;
 }) {
@@ -470,8 +470,8 @@ function EditDialog({ initial, uid, role, biens, profiles, onClose, onSaved }: {
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
-    bien_id: initial?.bien_id ?? "",
-    titre: initial?.titre ?? "",
+    bien_id: initial?.bien_id ?? prefill?.bien_id ?? "",
+    titre: initial?.titre ?? prefill?.titre ?? "",
     description: initial?.description ?? "",
     budget_prevu: initial?.budget_prevu != null ? String(initial.budget_prevu) : "",
     budget_depense: initial ? String(initial.budget_depense ?? 0) : "0",
