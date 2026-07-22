@@ -368,14 +368,9 @@ function TransactionsPage() {
                           />
                           <Label htmlFor="duree-indet" className="cursor-pointer">Durée indéterminée</Label>
                         </div>
-                        {!form.bien_id && (
-                          <p className="text-xs text-amber-700 flex items-start gap-1">
-                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            Rattachez un bien pour activer le badge de mandat.
-                          </p>
-                        )}
                       </>
                     )}
+
 
                     {form.statut_opportunite === "perdu" && (
                       <>
