@@ -456,6 +456,20 @@ function TransactionsPage() {
             setProspectOpen(false);
           }}
         />
+        <NouveauBienMiniDialog
+          open={bienMiniOpen}
+          onOpenChange={setBienMiniOpen}
+          bailleurId={(form.type_transaction === "mandat_gestion" || form.type_transaction === "mandat_vente") ? (form.contact_id || null) : null}
+          gestionnaireId={form.gestionnaire_id || null}
+          defaultOperation={form.type_transaction === "mandat_vente" ? "vente" : "location"}
+          initialTitre={bienMiniInitial}
+          onCreated={async (bienId) => {
+            await load();
+            setForm((f) => ({ ...f, bien_id: bienId }));
+            setBienMiniOpen(false);
+            toast.success("Bien créé et sélectionné");
+          }}
+        />
       </main>
     </div>
   );
