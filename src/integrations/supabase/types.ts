@@ -1250,42 +1250,69 @@ export type Database = {
         Row: {
           assigne_a: string | null
           bien_id: string
+          categorie: string | null
           created_at: string
           created_by: string | null
+          date_incident: string | null
+          date_limite: string | null
+          date_resolution: string | null
           description: string | null
           id: string
           locataire_id: string | null
+          overdue_flagged: boolean
+          prestataire_contacte: boolean
           prestataire_id: string | null
           priorite: string
+          reference: string | null
+          solution: string | null
           statut: string
+          temps_traitement: number | null
           titre: string
           updated_at: string
         }
         Insert: {
           assigne_a?: string | null
           bien_id: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
+          date_incident?: string | null
+          date_limite?: string | null
+          date_resolution?: string | null
           description?: string | null
           id?: string
           locataire_id?: string | null
+          overdue_flagged?: boolean
+          prestataire_contacte?: boolean
           prestataire_id?: string | null
           priorite?: string
+          reference?: string | null
+          solution?: string | null
           statut?: string
+          temps_traitement?: number | null
           titre: string
           updated_at?: string
         }
         Update: {
           assigne_a?: string | null
           bien_id?: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
+          date_incident?: string | null
+          date_limite?: string | null
+          date_resolution?: string | null
           description?: string | null
           id?: string
           locataire_id?: string | null
+          overdue_flagged?: boolean
+          prestataire_contacte?: boolean
           prestataire_id?: string | null
           priorite?: string
+          reference?: string | null
+          solution?: string | null
           statut?: string
+          temps_traitement?: number | null
           titre?: string
           updated_at?: string
         }
@@ -1338,6 +1365,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "reclamations_commentaires_reclamation_id_fkey"
+            columns: ["reclamation_id"]
+            isOneToOne: false
+            referencedRelation: "reclamations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reclamations_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ_modifie: string
+          created_at: string
+          id: string
+          nouvelle_valeur: string | null
+          reclamation_id: string
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          reclamation_id: string
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ_modifie?: string
+          created_at?: string
+          id?: string
+          nouvelle_valeur?: string | null
+          reclamation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reclamations_historique_reclamation_id_fkey"
             columns: ["reclamation_id"]
             isOneToOne: false
             referencedRelation: "reclamations"
@@ -1465,6 +1530,7 @@ export type Database = {
           motif_refus: string | null
           notes: string | null
           origine: string | null
+          reclamation_id: string | null
           reference_cheque: string | null
           statut: string
           titre: string
@@ -1486,6 +1552,7 @@ export type Database = {
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
+          reclamation_id?: string | null
           reference_cheque?: string | null
           statut?: string
           titre: string
@@ -1507,6 +1574,7 @@ export type Database = {
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
+          reclamation_id?: string | null
           reference_cheque?: string | null
           statut?: string
           titre?: string
@@ -1525,6 +1593,13 @@ export type Database = {
             columns: ["etat_des_lieux_id"]
             isOneToOne: false
             referencedRelation: "etats_des_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travaux_reclamation_id_fkey"
+            columns: ["reclamation_id"]
+            isOneToOne: false
+            referencedRelation: "reclamations"
             referencedColumns: ["id"]
           },
         ]
@@ -1612,6 +1687,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      detect_overdue_reclamations: { Args: never; Returns: undefined }
       dispatch_notification: {
         Args: {
           _entity_id: string
