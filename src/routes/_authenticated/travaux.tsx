@@ -170,7 +170,7 @@ function TravauxPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Travaux</CardTitle><CardDescription>Cliquez sur une ligne pour ouvrir la fiche détail.</CardDescription></div>
-            {canWriteBase && <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button>}
+            {canWriteBase && <Button size="sm" onClick={() => setCreating({})}><Plus className="mr-2 h-4 w-4" /> Nouveau</Button>}
           </CardHeader>
           <CardContent>
             <FilterBar
