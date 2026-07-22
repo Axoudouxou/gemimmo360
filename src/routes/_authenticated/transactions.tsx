@@ -99,6 +99,9 @@ function TransactionsPage() {
   const [detail, setDetail] = useState<Tx | null>(null);
   const [prospectOpen, setProspectOpen] = useState(false);
   const [prospectInitial, setProspectInitial] = useState("");
+  const [bienMiniOpen, setBienMiniOpen] = useState(false);
+  const [bienMiniInitial, setBienMiniInitial] = useState("");
+
 
   useEffect(() => {
     (async () => {
@@ -279,8 +282,12 @@ function TransactionsPage() {
                         onChange={(v) => setForm({ ...form, bien_id: v })}
                         options={biens.map((b) => ({ value: b.id, label: b.titre }))}
                         placeholder="Optionnel..."
+                        onCreateOption={(q) => { setBienMiniInitial(q); setBienMiniOpen(true); }}
+                        createLabel={(q) => `+ Créer "${q}" comme nouveau bien`}
                       />
+                      <p className="text-xs text-muted-foreground">Optionnel — vous pourrez le rattacher plus tard.</p>
                     </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2"><Label>Type</Label>
                         <Select value={form.type_transaction} onValueChange={setType}>
@@ -361,14 +368,9 @@ function TransactionsPage() {
                           />
                           <Label htmlFor="duree-indet" className="cursor-pointer">Durée indéterminée</Label>
                         </div>
-                        {!form.bien_id && (
-                          <p className="text-xs text-amber-700 flex items-start gap-1">
-                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            Rattachez un bien pour activer le badge de mandat.
-                          </p>
-                        )}
                       </>
                     )}
+
 
                     {form.statut_opportunite === "perdu" && (
                       <>
@@ -452,6 +454,20 @@ function TransactionsPage() {
             await load();
             setForm((f) => ({ ...f, contact_id: id }));
             setProspectOpen(false);
+          }}
+        />
+        <NouveauBienMiniDialog
+          open={bienMiniOpen}
+          onOpenChange={setBienMiniOpen}
+          bailleurId={(form.type_transaction === "mandat_gestion" || form.type_transaction === "mandat_vente") ? (form.contact_id || null) : null}
+          gestionnaireId={form.gestionnaire_id || null}
+          defaultOperation={form.type_transaction === "mandat_vente" ? "vente" : "location"}
+          initialTitre={bienMiniInitial}
+          onCreated={async (bienId) => {
+            await load();
+            setForm((f) => ({ ...f, bien_id: bienId }));
+            setBienMiniOpen(false);
+            toast.success("Bien créé et sélectionné");
           }}
         />
       </main>
@@ -992,6 +1008,7 @@ function NouveauBienMiniDialog({
   bailleurId,
   gestionnaireId,
   defaultOperation,
+  initialTitre,
   onCreated,
 }: {
   open: boolean;
@@ -999,6 +1016,7 @@ function NouveauBienMiniDialog({
   bailleurId: string | null;
   gestionnaireId: string | null;
   defaultOperation: "location" | "vente";
+  initialTitre?: string;
   onCreated: (bienId: string) => void | Promise<void>;
 }) {
   const [titre, setTitre] = useState("");
@@ -1010,8 +1028,9 @@ function NouveauBienMiniDialog({
 
   useEffect(() => {
     if (!open) return;
-    setTitre(""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
-  }, [open]);
+    setTitre(initialTitre ?? ""); setAdresse(""); setTypeBien(""); setSurface(""); setNotes("");
+  }, [open, initialTitre]);
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
