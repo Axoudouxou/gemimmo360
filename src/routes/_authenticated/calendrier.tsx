@@ -446,7 +446,50 @@ function CalendrierPage() {
         onChanged={() => { setDetail(null); load(); }}
         onDeleted={() => { setDetail(null); load(); }}
       />
+
+      <Dialog open={!!dayDetail} onOpenChange={(o) => { if (!o) setDayDetail(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="capitalize">
+              {dayDetail ? format(dayDetail, "EEEE d MMMM yyyy", { locale: fr }) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {(dayDetail ? (eventsByDay.get(format(dayDetail, "yyyy-MM-dd")) ?? []) : []).map((e) => {
+              const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
+              const assignee = profiles.find((p) => p.id === e.assigne_a);
+              return (
+                <button
+                  type="button"
+                  key={e.id}
+                  onClick={() => { setDayDetail(null); setDetail(e); }}
+                  className="flex w-full items-start gap-3 rounded-md border p-2 text-left transition-colors hover:bg-muted/50"
+                >
+                  <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">{e.titre}</span>
+                      <ActiviteTypeBadge type={e.type_activite} />
+                      {e.priorite === "urgente" && (
+                        <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {e.date_debut ? format(new Date(e.date_debut), "HH:mm") : "Toute la journée"}
+                      {assignee?.email ? ` · ${assignee.email.split("@")[0]}` : ""}
+                      {e.lieu ? ` · ${e.lieu}` : ""}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
