@@ -324,30 +324,69 @@ function CalendrierPage() {
                   return (
                     <div
                       key={key}
-                      className={`min-h-[90px] rounded border p-1 text-xs ${inMonth ? "bg-background" : "bg-muted/30 text-muted-foreground"} ${isToday ? "ring-2 ring-primary" : ""}`}
+                      onClick={() => events.length > 0 && setDayDetail(d)}
+                      className={`min-h-[96px] rounded border p-1 text-xs transition-colors ${
+                        inMonth ? "bg-background" : "bg-muted/20"
+                      } ${isToday ? "border-primary/60 bg-primary/10" : ""} ${
+                        events.length > 0 ? "cursor-pointer hover:bg-muted/50" : ""
+                      }`}
                     >
-                      <div className="font-medium mb-1">{format(d, "d")}</div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span
+                          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-medium ${
+                            isToday
+                              ? "bg-primary text-primary-foreground"
+                              : inMonth
+                                ? "text-foreground"
+                                : "text-muted-foreground/50"
+                          }`}
+                        >
+                          {format(d, "d")}
+                        </span>
+                        {events.length > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            {Array.from(new Set(events.map((e) => e.type_activite)))
+                              .slice(0, 3)
+                              .map((t) => (
+                                <span key={t} className={`h-1.5 w-1.5 rounded-full ${TYPE_COLORS[t] ?? "bg-gray-400"}`} />
+                              ))}
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-0.5">
-                        {events.slice(0, 3).map((e) => (
+                        {events.slice(0, 2).map((e) => {
+                          const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
+                          return (
+                            <button
+                              type="button"
+                              key={e.id}
+                              onClick={(ev) => { ev.stopPropagation(); setDetail(e); }}
+                              className={`flex w-full items-center gap-1 rounded border px-1 py-0.5 text-left hover:opacity-80 ${TYPE_BADGE_CLASSES[e.type_activite] ?? TYPE_BADGE_CLASSES.autre}`}
+                              title={e.titre}
+                            >
+                              <Icon className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
+                                {e.titre}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {events.length > 2 && (
                           <button
                             type="button"
-                            key={e.id}
-                            onClick={() => setDetail(e)}
-                            className={`w-full text-left truncate rounded px-1 py-0.5 text-white hover:opacity-90 ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
-                            title={e.titre}
+                            onClick={(ev) => { ev.stopPropagation(); setDayDetail(d); }}
+                            className="w-full text-left text-[10px] font-medium text-primary hover:underline"
                           >
-                            {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
-                            {e.titre}
+                            +{events.length - 2} autre(s)
                           </button>
-                        ))}
-                        {events.length > 3 && (
-                          <div className="text-[10px] text-muted-foreground">+{events.length - 3} autre(s)</div>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>
