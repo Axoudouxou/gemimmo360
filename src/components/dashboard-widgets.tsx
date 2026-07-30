@@ -20,8 +20,19 @@ import {
   Line,
   LineChart,
 } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfWeek, addDays, formatDistanceToNow } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, subDays, startOfDay, startOfWeek, addDays, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import {
+  CheckCircle2,
+  MessageSquare,
+  FileSignature,
+  FileText,
+  ClipboardCheck,
+  Trophy,
+  AlertTriangle,
+  FolderOpen,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const GEM = "#8AB334";
