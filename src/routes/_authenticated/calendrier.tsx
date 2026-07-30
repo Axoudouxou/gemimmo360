@@ -563,18 +563,18 @@ function TaskColumn({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
+                  <ActiviteTypeBadge type={a.type_activite} />
                   <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
                   {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {TYPE_LABELS[a.type_activite] ?? a.type_activite}
-                  {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
-                  {a.lieu ? ` · ${a.lieu}` : ""}
-                  {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                  {a.date_debut ? `${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })} · ` : ""}
+                  {a.lieu ? `${a.lieu} · ` : ""}
+                  {STATUT_LABELS[a.statut] ?? a.statut}
                   {a.recurrence && a.recurrence !== "aucune" ? ` · ↻ ${RECURRENCE_LABELS[a.recurrence]}` : ""}
                 </div>
               </div>
+
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 {perms.canEditAll && (
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
