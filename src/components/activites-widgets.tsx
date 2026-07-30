@@ -144,7 +144,7 @@ function ActiviteRow({
             {a.titre}
           </span>
           <PrioBadge p={a.priorite} />
-          <Badge variant="secondary" className="text-[10px]">{TYPE_LABELS[a.type_activite] ?? a.type_activite}</Badge>
+          <ActiviteTypeBadge type={a.type_activite} />
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {showDate && a.date_debut && (
