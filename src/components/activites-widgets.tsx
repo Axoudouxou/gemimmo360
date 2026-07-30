@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus } from "lucide-react";
+import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus, MapPin, ClipboardCheck, BellRing, Circle, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -59,9 +59,42 @@ export const TYPE_COLORS: Record<string, string> = {
   etat_des_lieux: "bg-purple-500",
   rendez_vous: "bg-emerald-500",
   relance: "bg-orange-500",
-  tache: "bg-slate-500",
+  tache: "bg-slate-600",
   autre: "bg-gray-400",
 };
+
+/** Icône par type d'activité (cohérent calendrier + liste des tâches). */
+export const TYPE_ICONS: Record<string, LucideIcon> = {
+  visite: MapPin,
+  etat_des_lieux: ClipboardCheck,
+  rendez_vous: CalendarClock,
+  relance: BellRing,
+  tache: ListTodo,
+  autre: Circle,
+};
+
+/** Classes de badge doux (fond teinté) par type d'activité. */
+export const TYPE_BADGE_CLASSES: Record<string, string> = {
+  visite: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900",
+  etat_des_lieux: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-900",
+  rendez_vous: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900",
+  relance: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-900",
+  tache: "bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
+  autre: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-800",
+};
+
+export function ActiviteTypeBadge({ type, className = "" }: { type: string; className?: string }) {
+  const Icon = TYPE_ICONS[type] ?? Circle;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${TYPE_BADGE_CLASSES[type] ?? TYPE_BADGE_CLASSES.autre} ${className}`}
+    >
+      <Icon className="h-3 w-3" />
+      {TYPE_LABELS[type] ?? type}
+    </span>
+  );
+}
+
 
 export const STATUT_LABELS: Record<string, string> = {
   a_faire: "À faire",
@@ -111,7 +144,7 @@ function ActiviteRow({
             {a.titre}
           </span>
           <PrioBadge p={a.priorite} />
-          <Badge variant="secondary" className="text-[10px]">{TYPE_LABELS[a.type_activite] ?? a.type_activite}</Badge>
+          <ActiviteTypeBadge type={a.type_activite} />
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {showDate && a.date_debut && (

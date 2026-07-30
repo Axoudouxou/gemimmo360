@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import {
   addDays,
@@ -29,7 +29,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
+import { TYPE_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_BADGE_CLASSES, ActiviteTypeBadge, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
 import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
@@ -85,6 +85,7 @@ function CalendrierPage() {
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
+  const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
 
   useEffect(() => {
@@ -324,30 +325,69 @@ function CalendrierPage() {
                   return (
                     <div
                       key={key}
-                      className={`min-h-[90px] rounded border p-1 text-xs ${inMonth ? "bg-background" : "bg-muted/30 text-muted-foreground"} ${isToday ? "ring-2 ring-primary" : ""}`}
+                      onClick={() => events.length > 0 && setDayDetail(d)}
+                      className={`min-h-[96px] rounded border p-1 text-xs transition-colors ${
+                        inMonth ? "bg-background" : "bg-muted/20"
+                      } ${isToday ? "border-primary/60 bg-primary/10" : ""} ${
+                        events.length > 0 ? "cursor-pointer hover:bg-muted/50" : ""
+                      }`}
                     >
-                      <div className="font-medium mb-1">{format(d, "d")}</div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span
+                          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-medium ${
+                            isToday
+                              ? "bg-primary text-primary-foreground"
+                              : inMonth
+                                ? "text-foreground"
+                                : "text-muted-foreground/50"
+                          }`}
+                        >
+                          {format(d, "d")}
+                        </span>
+                        {events.length > 0 && (
+                          <span className="flex items-center gap-0.5">
+                            {Array.from(new Set(events.map((e) => e.type_activite)))
+                              .slice(0, 3)
+                              .map((t) => (
+                                <span key={t} className={`h-1.5 w-1.5 rounded-full ${TYPE_COLORS[t] ?? "bg-gray-400"}`} />
+                              ))}
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-0.5">
-                        {events.slice(0, 3).map((e) => (
+                        {events.slice(0, 2).map((e) => {
+                          const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
+                          return (
+                            <button
+                              type="button"
+                              key={e.id}
+                              onClick={(ev) => { ev.stopPropagation(); setDetail(e); }}
+                              className={`flex w-full items-center gap-1 rounded border px-1 py-0.5 text-left hover:opacity-80 ${TYPE_BADGE_CLASSES[e.type_activite] ?? TYPE_BADGE_CLASSES.autre}`}
+                              title={e.titre}
+                            >
+                              <Icon className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
+                                {e.titre}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {events.length > 2 && (
                           <button
                             type="button"
-                            key={e.id}
-                            onClick={() => setDetail(e)}
-                            className={`w-full text-left truncate rounded px-1 py-0.5 text-white hover:opacity-90 ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}
-                            title={e.titre}
+                            onClick={(ev) => { ev.stopPropagation(); setDayDetail(d); }}
+                            className="w-full text-left text-[10px] font-medium text-primary hover:underline"
                           >
-                            {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
-                            {e.titre}
+                            +{events.length - 2} autre(s)
                           </button>
-                        ))}
-                        {events.length > 3 && (
-                          <div className="text-[10px] text-muted-foreground">+{events.length - 3} autre(s)</div>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -406,7 +446,50 @@ function CalendrierPage() {
         onChanged={() => { setDetail(null); load(); }}
         onDeleted={() => { setDetail(null); load(); }}
       />
+
+      <Dialog open={!!dayDetail} onOpenChange={(o) => { if (!o) setDayDetail(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="capitalize">
+              {dayDetail ? format(dayDetail, "EEEE d MMMM yyyy", { locale: fr }) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {(dayDetail ? (eventsByDay.get(format(dayDetail, "yyyy-MM-dd")) ?? []) : []).map((e) => {
+              const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
+              const assignee = profiles.find((p) => p.id === e.assigne_a);
+              return (
+                <button
+                  type="button"
+                  key={e.id}
+                  onClick={() => { setDayDetail(null); setDetail(e); }}
+                  className="flex w-full items-start gap-3 rounded-md border p-2 text-left transition-colors hover:bg-muted/50"
+                >
+                  <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">{e.titre}</span>
+                      <ActiviteTypeBadge type={e.type_activite} />
+                      {e.priorite === "urgente" && (
+                        <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {e.date_debut ? format(new Date(e.date_debut), "HH:mm") : "Toute la journée"}
+                      {assignee?.email ? ` · ${assignee.email.split("@")[0]}` : ""}
+                      {e.lieu ? ` · ${e.lieu}` : ""}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
@@ -480,18 +563,18 @@ function TaskColumn({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-block h-2 w-2 rounded-full ${TYPE_COLORS[a.type_activite] ?? "bg-gray-400"}`} />
+                  <ActiviteTypeBadge type={a.type_activite} />
                   <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
                   {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {TYPE_LABELS[a.type_activite] ?? a.type_activite}
-                  {a.date_debut ? ` · ${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })}` : ""}
-                  {a.lieu ? ` · ${a.lieu}` : ""}
-                  {` · ${STATUT_LABELS[a.statut] ?? a.statut}`}
+                  {a.date_debut ? `${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })} · ` : ""}
+                  {a.lieu ? `${a.lieu} · ` : ""}
+                  {STATUT_LABELS[a.statut] ?? a.statut}
                   {a.recurrence && a.recurrence !== "aucune" ? ` · ↻ ${RECURRENCE_LABELS[a.recurrence]}` : ""}
                 </div>
               </div>
+
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 {perms.canEditAll && (
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
