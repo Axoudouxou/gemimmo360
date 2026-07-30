@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus } from "lucide-react";
+import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus, MapPin, ClipboardCheck, BellRing, Circle, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
