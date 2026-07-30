@@ -802,14 +802,65 @@ export function MesActivites7j({ userId }: { userId: string | null }) {
 }
 
 // ============================================================
-// Fil d'actualité léger — activité récente de l'équipe
+// Fil d'actualité — timeline de l'activité récente de l'équipe
 // ============================================================
+type FeedKind =
+  | "tache_terminee"
+  | "commentaire"
+  | "contrat_nouveau"
+  | "contrat_clos"
+  | "edl"
+  | "transaction_gagnee"
+  | "reclamation_urgente"
+  | "impaye_juridique";
+
 type FeedItem = {
   key: string;
   ts: string;
+  kind: FeedKind;
+  auteurId: string | null;
   auteur: string | null;
-  message: React.ReactNode;
+  label: React.ReactNode;
+  to?: string;
 };
+
+const HIGHLIGHT_KINDS: FeedKind[] = [
+  "contrat_nouveau",
+  "transaction_gagnee",
+  "reclamation_urgente",
+  "impaye_juridique",
+];
+
+const FEED_STYLE: Record<FeedKind, { icon: LucideIcon; ring: string }> = {
+  tache_terminee: { icon: CheckCircle2, ring: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" },
+  commentaire: { icon: MessageSquare, ring: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300" },
+  contrat_nouveau: { icon: FileSignature, ring: "bg-primary/15 text-primary" },
+  contrat_clos: { icon: FileText, ring: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
+  edl: { icon: ClipboardCheck, ring: "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300" },
+  transaction_gagnee: { icon: Trophy, ring: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" },
+  reclamation_urgente: { icon: AlertTriangle, ring: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300" },
+  impaye_juridique: { icon: FolderOpen, ring: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300" },
+};
+
+function prenomOf(email: string | null | undefined, fallback: string) {
+  if (!email) return fallback;
+  const base = email.split("@")[0] ?? "";
+  const first = base.split(/[._-]+/).filter(Boolean)[0] ?? base;
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : fallback;
+}
+
+function initialsOf(name: string) {
+  return name.slice(0, 2).toUpperCase();
+}
+
+function dayBucket(ts: string): { order: number; label: string } {
+  const d = new Date(ts);
+  const today = startOfDay(new Date());
+  if (d >= today) return { order: 0, label: "Aujourd'hui" };
+  if (d >= subDays(today, 1)) return { order: 1, label: "Hier" };
+  if (d >= subDays(today, 7)) return { order: 2, label: "Cette semaine" };
+  return { order: 3, label: "Plus ancien" };
+}
 
 async function resolveScopeIds(userId: string) {
   const { data: biens } = await supabase.from("biens").select("id").eq("gestionnaire_id", userId);
@@ -825,9 +876,61 @@ async function resolveScopeIds(userId: string) {
   return { bienIds, lotIds, contratIds };
 }
 
+/** Ligne du fil : soit un événement unique, soit un groupe de tâches simples. */
+type FeedRow =
+  | { type: "single"; item: FeedItem }
+  | { type: "group"; key: string; ts: string; auteur: string; items: FeedItem[] };
+
+function Avatar({ name }: { name: string }) {
+  return (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-primary/20">
+      {initialsOf(name)}
+    </span>
+  );
+}
+
+function FeedIcon({ kind }: { kind: FeedKind }) {
+  const { icon: Icon, ring } = FEED_STYLE[kind];
+  return (
+    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${ring}`}>
+      <Icon className="h-3.5 w-3.5" />
+    </span>
+  );
+}
+
+function FeedLine({ item }: { item: FeedItem }) {
+  const highlight = HIGHLIGHT_KINDS.includes(item.kind);
+  const content = (
+    <div
+      className={`flex items-start gap-3 rounded-md border p-2 text-sm transition-colors hover:bg-muted/50 ${
+        highlight ? "border-primary/40 bg-primary/5" : "border-transparent"
+      }`}
+    >
+      <FeedIcon kind={item.kind} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {item.auteur && <Avatar name={item.auteur} />}
+          <span className="min-w-0 flex-1">{item.label}</span>
+        </div>
+        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+          {format(new Date(item.ts), "HH:mm", { locale: fr })}
+        </span>
+      </div>
+    </div>
+  );
+  if (!item.to) return content;
+  return (
+    <Link to={item.to} className="block">
+      {content}
+    </Link>
+  );
+}
+
 export function FilActualiteEquipe({ userId, role }: { userId: string | null; role: string }) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [limit, setLimit] = useState(10);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -836,33 +939,37 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
       const scoped = role === "gestion_locative" || role === "commercial";
       const scope = scoped ? await resolveScopeIds(userId) : null;
 
-      // Profiles map
       const { data: profs } = await supabase.from("profiles").select("id, email");
-      const nameOf = (id: string | null) => {
+      const emailOf = (id: string | null) => {
         if (!id) return null;
         const p = (profs ?? []).find((x: { id: string; email: string | null }) => x.id === id);
-        return p?.email ?? id.slice(0, 8);
+        return p?.email ?? null;
       };
+      const nameOf = (id: string | null) => (id ? prenomOf(emailOf(id), id.slice(0, 6)) : null);
 
       const feed: FeedItem[] = [];
 
       // 1) Activités terminées
       const { data: actsDone } = await supabase
         .from("activites")
-        .select("id, titre, updated_at, assigne_a, created_by, bien_id, lot_id, contrat_id, contact_id, statut")
+        .select("id, titre, updated_at, assigne_a, created_by, bien_id, lot_id, contrat_id, contact_id, statut, priorite")
         .in("statut", ["fait", "realisee"])
         .order("updated_at", { ascending: false })
-        .limit(30);
+        .limit(40);
       for (const a of (actsDone ?? []) as Array<{
         id: string; titre: string; updated_at: string; assigne_a: string; created_by: string | null;
         bien_id: string | null; lot_id: string | null; contrat_id: string | null; contact_id: string | null;
       }>) {
         if (scope && !(scope.bienIds.includes(a.bien_id ?? "") || scope.lotIds.includes(a.lot_id ?? "") || scope.contratIds.includes(a.contrat_id ?? "") || a.assigne_a === userId || a.created_by === userId)) continue;
+        const who = nameOf(a.assigne_a);
         feed.push({
           key: `act-${a.id}`,
           ts: a.updated_at,
-          auteur: nameOf(a.assigne_a),
-          message: <><span className="font-medium">{nameOf(a.assigne_a)}</span> a marqué <span className="font-medium">« {a.titre} »</span> comme terminé.</>,
+          kind: "tache_terminee",
+          auteurId: a.assigne_a,
+          auteur: who,
+          to: `/calendrier?open=${a.id}`,
+          label: <><span className="font-medium">{who}</span> a terminé « {a.titre} »</>,
         });
       }
 
@@ -877,8 +984,11 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
         feed.push({
           key: `ctr-new-${c.id}`,
           ts: c.created_at,
+          kind: "contrat_nouveau",
+          auteurId: null,
           auteur: null,
-          message: <>Nouveau <Link to="/contrats/$contratId" params={{ contratId: c.id }} className="font-medium text-primary hover:underline">contrat</Link> créé.</>,
+          to: `/contrats/${c.id}`,
+          label: <span className="font-medium">Nouveau contrat créé</span>,
         });
       }
 
@@ -894,8 +1004,11 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
         feed.push({
           key: `ctr-clos-${c.id}`,
           ts: c.updated_at,
+          kind: "contrat_clos",
+          auteurId: null,
           auteur: null,
-          message: <><Link to="/contrats/$contratId" params={{ contratId: c.id }} className="font-medium text-primary hover:underline">Contrat</Link> clôturé.</>,
+          to: `/contrats/${c.id}`,
+          label: <>Contrat clôturé</>,
         });
       }
 
@@ -917,11 +1030,15 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
         const a = actMap.get(c.activite_id);
         if (!a) continue;
         if (scope && !(scope.bienIds.includes(a.bien_id ?? "") || scope.lotIds.includes(a.lot_id ?? "") || scope.contratIds.includes(a.contrat_id ?? "") || a.assigne_a === userId || a.created_by === userId)) continue;
+        const who = nameOf(c.auteur);
         feed.push({
           key: `com-${c.id}`,
           ts: c.created_at,
-          auteur: nameOf(c.auteur),
-          message: <><span className="font-medium">{nameOf(c.auteur)}</span> a commenté <span className="font-medium">« {a.titre} »</span>.</>,
+          kind: "commentaire",
+          auteurId: c.auteur,
+          auteur: who,
+          to: `/calendrier?open=${c.activite_id}`,
+          label: <><span className="font-medium">{who}</span> a commenté « {a.titre} »</>,
         });
       }
 
@@ -936,18 +1053,120 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
         feed.push({
           key: `edl-${e.id}`,
           ts: e.created_at,
+          kind: "edl",
+          auteurId: null,
           auteur: null,
-          message: e.contrat_id ? (
-            <>Nouvel état des lieux {e.type ? `(${e.type}) ` : ""}sur le <Link to="/contrats/$contratId" params={{ contratId: e.contrat_id }} className="font-medium text-primary hover:underline">contrat</Link>.</>
-          ) : <>Nouvel état des lieux enregistré.</>,
+          to: e.contrat_id ? `/contrats/${e.contrat_id}` : "/etats-des-lieux",
+          label: <>Nouvel état des lieux{e.type ? ` (${e.type})` : ""}</>,
+        });
+      }
+
+      // 6) Transactions gagnées (événement à forte valeur)
+      const { data: trans } = await supabase
+        .from("transactions_commerciales")
+        .select("id, created_at, statut_opportunite, type_transaction, bien_id, gestionnaire_id")
+        .eq("statut_opportunite", "gagne")
+        .order("created_at", { ascending: false })
+        .limit(15);
+      for (const t of (trans ?? []) as Array<{ id: string; created_at: string; type_transaction: string; bien_id: string | null; gestionnaire_id: string | null }>) {
+        if (scope && !(scope.bienIds.includes(t.bien_id ?? "") || t.gestionnaire_id === userId)) continue;
+        feed.push({
+          key: `trx-${t.id}`,
+          ts: t.created_at,
+          kind: "transaction_gagnee",
+          auteurId: t.gestionnaire_id,
+          auteur: nameOf(t.gestionnaire_id),
+          to: `/transactions?open=${t.id}`,
+          label: <span className="font-medium">Transaction gagnée ({t.type_transaction.replace(/_/g, " ")})</span>,
+        });
+      }
+
+      // 7) Réclamations urgentes (événement à forte valeur)
+      const { data: recs } = await supabase
+        .from("reclamations")
+        .select("id, created_at, titre, priorite, bien_id, created_by")
+        .eq("priorite", "urgente")
+        .order("created_at", { ascending: false })
+        .limit(15);
+      for (const r of (recs ?? []) as Array<{ id: string; created_at: string; titre: string; bien_id: string | null; created_by: string | null }>) {
+        if (scope && !scope.bienIds.includes(r.bien_id ?? "")) continue;
+        feed.push({
+          key: `rec-${r.id}`,
+          ts: r.created_at,
+          kind: "reclamation_urgente",
+          auteurId: r.created_by,
+          auteur: nameOf(r.created_by),
+          to: `/reclamations?open=${r.id}`,
+          label: <span className="font-medium">Réclamation urgente : {r.titre}</span>,
+        });
+      }
+
+      // 8) Impayés transférés au juridique (événement à forte valeur)
+      const { data: imps } = await supabase
+        .from("impayes")
+        .select("id, contrat_id, service_en_charge, created_at")
+        .eq("service_en_charge", "juridique")
+        .order("created_at", { ascending: false })
+        .limit(15);
+      for (const i of (imps ?? []) as Array<{ id: string; contrat_id: string; created_at: string }>) {
+        if (scope && !scope.contratIds.includes(i.contrat_id)) continue;
+        feed.push({
+          key: `imp-${i.id}`,
+          ts: i.created_at,
+          kind: "impaye_juridique",
+          auteurId: null,
+          auteur: null,
+          to: `/impayes?open=${i.id}`,
+          label: <span className="font-medium">Impayé transféré au juridique</span>,
         });
       }
 
       feed.sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
-      setItems(feed.slice(0, 15));
+      setItems(feed);
       setLoading(false);
     })();
   }, [userId, role]);
+
+  // Regroupement : tâches simples terminées par la même personne le même jour
+  const rows = useMemo<FeedRow[]>(() => {
+    const out: FeedRow[] = [];
+    const groups = new Map<string, FeedItem[]>();
+    for (const it of items) {
+      if (it.kind === "tache_terminee" && it.auteurId) {
+        const gk = `${it.auteurId}-${format(new Date(it.ts), "yyyy-MM-dd")}`;
+        const arr = groups.get(gk) ?? [];
+        arr.push(it);
+        groups.set(gk, arr);
+      } else {
+        out.push({ type: "single", item: it });
+      }
+    }
+    for (const [gk, arr] of groups) {
+      if (arr.length <= 1) out.push({ type: "single", item: arr[0] });
+      else out.push({ type: "group", key: gk, ts: arr[0].ts, auteur: arr[0].auteur ?? "—", items: arr });
+    }
+    out.sort((a, b) => {
+      const ta = a.type === "single" ? a.item.ts : a.ts;
+      const tb = b.type === "single" ? b.item.ts : b.ts;
+      return (tb ?? "").localeCompare(ta ?? "");
+    });
+    return out;
+  }, [items]);
+
+  const visible = rows.slice(0, limit);
+
+  // Regroupement par jour
+  const buckets = useMemo(() => {
+    const map = new Map<string, { order: number; rows: FeedRow[] }>();
+    for (const r of visible) {
+      const ts = r.type === "single" ? r.item.ts : r.ts;
+      const b = dayBucket(ts);
+      const entry = map.get(b.label) ?? { order: b.order, rows: [] };
+      entry.rows.push(r);
+      map.set(b.label, entry);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[1].order - b[1].order);
+  }, [visible]);
 
   return (
     <Card>
@@ -956,22 +1175,73 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground py-3 text-center">Chargement…</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-3 text-center">Aucune activité récente.</p>
+          <p className="py-3 text-center text-sm text-muted-foreground">Chargement…</p>
+        ) : rows.length === 0 ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">Aucune activité récente.</p>
         ) : (
-          <ul className="space-y-2">
-            {items.map((it) => (
-              <li key={it.key} className="flex items-start justify-between gap-3 rounded border p-2 text-sm">
-                <div className="min-w-0 flex-1">{it.message}</div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(it.ts), { locale: fr, addSuffix: true })}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className="space-y-4">
+              {buckets.map(([label, entry]) => (
+                <div key={label}>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {label}
+                  </p>
+                  <div className="space-y-1 border-l pl-3">
+                    {entry.rows.map((r) =>
+                      r.type === "single" ? (
+                        <FeedLine key={r.item.key} item={r.item} />
+                      ) : (
+                        <div key={r.key} className="rounded-md border border-transparent p-2 text-sm">
+                          <div className="flex items-start gap-3">
+                            <FeedIcon kind="tache_terminee" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <Avatar name={r.auteur} />
+                                <span>
+                                  <span className="font-medium">{r.auteur}</span> a terminé {r.items.length} tâches
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="mt-0.5 text-[11px] text-primary hover:underline"
+                                onClick={() => setExpanded((e) => ({ ...e, [r.key]: !e[r.key] }))}
+                              >
+                                {expanded[r.key] ? "masquer le détail" : "voir le détail"}
+                              </button>
+                              {expanded[r.key] && (
+                                <ul className="mt-1 space-y-1">
+                                  {r.items.map((it) => (
+                                    <li key={it.key}>
+                                      <Link
+                                        to={it.to ?? "/calendrier"}
+                                        className="block truncate rounded px-1 py-0.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                      >
+                                        {it.label}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {rows.length > limit && (
+              <div className="mt-3 text-center">
+                <Button variant="ghost" size="sm" onClick={() => setLimit((l) => l + 10)}>
+                  Voir plus
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
   );
 }
+
