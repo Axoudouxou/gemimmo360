@@ -85,6 +85,7 @@ function CalendrierPage() {
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
+  const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
 
   useEffect(() => {
