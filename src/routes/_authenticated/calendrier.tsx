@@ -29,7 +29,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
+import { TYPE_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_BADGE_CLASSES, ActiviteTypeBadge, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
 import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
