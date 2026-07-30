@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import {
   addDays,
