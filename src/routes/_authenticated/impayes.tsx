@@ -338,6 +338,25 @@ function ImpayesPage() {
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
   const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
 
+  const SortHead = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => toggleSort(k)}
+    >
+      {children}
+      {sortKey === k ? <span className="ml-1 text-xs">{sortAsc ? "▲" : "▼"}</span> : null}
+    </TableHead>
+  );
+
+  const kpis = [
+    { label: "Total restant à recouvrer", value: fmtMoney(stats.totalRestant) },
+    { label: "🔴 Dossiers en retard", value: stats.nbRetard },
+    { label: "🟡 Paiements partiels", value: stats.nbPartiel },
+    { label: "⚖️ Dossiers au juridique", value: stats.nbJuridique },
+    { label: "Relances du jour", value: stats.relancesJour },
+    { label: "Recouvré ce mois", value: fmtMoney(stats.recouvreMois) },
+  ];
+
   if (!checked) return null;
 
   return (
@@ -357,20 +376,15 @@ function ImpayesPage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Impayés en retard</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{stats.nbEnRetard}</p></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Montant total dû en retard</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{fmtMoney(stats.montantEnRetard)}</p></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Relances envoyées ce mois</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{stats.relancesMois}</p></CardContent>
-          </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {kpis.map((k) => (
+            <Card key={k.label}>
+              <CardHeader className="pb-2"><CardDescription>{k.label}</CardDescription></CardHeader>
+              <CardContent><p className="text-2xl font-semibold">{k.value}</p></CardContent>
+            </Card>
+          ))}
         </div>
+
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
