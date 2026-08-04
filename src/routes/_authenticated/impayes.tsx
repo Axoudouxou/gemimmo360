@@ -23,6 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+import { computeImpayeStatut, impayeProgress } from "@/lib/impaye-statut";
+
 
 export const Route = createFileRoute("/_authenticated/impayes")({
   head: () => ({
