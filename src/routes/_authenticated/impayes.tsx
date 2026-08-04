@@ -151,12 +151,27 @@ function ImpayesPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: iData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
+    const [
+      { data: iData, error },
+      { data: cData },
+      { data: lData },
+      { data: bData },
+      { data: coData },
+      { data: pData },
+      { data: hData },
+    ] = await Promise.all([
       supabase.from("impayes").select("*").order("date_echeance", { ascending: false }),
       supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
       supabase.from("lots").select("id, label, bien_id"),
-      supabase.from("biens").select("id, titre"),
+      supabase.from("biens").select("id, titre, gestionnaire_id"),
       supabase.from("contacts").select("id, nom, prenom"),
+      supabase.from("profiles").select("id, email"),
+      supabase
+        .from("impayes_historique")
+        .select("id, impaye_id, champ_modifie, ancienne_valeur, nouvelle_valeur, created_at")
+        .in("champ_modifie", ["montant_paye", "date_derniere_relance"])
+        .order("created_at", { ascending: false })
+        .limit(2000),
     ]);
     if (error) toast.error(error.message);
     else setImpayes((iData ?? []) as Impaye[]);
@@ -164,6 +179,8 @@ function ImpayesPage() {
     setLots((lData ?? []) as Lot[]);
     setBiens((bData ?? []) as Bien[]);
     setContacts((coData ?? []) as Contact[]);
+    setProfiles((pData ?? []) as Profile[]);
+    setHisto((hData ?? []) as Histo[]);
     setLoading(false);
   };
 
@@ -181,35 +198,58 @@ function ImpayesPage() {
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
-    if (!c) return { bien: "—", locataire: "—" };
+    if (!c) return { bien: "—", locataire: "—", gestionnaire: "—" };
     const lot = lots.find((l) => l.id === c.lot_id);
-    const bienTitre = lot ? (biens.find((b) => b.id === lot.bien_id)?.titre ?? "—") : "—";
+    const bienRow = lot ? biens.find((b) => b.id === lot.bien_id) : undefined;
+    const bienTitre = bienRow?.titre ?? "—";
     const bien = lot ? `${bienTitre} — ${lot.label}` : bienTitre;
     const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
     const locataire = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
-    return { bien, locataire };
+    const gp = bienRow?.gestionnaire_id ? profiles.find((p) => p.id === bienRow.gestionnaire_id) : null;
+    const gestionnaire = gp?.email ? gp.email.split("@")[0] : "—";
+    return { bien, locataire, gestionnaire };
   };
 
   const stats = useMemo(() => {
-    const enRetard = impayes.filter((i) => i.statut === "en_retard");
-    const nbEnRetard = enRetard.length;
-    const montantEnRetard = enRetard.reduce((s, i) => s + (Number(i.montant_du) - Number(i.montant_paye)), 0);
-    const now = new Date();
-    const m = now.getMonth();
-    const y = now.getFullYear();
-    const relancesMois = impayes.filter((i) => {
-      if (!i.date_derniere_relance) return false;
-      const d = new Date(i.date_derniere_relance);
-      return d.getMonth() === m && d.getFullYear() === y;
-    }).length;
-    return { nbEnRetard, montantEnRetard, relancesMois };
-  }, [impayes]);
+    const nonSolde = impayes.filter((i) => computeImpayeStatut(i).key !== "solde");
+    const totalRestant = nonSolde.reduce(
+      (s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+      0,
+    );
+    let nbRetard = 0, nbPartiel = 0, nbJuridique = 0;
+    for (const i of impayes) {
+      const k = computeImpayeStatut(i).key;
+      if (k === "retard") nbRetard++;
+      else if (k === "partiel") nbPartiel++;
+      else if (k === "juridique") nbJuridique++;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const relancesJour = histo.filter(
+      (h) => h.champ_modifie === "date_derniere_relance" && h.created_at.slice(0, 10) === today,
+    ).length;
+
+    const ym = new Date().toISOString().slice(0, 7);
+    const recouvreMois = histo.reduce((s, h) => {
+      if (h.champ_modifie !== "montant_paye") return s;
+      if (h.created_at.slice(0, 7) !== ym) return s;
+      const diff = Number(h.nouvelle_valeur ?? 0) - Number(h.ancienne_valeur ?? 0);
+      return diff > 0 ? s + diff : s;
+    }, 0);
+
+    return { totalRestant, nbRetard, nbPartiel, nbJuridique, relancesJour, recouvreMois };
+  }, [impayes, histo]);
 
   const contratsActifs = contrats.filter((c) => c.statut === "actif");
 
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortAsc((v) => !v);
+    else { setSortKey(k); setSortAsc(true); }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return impayes.filter((i) => {
+    const rows = impayes.filter((i) => {
       const isResolved = i.etape_traitement === "resolu";
       if (fStatut === "solde") {
         if (!isResolved) return false;
@@ -228,8 +268,43 @@ function ImpayesPage() {
       }
       return true;
     });
+
+    const val = (i: Impaye): string | number => {
+      const l = contratLabel(i.contrat_id);
+      switch (sortKey) {
+        case "bien": return l.bien.toLowerCase();
+        case "locataire": return l.locataire.toLowerCase();
+        case "gestionnaire": return l.gestionnaire.toLowerCase();
+        case "montant_du": return Number(i.montant_du);
+        case "montant_paye": return Number(i.montant_paye);
+        case "reste": return Number(i.montant_du) - Number(i.montant_paye);
+        case "progression": return impayeProgress(i.montant_du, i.montant_paye);
+        case "statut": return computeImpayeStatut(i).label;
+        case "date_derniere_relance": return i.date_derniere_relance ?? "";
+        default: return i.date_echeance ?? "";
+      }
+    };
+
+    const sorted = [...rows];
+    if (sortKey === "priorite") {
+      sorted.sort((a, b) => {
+        const pa = a.etape_traitement && !["recouvrement", "resolu"].includes(a.etape_traitement) ? 0 : 1;
+        const pb = b.etape_traitement && !["recouvrement", "resolu"].includes(b.etape_traitement) ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        return (a.date_echeance ?? "").localeCompare(b.date_echeance ?? "");
+      });
+      if (!sortAsc) sorted.reverse();
+    } else {
+      sorted.sort((a, b) => {
+        const va = val(a), vb = val(b);
+        const c = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb));
+        return sortAsc ? c : -c;
+      });
+    }
+    return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts]);
+  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts, profiles, sortKey, sortAsc]);
+
 
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
