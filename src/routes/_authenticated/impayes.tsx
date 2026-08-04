@@ -69,7 +69,7 @@ type Impaye = {
 };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
-type Bien = { id: string; titre: string };
+type Bien = { id: string; titre: string; gestionnaire_id?: string | null };
 type Contact = { id: string; nom: string; prenom: string | null };
 type Profile = { id: string; email: string | null };
 type Histo = {
