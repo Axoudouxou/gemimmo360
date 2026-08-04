@@ -71,6 +71,16 @@ type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut
 type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
+type Profile = { id: string; email: string | null };
+type Histo = {
+  id: string;
+  impaye_id: string;
+  champ_modifie: string;
+  ancienne_valeur: string | null;
+  nouvelle_valeur: string | null;
+  created_at: string;
+};
+
 
 type SortKey =
   | "priorite"
