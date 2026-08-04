@@ -467,17 +467,24 @@ function ImpayesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bien</TableHead>
-                      <TableHead>Locataire</TableHead>
-                      <TableHead>Montant dû</TableHead>
-                      <TableHead>Montant payé</TableHead>
-                      <TableHead>Échéance</TableHead>
-                      <TableHead>Statut</TableHead>
+                      <SortHead k="bien">Bien</SortHead>
+                      <SortHead k="locataire">Locataire</SortHead>
+                      <SortHead k="date_echeance">Échéance</SortHead>
+                      <SortHead k="montant_du">Montant dû</SortHead>
+                      <SortHead k="montant_paye">Montant payé</SortHead>
+                      <SortHead k="reste">Reste à payer</SortHead>
+                      <SortHead k="progression">Progression</SortHead>
+                      <SortHead k="statut">Statut</SortHead>
+                      <SortHead k="date_derniere_relance">Dernière relance</SortHead>
+                      <SortHead k="gestionnaire">Gestionnaire</SortHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map((i) => {
-                      const { bien, locataire } = contratLabel(i.contrat_id);
+                      const { bien, locataire, gestionnaire } = contratLabel(i.contrat_id);
+                      const reste = Math.max(0, Number(i.montant_du) - Number(i.montant_paye));
+                      const pct = impayeProgress(i.montant_du, i.montant_paye);
+                      const st = computeImpayeStatut(i);
                       return (
                         <TableRow
                           key={i.id}
@@ -486,21 +493,27 @@ function ImpayesPage() {
                         >
                           <TableCell className="font-medium">{bien}</TableCell>
                           <TableCell>{locataire}</TableCell>
+                          <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                           <TableCell>{fmtMoney(i.montant_du)}</TableCell>
                           <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
-                          <TableCell>{fmtDate(i.date_echeance)}</TableCell>
-                          <TableCell>
-                            {i.etape_traitement === "resolu" ? (
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Soldé</Badge>
-                            ) : (
-                              <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
-                                {STATUT_LABEL[i.statut] ?? i.statut}
-                              </Badge>
-                            )}
+                          <TableCell className={reste > 0 ? "text-destructive font-medium" : "text-emerald-600 font-medium"}>
+                            {fmtMoney(reste)}
                           </TableCell>
+                          <TableCell className="min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <Progress value={pct} className="h-2 w-16" />
+                              <span className="text-xs text-muted-foreground">{pct}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={st.className}>{st.emoji} {st.label}</Badge>
+                          </TableCell>
+                          <TableCell>{fmtDate(i.date_derniere_relance)}</TableCell>
+                          <TableCell>{gestionnaire}</TableCell>
                         </TableRow>
                       );
                     })}
+
                   </TableBody>
                 </Table>
               </div>
