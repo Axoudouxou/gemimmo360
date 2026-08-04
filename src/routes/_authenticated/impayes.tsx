@@ -23,6 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+import { computeImpayeStatut, impayeProgress } from "@/lib/impaye-statut";
+
 
 export const Route = createFileRoute("/_authenticated/impayes")({
   head: () => ({
@@ -69,8 +72,31 @@ type Impaye = {
 };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
-type Bien = { id: string; titre: string };
+type Bien = { id: string; titre: string; gestionnaire_id?: string | null };
 type Contact = { id: string; nom: string; prenom: string | null };
+type Profile = { id: string; email: string | null };
+type Histo = {
+  id: string;
+  impaye_id: string;
+  champ_modifie: string;
+  ancienne_valeur: string | null;
+  nouvelle_valeur: string | null;
+  created_at: string;
+};
+
+
+type SortKey =
+  | "priorite"
+  | "bien"
+  | "locataire"
+  | "date_echeance"
+  | "montant_du"
+  | "montant_paye"
+  | "reste"
+  | "progression"
+  | "statut"
+  | "date_derniere_relance"
+  | "gestionnaire";
 
 function ImpayesPage() {
   const navigate = useNavigate();
@@ -81,6 +107,8 @@ function ImpayesPage() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [histo, setHisto] = useState<Histo[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,6 +118,8 @@ function ImpayesPage() {
   const [fStatut, setFStatut] = useState("en_retard");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("priorite");
+  const [sortAsc, setSortAsc] = useState(true);
 
   const [fService, setFService] = useState("all");
 
@@ -102,6 +132,7 @@ function ImpayesPage() {
     date_derniere_relance: "",
     notes: "",
   });
+
 
   useEffect(() => {
     (async () => {
@@ -123,12 +154,27 @@ function ImpayesPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: iData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
+    const [
+      { data: iData, error },
+      { data: cData },
+      { data: lData },
+      { data: bData },
+      { data: coData },
+      { data: pData },
+      { data: hData },
+    ] = await Promise.all([
       supabase.from("impayes").select("*").order("date_echeance", { ascending: false }),
       supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
       supabase.from("lots").select("id, label, bien_id"),
-      supabase.from("biens").select("id, titre"),
+      supabase.from("biens").select("id, titre, gestionnaire_id"),
       supabase.from("contacts").select("id, nom, prenom"),
+      supabase.from("profiles").select("id, email"),
+      supabase
+        .from("impayes_historique")
+        .select("id, impaye_id, champ_modifie, ancienne_valeur, nouvelle_valeur, created_at")
+        .in("champ_modifie", ["montant_paye", "date_derniere_relance"])
+        .order("created_at", { ascending: false })
+        .limit(2000),
     ]);
     if (error) toast.error(error.message);
     else setImpayes((iData ?? []) as Impaye[]);
@@ -136,6 +182,8 @@ function ImpayesPage() {
     setLots((lData ?? []) as Lot[]);
     setBiens((bData ?? []) as Bien[]);
     setContacts((coData ?? []) as Contact[]);
+    setProfiles((pData ?? []) as Profile[]);
+    setHisto((hData ?? []) as Histo[]);
     setLoading(false);
   };
 
@@ -153,35 +201,58 @@ function ImpayesPage() {
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
-    if (!c) return { bien: "—", locataire: "—" };
+    if (!c) return { bien: "—", locataire: "—", gestionnaire: "—" };
     const lot = lots.find((l) => l.id === c.lot_id);
-    const bienTitre = lot ? (biens.find((b) => b.id === lot.bien_id)?.titre ?? "—") : "—";
+    const bienRow = lot ? biens.find((b) => b.id === lot.bien_id) : undefined;
+    const bienTitre = bienRow?.titre ?? "—";
     const bien = lot ? `${bienTitre} — ${lot.label}` : bienTitre;
     const loc = c.locataire_id ? contacts.find((x) => x.id === c.locataire_id) : null;
     const locataire = loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—";
-    return { bien, locataire };
+    const gp = bienRow?.gestionnaire_id ? profiles.find((p) => p.id === bienRow.gestionnaire_id) : null;
+    const gestionnaire = gp?.email ? gp.email.split("@")[0] : "—";
+    return { bien, locataire, gestionnaire };
   };
 
   const stats = useMemo(() => {
-    const enRetard = impayes.filter((i) => i.statut === "en_retard");
-    const nbEnRetard = enRetard.length;
-    const montantEnRetard = enRetard.reduce((s, i) => s + (Number(i.montant_du) - Number(i.montant_paye)), 0);
-    const now = new Date();
-    const m = now.getMonth();
-    const y = now.getFullYear();
-    const relancesMois = impayes.filter((i) => {
-      if (!i.date_derniere_relance) return false;
-      const d = new Date(i.date_derniere_relance);
-      return d.getMonth() === m && d.getFullYear() === y;
-    }).length;
-    return { nbEnRetard, montantEnRetard, relancesMois };
-  }, [impayes]);
+    const nonSolde = impayes.filter((i) => computeImpayeStatut(i).key !== "solde");
+    const totalRestant = nonSolde.reduce(
+      (s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+      0,
+    );
+    let nbRetard = 0, nbPartiel = 0, nbJuridique = 0;
+    for (const i of impayes) {
+      const k = computeImpayeStatut(i).key;
+      if (k === "retard") nbRetard++;
+      else if (k === "partiel") nbPartiel++;
+      else if (k === "juridique") nbJuridique++;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const relancesJour = histo.filter(
+      (h) => h.champ_modifie === "date_derniere_relance" && h.created_at.slice(0, 10) === today,
+    ).length;
+
+    const ym = new Date().toISOString().slice(0, 7);
+    const recouvreMois = histo.reduce((s, h) => {
+      if (h.champ_modifie !== "montant_paye") return s;
+      if (h.created_at.slice(0, 7) !== ym) return s;
+      const diff = Number(h.nouvelle_valeur ?? 0) - Number(h.ancienne_valeur ?? 0);
+      return diff > 0 ? s + diff : s;
+    }, 0);
+
+    return { totalRestant, nbRetard, nbPartiel, nbJuridique, relancesJour, recouvreMois };
+  }, [impayes, histo]);
 
   const contratsActifs = contrats.filter((c) => c.statut === "actif");
 
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortAsc((v) => !v);
+    else { setSortKey(k); setSortAsc(true); }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return impayes.filter((i) => {
+    const rows = impayes.filter((i) => {
       const isResolved = i.etape_traitement === "resolu";
       if (fStatut === "solde") {
         if (!isResolved) return false;
@@ -200,8 +271,43 @@ function ImpayesPage() {
       }
       return true;
     });
+
+    const val = (i: Impaye): string | number => {
+      const l = contratLabel(i.contrat_id);
+      switch (sortKey) {
+        case "bien": return l.bien.toLowerCase();
+        case "locataire": return l.locataire.toLowerCase();
+        case "gestionnaire": return l.gestionnaire.toLowerCase();
+        case "montant_du": return Number(i.montant_du);
+        case "montant_paye": return Number(i.montant_paye);
+        case "reste": return Number(i.montant_du) - Number(i.montant_paye);
+        case "progression": return impayeProgress(i.montant_du, i.montant_paye);
+        case "statut": return computeImpayeStatut(i).label;
+        case "date_derniere_relance": return i.date_derniere_relance ?? "";
+        default: return i.date_echeance ?? "";
+      }
+    };
+
+    const sorted = [...rows];
+    if (sortKey === "priorite") {
+      sorted.sort((a, b) => {
+        const pa = a.etape_traitement && !["recouvrement", "resolu"].includes(a.etape_traitement) ? 0 : 1;
+        const pb = b.etape_traitement && !["recouvrement", "resolu"].includes(b.etape_traitement) ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        return (a.date_echeance ?? "").localeCompare(b.date_echeance ?? "");
+      });
+      if (!sortAsc) sorted.reverse();
+    } else {
+      sorted.sort((a, b) => {
+        const va = val(a), vb = val(b);
+        const c = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb));
+        return sortAsc ? c : -c;
+      });
+    }
+    return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts]);
+  }, [impayes, search, fStatut, fService, dFrom, dTo, contrats, lots, biens, contacts, profiles, sortKey, sortAsc]);
+
 
   const resetForm = () =>
     setForm({ contrat_id: "", montant_du: "", montant_paye: "0", date_echeance: "", statut: "a_jour", date_derniere_relance: "", notes: "" });
@@ -232,6 +338,25 @@ function ImpayesPage() {
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
   const fmtMoney = (n: number | null) => (n == null ? "—" : Number(n).toLocaleString("fr-FR") + " FCFA");
 
+  const SortHead = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => toggleSort(k)}
+    >
+      {children}
+      {sortKey === k ? <span className="ml-1 text-xs">{sortAsc ? "▲" : "▼"}</span> : null}
+    </TableHead>
+  );
+
+  const kpis = [
+    { label: "Total restant à recouvrer", value: fmtMoney(stats.totalRestant) },
+    { label: "🔴 Dossiers en retard", value: stats.nbRetard },
+    { label: "🟡 Paiements partiels", value: stats.nbPartiel },
+    { label: "⚖️ Dossiers au juridique", value: stats.nbJuridique },
+    { label: "Relances du jour", value: stats.relancesJour },
+    { label: "Recouvré ce mois", value: fmtMoney(stats.recouvreMois) },
+  ];
+
   if (!checked) return null;
 
   return (
@@ -251,20 +376,15 @@ function ImpayesPage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Impayés en retard</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{stats.nbEnRetard}</p></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Montant total dû en retard</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{fmtMoney(stats.montantEnRetard)}</p></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardDescription>Relances envoyées ce mois</CardDescription></CardHeader>
-            <CardContent><p className="text-3xl font-semibold">{stats.relancesMois}</p></CardContent>
-          </Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {kpis.map((k) => (
+            <Card key={k.label}>
+              <CardHeader className="pb-2"><CardDescription>{k.label}</CardDescription></CardHeader>
+              <CardContent><p className="text-2xl font-semibold">{k.value}</p></CardContent>
+            </Card>
+          ))}
         </div>
+
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -364,17 +484,24 @@ function ImpayesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bien</TableHead>
-                      <TableHead>Locataire</TableHead>
-                      <TableHead>Montant dû</TableHead>
-                      <TableHead>Montant payé</TableHead>
-                      <TableHead>Échéance</TableHead>
-                      <TableHead>Statut</TableHead>
+                      <SortHead k="bien">Bien</SortHead>
+                      <SortHead k="locataire">Locataire</SortHead>
+                      <SortHead k="date_echeance">Échéance</SortHead>
+                      <SortHead k="montant_du">Montant dû</SortHead>
+                      <SortHead k="montant_paye">Montant payé</SortHead>
+                      <SortHead k="reste">Reste à payer</SortHead>
+                      <SortHead k="progression">Progression</SortHead>
+                      <SortHead k="statut">Statut</SortHead>
+                      <SortHead k="date_derniere_relance">Dernière relance</SortHead>
+                      <SortHead k="gestionnaire">Gestionnaire</SortHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map((i) => {
-                      const { bien, locataire } = contratLabel(i.contrat_id);
+                      const { bien, locataire, gestionnaire } = contratLabel(i.contrat_id);
+                      const reste = Math.max(0, Number(i.montant_du) - Number(i.montant_paye));
+                      const pct = impayeProgress(i.montant_du, i.montant_paye);
+                      const st = computeImpayeStatut(i);
                       return (
                         <TableRow
                           key={i.id}
@@ -383,21 +510,27 @@ function ImpayesPage() {
                         >
                           <TableCell className="font-medium">{bien}</TableCell>
                           <TableCell>{locataire}</TableCell>
+                          <TableCell>{fmtDate(i.date_echeance)}</TableCell>
                           <TableCell>{fmtMoney(i.montant_du)}</TableCell>
                           <TableCell>{fmtMoney(i.montant_paye)}</TableCell>
-                          <TableCell>{fmtDate(i.date_echeance)}</TableCell>
-                          <TableCell>
-                            {i.etape_traitement === "resolu" ? (
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Soldé</Badge>
-                            ) : (
-                              <Badge variant={i.statut === "en_retard" ? "destructive" : "default"}>
-                                {STATUT_LABEL[i.statut] ?? i.statut}
-                              </Badge>
-                            )}
+                          <TableCell className={reste > 0 ? "text-destructive font-medium" : "text-emerald-600 font-medium"}>
+                            {fmtMoney(reste)}
                           </TableCell>
+                          <TableCell className="min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <Progress value={pct} className="h-2 w-16" />
+                              <span className="text-xs text-muted-foreground">{pct}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={st.className}>{st.emoji} {st.label}</Badge>
+                          </TableCell>
+                          <TableCell>{fmtDate(i.date_derniere_relance)}</TableCell>
+                          <TableCell>{gestionnaire}</TableCell>
                         </TableRow>
                       );
                     })}
+
                   </TableBody>
                 </Table>
               </div>

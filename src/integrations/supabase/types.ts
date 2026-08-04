@@ -810,6 +810,7 @@ export type Database = {
           created_at: string
           date_acte_commissaire: string | null
           date_assignation: string | null
+          date_dernier_paiement: string | null
           date_derniere_relance: string | null
           date_echeance: string
           date_mise_en_demeure: string | null
@@ -826,6 +827,7 @@ export type Database = {
           created_at?: string
           date_acte_commissaire?: string | null
           date_assignation?: string | null
+          date_dernier_paiement?: string | null
           date_derniere_relance?: string | null
           date_echeance: string
           date_mise_en_demeure?: string | null
@@ -842,6 +844,7 @@ export type Database = {
           created_at?: string
           date_acte_commissaire?: string | null
           date_assignation?: string | null
+          date_dernier_paiement?: string | null
           date_derniere_relance?: string | null
           date_echeance?: string
           date_mise_en_demeure?: string | null
