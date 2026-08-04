@@ -72,6 +72,19 @@ type Lot = { id: string; label: string; bien_id: string };
 type Bien = { id: string; titre: string };
 type Contact = { id: string; nom: string; prenom: string | null };
 
+type SortKey =
+  | "priorite"
+  | "bien"
+  | "locataire"
+  | "date_echeance"
+  | "montant_du"
+  | "montant_paye"
+  | "reste"
+  | "progression"
+  | "statut"
+  | "date_derniere_relance"
+  | "gestionnaire";
+
 function ImpayesPage() {
   const navigate = useNavigate();
   const [role, setRole] = useState<string | null>(null);
@@ -81,6 +94,8 @@ function ImpayesPage() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [histo, setHisto] = useState<Histo[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,6 +105,8 @@ function ImpayesPage() {
   const [fStatut, setFStatut] = useState("en_retard");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("priorite");
+  const [sortAsc, setSortAsc] = useState(true);
 
   const [fService, setFService] = useState("all");
 
@@ -102,6 +119,7 @@ function ImpayesPage() {
     date_derniere_relance: "",
     notes: "",
   });
+
 
   useEffect(() => {
     (async () => {
