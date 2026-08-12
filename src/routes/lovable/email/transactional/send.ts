@@ -132,7 +132,9 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
         // Resolve effective recipient: template-level `to` takes precedence over
         // the caller-provided recipientEmail. This allows notification templates
         // to always send to a fixed address (e.g., site owner from env var).
-        const effectiveRecipient = template.to || recipientEmail
+        // Non-internal callers can never choose the recipient: mail goes to
+        // their own account email only.
+        const effectiveRecipient = callerEmail ?? (template.to || recipientEmail)
 
         if (!effectiveRecipient) {
           return Response.json(
