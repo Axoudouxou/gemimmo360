@@ -325,16 +325,23 @@ export function NouveauxContrats12Mois() {
   useEffect(() => {
     (async () => {
       const start = startOfMonth(subMonths(new Date(), 11));
-      const { data: rows } = await supabase.from("contrats").select("created_at").gte("created_at", start.toISOString());
+      // On se base sur la date métier (date_debut = prise d'effet du bail),
+      // pas sur created_at qui reflète l'import en bloc de juillet 2026.
+      const { data: rows } = await supabase
+        .from("contrats")
+        .select("date_debut")
+        .not("date_debut", "is", null)
+        .gte("date_debut", start.toISOString().slice(0, 10));
       const map = new Map<string, number>();
       for (let i = 11; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         map.set(format(d, "yyyy-MM"), 0);
       }
-      (rows ?? []).forEach((r: { created_at: string }) => {
-        const k = r.created_at.slice(0, 7);
+      (rows ?? []).forEach((r: { date_debut: string | null }) => {
+        const k = (r.date_debut ?? "").slice(0, 7);
         if (map.has(k)) map.set(k, (map.get(k) ?? 0) + 1);
       });
+
       setData(Array.from(map.entries()).map(([k, v]) => ({ mois: format(new Date(k + "-01"), "MMM", { locale: fr }), count: v })));
     })();
   }, []);
