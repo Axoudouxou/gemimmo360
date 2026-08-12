@@ -59,6 +59,11 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           isInternal = !!cfg?.value && cfg.value === internalHeader
         }
 
+        // For non-internal (user-triggered) calls we only ever deliver to the
+        // caller's own verified account email. Caller-supplied recipients are
+        // ignored so this endpoint can't be used to send branded mail to
+        // arbitrary addresses.
+        let callerEmail: string | null = null
         if (!isInternal) {
           const authHeader = request.headers.get('Authorization')
           if (!authHeader?.startsWith('Bearer ')) {
@@ -66,9 +71,19 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           }
           const token = authHeader.slice('Bearer '.length).trim()
           const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-          if (authError || !user) {
+          if (authError || !user?.email) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 })
           }
+          // Must be a known internal profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle()
+          if (!profile) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 })
+          }
+          callerEmail = user.email
         }
 
 
@@ -117,7 +132,9 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
         // Resolve effective recipient: template-level `to` takes precedence over
         // the caller-provided recipientEmail. This allows notification templates
         // to always send to a fixed address (e.g., site owner from env var).
-        const effectiveRecipient = template.to || recipientEmail
+        // Non-internal callers can never choose the recipient: mail goes to
+        // their own account email only.
+        const effectiveRecipient = callerEmail ?? (template.to || recipientEmail)
 
         if (!effectiveRecipient) {
           return Response.json(
