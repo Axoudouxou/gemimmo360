@@ -1522,18 +1522,27 @@ export type Database = {
           bien_id: string
           budget_depense: number
           budget_prevu: number | null
+          categorie: string | null
           charge_financiere: string | null
+          commentaire_intervention: string | null
           created_at: string
           created_by: string | null
           date_debut: string | null
+          date_echeance: string | null
           date_fin: string | null
+          date_intervention_prevue: string | null
+          date_intervention_reelle: string | null
           description: string | null
           etat_des_lieux_id: string | null
+          heure_intervention: string | null
           id: string
+          lot_id: string | null
           motif_refus: string | null
           notes: string | null
           origine: string | null
+          priorite: string
           reclamation_id: string | null
+          reference: string | null
           reference_cheque: string | null
           statut: string
           titre: string
@@ -1544,18 +1553,27 @@ export type Database = {
           bien_id: string
           budget_depense?: number
           budget_prevu?: number | null
+          categorie?: string | null
           charge_financiere?: string | null
+          commentaire_intervention?: string | null
           created_at?: string
           created_by?: string | null
           date_debut?: string | null
+          date_echeance?: string | null
           date_fin?: string | null
+          date_intervention_prevue?: string | null
+          date_intervention_reelle?: string | null
           description?: string | null
           etat_des_lieux_id?: string | null
+          heure_intervention?: string | null
           id?: string
+          lot_id?: string | null
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
+          priorite?: string
           reclamation_id?: string | null
+          reference?: string | null
           reference_cheque?: string | null
           statut?: string
           titre: string
@@ -1566,18 +1584,27 @@ export type Database = {
           bien_id?: string
           budget_depense?: number
           budget_prevu?: number | null
+          categorie?: string | null
           charge_financiere?: string | null
+          commentaire_intervention?: string | null
           created_at?: string
           created_by?: string | null
           date_debut?: string | null
+          date_echeance?: string | null
           date_fin?: string | null
+          date_intervention_prevue?: string | null
+          date_intervention_reelle?: string | null
           description?: string | null
           etat_des_lieux_id?: string | null
+          heure_intervention?: string | null
           id?: string
+          lot_id?: string | null
           motif_refus?: string | null
           notes?: string | null
           origine?: string | null
+          priorite?: string
           reclamation_id?: string | null
+          reference?: string | null
           reference_cheque?: string | null
           statut?: string
           titre?: string
@@ -1596,6 +1623,13 @@ export type Database = {
             columns: ["etat_des_lieux_id"]
             isOneToOne: false
             referencedRelation: "etats_des_lieux"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "travaux_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
           {
