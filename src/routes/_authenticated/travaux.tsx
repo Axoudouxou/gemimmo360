@@ -262,8 +262,9 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
 }) {
   const isChristelle = email.toLowerCase() === CHRISTELLE_EMAIL;
   const basePerms = computePerms(role, travail.created_by, uid);
-  const perms = isChristelle
-    ? { canRead: true, canComment: true, canEditFull: true, canEditLimited: false, canDelete: true }
+  const isAssignee = !!uid && travail.assigne_a === uid;
+  const perms = isChristelle || isAssignee
+    ? { ...basePerms, canRead: true, canComment: true, canEditFull: true, canEditLimited: false, canDelete: isChristelle || basePerms.canDelete }
     : basePerms;
   const bien = biens.find((b) => b.id === travail.bien_id);
   const assigne = travail.assigne_a ? profiles.find((p) => p.id === travail.assigne_a) : null;
@@ -281,10 +282,10 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
   useEffect(() => { setRefCheque(travail.reference_cheque ?? ""); }, [travail.id, travail.reference_cheque]);
 
   const canSubmit =
-    travail.statut === "planifie" &&
+    (travail.statut === "a_qualifier" || travail.statut === "planifie") &&
     travail.budget_prevu != null &&
     (role === "technique" || role === "admin" || role === "direction");
-  const canDecide = travail.statut === "en_attente_validation" && role === "direction";
+  const canDecide = travail.statut === "a_valider" && role === "direction";
 
   const loadHistory = async () => {
     const { data } = await supabase
@@ -337,7 +338,7 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
     if (!travail.budget_prevu) return toast.error("Budget prévu requis");
     const { data: directions } = await supabase.from("profiles").select("id").eq("role", "direction").limit(1);
     const assignee = (directions ?? [])[0]?.id ?? null;
-    await updateStatut({ statut: "en_attente_validation" }, "Soumis pour validation");
+    await updateStatut({ statut: "a_valider" }, "Soumis pour validation");
     const { data: userRes } = await supabase.auth.getUser();
     await supabase.from("activites").insert({
       titre: `Validation devis – ${travail.titre} – ${bien?.titre ?? "—"} – ${fmtMoney(travail.budget_prevu)}`,
@@ -470,7 +471,10 @@ function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onS
   onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
-  const perms = computePerms(role, initial?.created_by ?? uid, uid);
+  const basePerms = computePerms(role, initial?.created_by ?? uid, uid);
+  const perms = initial && uid && initial.assigne_a === uid
+    ? { ...basePerms, canEditFull: true, canEditLimited: false }
+    : basePerms;
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
@@ -479,7 +483,7 @@ function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onS
     description: initial?.description ?? "",
     budget_prevu: initial?.budget_prevu != null ? String(initial.budget_prevu) : "",
     budget_depense: initial ? String(initial.budget_depense ?? 0) : "0",
-    statut: initial?.statut ?? "planifie",
+    statut: initial?.statut ?? "a_qualifier",
     date_debut: initial?.date_debut ?? "",
     date_fin: initial?.date_fin ?? "",
     assigne_a: initial?.assigne_a ?? "",
