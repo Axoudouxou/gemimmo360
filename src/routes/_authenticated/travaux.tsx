@@ -35,22 +35,26 @@ export const Route = createFileRoute("/_authenticated/travaux")({
 type Prefill = { bien_id?: string; titre?: string; reclamation_id?: string; origine?: string };
 
 const STATUTS = [
-  { value: "planifie", label: "Planifié" },
-  { value: "en_attente_validation", label: "En attente de validation" },
+  { value: "a_qualifier", label: "À qualifier" },
+  { value: "a_valider", label: "À valider" },
   { value: "valide", label: "Validé" },
-  { value: "refuse", label: "Refusé" },
+  { value: "planifie", label: "Planifié" },
   { value: "en_cours", label: "En cours" },
   { value: "termine", label: "Terminé" },
+  { value: "refuse", label: "Refusé" },
+  { value: "annule", label: "Annulé" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const STATUT_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  planifie: "outline",
-  en_attente_validation: "secondary",
-  valide: "default",
-  refuse: "destructive",
-  en_cours: "default",
-  termine: "default",
+const STATUT_CLASS: Record<string, string> = {
+  a_qualifier: "bg-muted text-muted-foreground hover:bg-muted",
+  a_valider: "bg-orange-500 text-white hover:bg-orange-500",
+  valide: "bg-blue-500 text-white hover:bg-blue-500",
+  planifie: "bg-blue-500 text-white hover:bg-blue-500",
+  en_cours: "bg-blue-600 text-white hover:bg-blue-600",
+  termine: "bg-green-600 text-white hover:bg-green-600",
+  refuse: "bg-red-600 text-white hover:bg-red-600",
+  annule: "bg-slate-700 text-white hover:bg-slate-700",
 };
 
 const CHARGES = [
@@ -194,7 +198,7 @@ function TravauxPage() {
                       <TableCell>{t.titre}</TableCell>
                       <TableCell className="text-xs">{profEmail(t.assigne_a)}</TableCell>
                       <TableCell className="text-xs">{t.charge_financiere ? CHARGE_LABEL[t.charge_financiere] ?? t.charge_financiere : "—"}</TableCell>
-                      <TableCell><Badge variant={STATUT_VARIANT[t.statut] ?? "default"}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
+                      <TableCell><Badge className={STATUT_CLASS[t.statut] ?? ""}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -258,8 +262,9 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
 }) {
   const isChristelle = email.toLowerCase() === CHRISTELLE_EMAIL;
   const basePerms = computePerms(role, travail.created_by, uid);
-  const perms = isChristelle
-    ? { canRead: true, canComment: true, canEditFull: true, canEditLimited: false, canDelete: true }
+  const isAssignee = !!uid && travail.assigne_a === uid;
+  const perms = isChristelle || isAssignee
+    ? { ...basePerms, canRead: true, canComment: true, canEditFull: true, canEditLimited: false, canDelete: isChristelle || basePerms.canDelete }
     : basePerms;
   const bien = biens.find((b) => b.id === travail.bien_id);
   const assigne = travail.assigne_a ? profiles.find((p) => p.id === travail.assigne_a) : null;
@@ -277,10 +282,10 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
   useEffect(() => { setRefCheque(travail.reference_cheque ?? ""); }, [travail.id, travail.reference_cheque]);
 
   const canSubmit =
-    travail.statut === "planifie" &&
+    (travail.statut === "a_qualifier" || travail.statut === "planifie") &&
     travail.budget_prevu != null &&
     (role === "technique" || role === "admin" || role === "direction");
-  const canDecide = travail.statut === "en_attente_validation" && role === "direction";
+  const canDecide = travail.statut === "a_valider" && role === "direction";
 
   const loadHistory = async () => {
     const { data } = await supabase
@@ -333,7 +338,7 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
     if (!travail.budget_prevu) return toast.error("Budget prévu requis");
     const { data: directions } = await supabase.from("profiles").select("id").eq("role", "direction").limit(1);
     const assignee = (directions ?? [])[0]?.id ?? null;
-    await updateStatut({ statut: "en_attente_validation" }, "Soumis pour validation");
+    await updateStatut({ statut: "a_valider" }, "Soumis pour validation");
     const { data: userRes } = await supabase.auth.getUser();
     await supabase.from("activites").insert({
       titre: `Validation devis – ${travail.titre} – ${bien?.titre ?? "—"} – ${fmtMoney(travail.budget_prevu)}`,
@@ -362,7 +367,7 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={STATUT_VARIANT[travail.statut] ?? "default"}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
+            <Badge className={STATUT_CLASS[travail.statut] ?? ""}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
             {travail.origine && <Badge variant="outline">Origine : {travail.origine}</Badge>}
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -466,7 +471,10 @@ function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onS
   onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
-  const perms = computePerms(role, initial?.created_by ?? uid, uid);
+  const basePerms = computePerms(role, initial?.created_by ?? uid, uid);
+  const perms = initial && uid && initial.assigne_a === uid
+    ? { ...basePerms, canEditFull: true, canEditLimited: false }
+    : basePerms;
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
@@ -475,7 +483,7 @@ function EditDialog({ initial, prefill, uid, role, biens, profiles, onClose, onS
     description: initial?.description ?? "",
     budget_prevu: initial?.budget_prevu != null ? String(initial.budget_prevu) : "",
     budget_depense: initial ? String(initial.budget_depense ?? 0) : "0",
-    statut: initial?.statut ?? "planifie",
+    statut: initial?.statut ?? "a_qualifier",
     date_debut: initial?.date_debut ?? "",
     date_fin: initial?.date_fin ?? "",
     assigne_a: initial?.assigne_a ?? "",

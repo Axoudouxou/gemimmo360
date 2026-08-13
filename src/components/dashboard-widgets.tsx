@@ -218,7 +218,7 @@ export function TravauxDonut() {
       const { data: rows } = await supabase.from("travaux").select("statut");
       const map: Record<string, number> = {};
       (rows ?? []).forEach((r: { statut: string | null }) => { const k = r.statut ?? "inconnu"; map[k] = (map[k] ?? 0) + 1; });
-      const labels: Record<string, string> = { planifie: "Planifié", en_cours: "En cours", termine: "Terminé" };
+      const labels: Record<string, string> = { a_qualifier: "À qualifier", a_valider: "À valider", valide: "Validé", planifie: "Planifié", en_cours: "En cours", termine: "Terminé", refuse: "Refusé", annule: "Annulé" };
       setData(Object.entries(map).map(([k, v], i) => ({ name: labels[k] ?? k, value: v, color: COLORS[i % COLORS.length] })));
     })();
   }, []);
