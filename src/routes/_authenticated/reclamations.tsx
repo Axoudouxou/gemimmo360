@@ -269,6 +269,16 @@ const CHAMP_LABEL: Record<string, string> = {
   retard: "Retard",
 };
 
+// Permissions réclamation : l'assigné a les mêmes droits que le profil technique
+// (statut, priorité, assignation, prestataire, catégorie, solution).
+function recPerms(role: string, createdBy: string | null, assigneA: string | null, uid: string) {
+  const base = computePerms(role, createdBy, uid);
+  const isAssignee = !!assigneA && assigneA === uid;
+  if (!isAssignee || base.canEditFull) return base;
+  return { ...base, canRead: true, canComment: true, canEditLimited: true };
+}
+
+
 function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataires, bailleurs, onClose, onEdit, onDeleted, onCreateTravaux }: {
   rec: Reclamation; uid: string; role: string;
   biens: Bien[]; locataires: Contact[]; profiles: Profile[]; prestataires: Contact[]; bailleurs: Contact[];
