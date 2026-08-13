@@ -29,13 +29,19 @@ export const Route = createFileRoute("/_authenticated/reclamations")({
 const STATUTS = [
   { value: "ouverte", label: "Ouverte" },
   { value: "en_cours", label: "En cours" },
+  { value: "en_attente", label: "En attente" },
   { value: "resolue", label: "Résolue" },
+  { value: "fermee", label: "Fermée" },
 ] as const;
+// Valeurs sélectionnables dans les formulaires
 const PRIORITES = [
-  { value: "basse", label: "Basse" },
-  { value: "normale", label: "Normale" },
+  { value: "critique", label: "Critique" },
   { value: "haute", label: "Haute" },
+  { value: "moyenne", label: "Moyenne" },
+  { value: "basse", label: "Basse" },
 ] as const;
+// "normale" reste affichable (anciennes réclamations) mais non resélectionnable
+const PRIORITES_LEGACY = [{ value: "normale", label: "Normale" }] as const;
 const CATEGORIES = [
   { value: "plomberie", label: "Plomberie" },
   { value: "electricite", label: "Électricité" },
@@ -44,7 +50,10 @@ const CATEGORIES = [
   { value: "autre", label: "Autre" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const PRIO_LABEL: Record<string, string> = Object.fromEntries(PRIORITES.map((s) => [s.value, s.label]));
+const PRIO_LABEL: Record<string, string> = Object.fromEntries(
+  [...PRIORITES, ...PRIORITES_LEGACY].map((s) => [s.value, s.label]),
+);
+
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 
 type Reclamation = {
