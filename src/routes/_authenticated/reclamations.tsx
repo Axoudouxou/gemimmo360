@@ -223,6 +223,7 @@ function ReclamationsPage() {
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
+            onChanged={() => { setDetail(null); load(); }}
             onCreateTravaux={() => {
               const b = biens.find((x) => x.id === detail.bien_id);
               navigate({
