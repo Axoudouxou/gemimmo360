@@ -274,7 +274,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
   biens: Bien[]; locataires: Contact[]; profiles: Profile[]; prestataires: Contact[]; bailleurs: Contact[];
   onClose: () => void; onEdit: () => void; onDeleted: () => void; onCreateTravaux: () => void;
 }) {
-  const perms = computePerms(role, rec.created_by, uid);
+  const perms = recPerms(role, rec.created_by, rec.assigne_a, uid);
   const bien = biens.find((b) => b.id === rec.bien_id);
   const bailleur = bien?.bailleur_id ? bailleurs.find((b) => b.id === bien.bailleur_id) : null;
   const loc = rec.locataire_id ? locataires.find((l) => l.id === rec.locataire_id) : null;
