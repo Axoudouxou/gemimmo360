@@ -35,22 +35,26 @@ export const Route = createFileRoute("/_authenticated/travaux")({
 type Prefill = { bien_id?: string; titre?: string; reclamation_id?: string; origine?: string };
 
 const STATUTS = [
-  { value: "planifie", label: "Planifié" },
-  { value: "en_attente_validation", label: "En attente de validation" },
+  { value: "a_qualifier", label: "À qualifier" },
+  { value: "a_valider", label: "À valider" },
   { value: "valide", label: "Validé" },
-  { value: "refuse", label: "Refusé" },
+  { value: "planifie", label: "Planifié" },
   { value: "en_cours", label: "En cours" },
   { value: "termine", label: "Terminé" },
+  { value: "refuse", label: "Refusé" },
+  { value: "annule", label: "Annulé" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
 
-const STATUT_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  planifie: "outline",
-  en_attente_validation: "secondary",
-  valide: "default",
-  refuse: "destructive",
-  en_cours: "default",
-  termine: "default",
+const STATUT_CLASS: Record<string, string> = {
+  a_qualifier: "bg-muted text-muted-foreground hover:bg-muted",
+  a_valider: "bg-orange-500 text-white hover:bg-orange-500",
+  valide: "bg-blue-500 text-white hover:bg-blue-500",
+  planifie: "bg-blue-500 text-white hover:bg-blue-500",
+  en_cours: "bg-blue-600 text-white hover:bg-blue-600",
+  termine: "bg-green-600 text-white hover:bg-green-600",
+  refuse: "bg-red-600 text-white hover:bg-red-600",
+  annule: "bg-slate-700 text-white hover:bg-slate-700",
 };
 
 const CHARGES = [
