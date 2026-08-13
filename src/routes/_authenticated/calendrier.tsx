@@ -160,9 +160,10 @@ function CalendrierPage() {
     return map;
   }, [items, typeFilter]);
 
-  const tasksAFaire = filteredItems.filter((a) => a.statut === "a_faire" || a.statut === "planifiee");
+  const tasksAFaire = filteredItems.filter((a) => a.statut === "a_faire");
+  const tasksPlanifiee = filteredItems.filter((a) => a.statut === "planifiee");
   const tasksEnCours = filteredItems.filter((a) => a.statut === "en_cours");
-  const tasksFait = filteredItems.filter((a) => a.statut === "fait" || a.statut === "realisee");
+  const tasksFait = filteredItems.filter((a) => a.statut === "terminee");
   const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
 
   const setStatut = async (a: Activite, newStatut: string) => {
@@ -175,8 +176,8 @@ function CalendrierPage() {
     if (error) { toast.error(error.message); return; }
 
     // Recurrence: mark done → create next occurrence
-    const isDone = newStatut === "fait" || newStatut === "realisee";
-    const wasDone = a.statut === "fait" || a.statut === "realisee";
+    const isDone = newStatut === "terminee";
+    const wasDone = a.statut === "terminee";
     if (isDone && !wasDone && a.recurrence && a.recurrence !== "aucune" && a.date_debut) {
       const next = nextRecurrenceDate(new Date(a.date_debut), a.recurrence);
       if (next) {
@@ -206,7 +207,7 @@ function CalendrierPage() {
   };
 
   const handleToggle = async (a: Activite, done: boolean) => {
-    await setStatut(a, done ? "fait" : "a_faire");
+    await setStatut(a, done ? "terminee" : "a_faire");
   };
 
   const handleDelete = async (a: Activite) => {
@@ -235,7 +236,7 @@ function CalendrierPage() {
     load();
   };
 
-  const handleDrop = async (a: Activite, target: "a_faire" | "en_cours" | "fait" | "annulee") => {
+  const handleDrop = async (a: Activite, target: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee") => {
     if (a.statut === target) return;
     await setStatut(a, target);
   };
@@ -393,9 +394,9 @@ function CalendrierPage() {
         </TabsContent>
 
         <TabsContent value="tasks" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <TaskColumn
-              title="À faire / Planifiée"
+              title="À faire"
               targetStatut="a_faire"
               items={tasksAFaire}
               me={me}
@@ -416,8 +417,9 @@ function CalendrierPage() {
                 </div>
               }
             />
+            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
             <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="Fait / Réalisée" targetStatut="fait" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
+            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
             <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
           </div>
         </TabsContent>
@@ -507,14 +509,14 @@ function TaskColumn({
   quickAdd,
 }: {
   title: string;
-  targetStatut: "a_faire" | "en_cours" | "fait" | "annulee";
+  targetStatut: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee";
   items: Activite[];
   me: Profile | null;
   onOpen: (a: Activite) => void;
   onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
   onDelete: (a: Activite) => void;
-  onDrop: (a: Activite, target: "a_faire" | "en_cours" | "fait" | "annulee") => void;
+  onDrop: (a: Activite, target: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee") => void;
   done?: boolean;
   quickAdd?: React.ReactNode;
 }) {
@@ -541,7 +543,7 @@ function TaskColumn({
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
         ) : items.map((a) => {
           const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
-          const isDoneCard = a.statut === "fait" || a.statut === "realisee";
+          const isDoneCard = a.statut === "terminee";
           return (
             <div
               key={a.id}
