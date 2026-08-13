@@ -12,14 +12,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Pencil, Trash2, FileText, Hammer, AlertTriangle } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil, Trash2, FileText, Hammer, AlertTriangle, Zap, UserX, Clock } from "lucide-react";
 import { CommentSection, computePerms } from "@/components/comment-section";
 import { DocumentsSection } from "@/components/documents-section";
 import { toast } from "sonner";
 import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/reclamations")({
-  head: () => ({ meta: [{ title: "Réclamations — Agence Immobilière" }] }),
+  head: () => ({
+    meta: [
+      { title: "Réclamations — Immo360" },
+      { name: "description", content: "Suivi, traitement et résolution des réclamations des locataires et occupants." },
+      { property: "og:title", content: "Réclamations — Immo360" },
+      { property: "og:description", content: "Pilotage opérationnel des réclamations : échéances, priorités et assignations." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   validateSearch: (s: Record<string, unknown>) => ({
     open: typeof s.open === "string" ? s.open : undefined,
   }),
@@ -29,12 +38,16 @@ export const Route = createFileRoute("/_authenticated/reclamations")({
 const STATUTS = [
   { value: "ouverte", label: "Ouverte" },
   { value: "en_cours", label: "En cours" },
+  { value: "en_attente", label: "En attente" },
   { value: "resolue", label: "Résolue" },
+  { value: "fermee", label: "Fermée" },
 ] as const;
+// Valeurs sélectionnables sur les formulaires (« normale » est conservée en base sur les anciennes fiches)
 const PRIORITES = [
-  { value: "basse", label: "Basse" },
-  { value: "normale", label: "Normale" },
+  { value: "critique", label: "Critique" },
   { value: "haute", label: "Haute" },
+  { value: "moyenne", label: "Moyenne" },
+  { value: "basse", label: "Basse" },
 ] as const;
 const CATEGORIES = [
   { value: "plomberie", label: "Plomberie" },
@@ -44,8 +57,31 @@ const CATEGORIES = [
   { value: "autre", label: "Autre" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const PRIO_LABEL: Record<string, string> = Object.fromEntries(PRIORITES.map((s) => [s.value, s.label]));
+const PRIO_LABEL: Record<string, string> = { ...Object.fromEntries(PRIORITES.map((s) => [s.value, s.label])), normale: "Normale" };
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
+
+const PRIO_DOT: Record<string, string> = {
+  critique: "bg-red-500",
+  haute: "bg-orange-500",
+  moyenne: "bg-yellow-500",
+  normale: "bg-yellow-500",
+  basse: "bg-muted-foreground/40",
+};
+const PRIO_CLASS: Record<string, string> = {
+  critique: "border-red-500/40 bg-red-500/10 text-red-700",
+  haute: "border-orange-500/40 bg-orange-500/10 text-orange-700",
+  moyenne: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700",
+  normale: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700",
+  basse: "border-border bg-muted text-muted-foreground",
+};
+const STATUT_CLASS: Record<string, string> = {
+  ouverte: "border-primary/40 bg-primary/10 text-primary",
+  en_cours: "border-blue-500/40 bg-blue-500/10 text-blue-700",
+  en_attente: "border-amber-500/40 bg-amber-500/10 text-amber-700",
+  resolue: "border-green-600/40 bg-green-600/10 text-green-700",
+  fermee: "border-border bg-muted text-muted-foreground",
+};
+const PRIO_RANK: Record<string, number> = { critique: 0, haute: 1, moyenne: 2, normale: 2, basse: 3 };
 
 type Reclamation = {
   id: string; reference: string | null;
@@ -62,16 +98,46 @@ type Reclamation = {
   prestataire_contacte: boolean;
   overdue_flagged: boolean;
 };
-type Bien = { id: string; titre: string; bailleur_id: string | null };
-type Contact = { id: string; nom: string; prenom: string | null };
+type Bien = { id: string; titre: string; adresse: string | null; bailleur_id: string | null };
+type Contact = { id: string; nom: string; prenom: string | null; telephone?: string | null; email?: string | null };
 type Profile = { id: string; email: string | null };
 type Travail = { id: string; titre: string; statut: string };
 
-const isOverdue = (r: Reclamation) => {
-  if (r.statut === "resolue" || !r.date_limite) return false;
-  const today = new Date(); today.setHours(0,0,0,0);
-  return new Date(r.date_limite) < today;
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const isClosed = (r: Reclamation) => r.statut === "resolue" || r.statut === "fermee";
+
+/** Nombre de jours entre aujourd'hui et l'échéance (négatif = en retard). */
+function daysToDue(r: Reclamation): number | null {
+  if (!r.date_limite) return null;
+  const due = new Date(r.date_limite); due.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - startOfToday().getTime()) / 86400000);
+}
+const isOverdue = (r: Reclamation) => !isClosed(r) && (daysToDue(r) ?? 1) < 0;
+const isDueToday = (r: Reclamation) => !isClosed(r) && daysToDue(r) === 0;
+
+function dueInfo(r: Reclamation): { label: string; tone: "ok" | "soon" | "late" | "none" } {
+  const d = daysToDue(r);
+  if (d === null) return { label: "—", tone: "none" };
+  if (isClosed(r)) return { label: new Date(r.date_limite!).toLocaleDateString("fr-FR"), tone: "none" };
+  if (d < 0) return { label: `En retard de ${-d} jour${-d > 1 ? "s" : ""}`, tone: "late" };
+  if (d === 0) return { label: "Aujourd'hui", tone: "soon" };
+  if (d === 1) return { label: "Demain", tone: "soon" };
+  return { label: `Dans ${d} jours`, tone: d <= 2 ? "soon" : "ok" };
+}
+const DUE_CLASS: Record<string, string> = {
+  ok: "text-green-700",
+  soon: "text-orange-600 font-medium",
+  late: "text-red-600 font-semibold",
+  none: "text-muted-foreground",
 };
+
+/** Nom lisible d'un utilisateur à partir de son email (l'email reste visible en fiche). */
+function userName(p?: Profile | null) {
+  if (!p) return "Non assignée";
+  const local = (p.email ?? "").split("@")[0];
+  if (!local) return "Utilisateur";
+  return local.split(/[._-]+/).filter(Boolean).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+}
 
 function ReclamationsPage() {
   const navigate = useNavigate();
@@ -94,6 +160,11 @@ function ReclamationsPage() {
   const [fPrio, setFPrio] = useState("all");
   const [fBien, setFBien] = useState("all");
   const [fCat, setFCat] = useState("all");
+  const [fAssigne, setFAssigne] = useState("all");
+  const [fEcheance, setFEcheance] = useState("all");
+  const [fResolvedMonth, setFResolvedMonth] = useState(false);
+  const [todayView, setTodayView] = useState(false);
+  const [sort, setSort] = useState("ops");
 
   const canWriteBase = (uid && FULL_ACCESS_USER_IDS.includes(uid)) || (role && role !== "recouvrement" && role !== "en_attente");
 
@@ -106,7 +177,6 @@ function ReclamationsPage() {
         const { data: p } = await supabase.from("profiles").select("role").eq("id", u).maybeSingle();
         setRole(p?.role ?? "");
       }
-      // Détection de retard côté serveur
       try { await (supabase as any).rpc("detect_overdue_reclamations"); } catch { /* silencieux */ }
     })();
   }, []);
@@ -115,8 +185,8 @@ function ReclamationsPage() {
     setLoading(true);
     const [{ data: rData, error }, { data: bData }, { data: lData }, { data: prData }, { data: baData }, { data: pData }] = await Promise.all([
       (supabase.from("reclamations") as any).select("*").order("created_at", { ascending: false }),
-      supabase.from("biens").select("id, titre, bailleur_id").order("titre"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").eq("archive", false).order("nom"),
+      supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
+      supabase.from("contacts").select("id, nom, prenom, telephone, email").eq("type_contact", "locataire").eq("archive", false).order("nom"),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "prestataire").eq("archive", false).order("nom"),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
       supabase.from("profiles").select("id, email").order("email"),
@@ -139,26 +209,98 @@ function ReclamationsPage() {
     if (found) setDetail(found);
   }, [routeSearch.open, items]);
 
-  const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
-  const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
-  const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
-  const prioVariant = (p: string): "default" | "secondary" | "destructive" => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
+  const bienOf = (id: string) => biens.find((b) => b.id === id);
+  const bienTitre = (id: string) => bienOf(id)?.titre ?? "—";
+  const locataireOf = (id: string | null) => (id ? locataires.find((x) => x.id === id) ?? null : null);
+  const locataireName = (id: string | null) => { const l = locataireOf(id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
+  const profileOf = (id: string | null) => (id ? profiles.find((p) => p.id === id) ?? null : null);
+
+  const resetFilters = () => {
+    setSearch(""); setFStatut("all"); setFPrio("all"); setFCat("all"); setFBien("all");
+    setFAssigne("all"); setFEcheance("all"); setFResolvedMonth(false); setTodayView(false);
+  };
+
+  // Vue « À traiter aujourd'hui »
+  const needsActionToday = (r: Reclamation) =>
+    !isClosed(r) && (isOverdue(r) || isDueToday(r) || r.priorite === "critique" || r.priorite === "haute" || !r.assigne_a);
+
+  const resolvedThisMonth = (r: Reclamation) => {
+    if (r.statut !== "resolue") return false;
+    const d = r.date_resolution ? new Date(r.date_resolution) : null;
+    if (!d) return false;
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  };
+
+  const kpis = useMemo(() => ({
+    ouvertes: items.filter((r) => r.statut === "ouverte").length,
+    retard: items.filter(isOverdue).length,
+    haute: items.filter((r) => r.priorite === "haute").length,
+    aujourdhui: items.filter(needsActionToday).length,
+    resolues: items.filter(resolvedThisMonth).length,
+  }), [items]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter((r) => {
+    const out = items.filter((r) => {
+      if (todayView && !needsActionToday(r)) return false;
+      if (fResolvedMonth && !resolvedThisMonth(r)) return false;
       if (fStatut !== "all" && r.statut !== fStatut) return false;
       if (fPrio !== "all" && r.priorite !== fPrio) return false;
       if (fBien !== "all" && r.bien_id !== fBien) return false;
       if (fCat !== "all" && (r.categorie ?? "") !== fCat) return false;
+      if (fAssigne !== "all") {
+        if (fAssigne === "none" ? !!r.assigne_a : r.assigne_a !== fAssigne) return false;
+      }
+      if (fEcheance === "today" && !isDueToday(r)) return false;
+      if (fEcheance === "late" && !isOverdue(r)) return false;
+      if (fEcheance === "upcoming" && !(!isClosed(r) && (daysToDue(r) ?? -1) > 0)) return false;
       if (q) {
-        const hay = `${r.reference ?? ""} ${r.titre} ${bienTitre(r.bien_id)} ${locataireName(r.locataire_id)}`.toLowerCase();
+        const b = bienOf(r.bien_id);
+        const hay = `${r.reference ?? ""} ${r.titre} ${r.description ?? ""} ${b?.titre ?? ""} ${b?.adresse ?? ""} ${locataireName(r.locataire_id)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
+
+    const byDue = (a: Reclamation, b: Reclamation) => {
+      const da = daysToDue(a), db = daysToDue(b);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    };
+    const sorted = [...out];
+    if (sort === "priorite") sorted.sort((a, b) => (PRIO_RANK[a.priorite] ?? 9) - (PRIO_RANK[b.priorite] ?? 9));
+    else if (sort === "echeance") sorted.sort(byDue);
+    else if (sort === "created") sorted.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    else if (sort === "statut") sorted.sort((a, b) => (STATUT_LABEL[a.statut] ?? a.statut).localeCompare(STATUT_LABEL[b.statut] ?? b.statut));
+    else if (sort === "bien") sorted.sort((a, b) => bienTitre(a.bien_id).localeCompare(bienTitre(b.bien_id)));
+    else if (sort === "assigne") sorted.sort((a, b) => userName(profileOf(a.assigne_a)).localeCompare(userName(profileOf(b.assigne_a))));
+    else {
+      // Tri opérationnel par défaut
+      const score = (r: Reclamation) => {
+        if (isClosed(r)) return 90;
+        if (r.priorite === "critique") return 0;
+        if (r.priorite === "haute") return 1;
+        if (isOverdue(r)) return 2;
+        if (isDueToday(r)) return 3;
+        if ((daysToDue(r) ?? 999) > 0) return 4;
+        return 5;
+      };
+      sorted.sort((a, b) => score(a) - score(b) || byDue(a, b));
+    }
+    return sorted;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, search, fStatut, fPrio, fBien, fCat, biens, locataires]);
+  }, [items, search, fStatut, fPrio, fBien, fCat, fAssigne, fEcheance, fResolvedMonth, todayView, sort, biens, locataires, profiles]);
+
+  const kpiCards = [
+    { key: "ouvertes", label: "Réclamations ouvertes", value: kpis.ouvertes, danger: false, onClick: () => { resetFilters(); setFStatut("ouverte"); } },
+    { key: "retard", label: "En retard", value: kpis.retard, danger: kpis.retard > 0, onClick: () => { resetFilters(); setFEcheance("late"); } },
+    { key: "haute", label: "Priorité haute", value: kpis.haute, danger: false, onClick: () => { resetFilters(); setFPrio("haute"); } },
+    { key: "today", label: "À traiter aujourd'hui", value: kpis.aujourdhui, danger: false, onClick: () => { resetFilters(); setTodayView(true); } },
+    { key: "resolues", label: "Résolues ce mois", value: kpis.resolues, danger: false, onClick: () => { resetFilters(); setFResolvedMonth(true); setFStatut("resolue"); } },
+  ];
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -168,52 +310,154 @@ function ReclamationsPage() {
           <Button variant="outline" size="sm" asChild><Link to="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" /> Tableau de bord</Link></Button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Réclamations</h1>
+            <p className="text-sm text-muted-foreground">Suivi, traitement et résolution des réclamations des locataires et occupants.</p>
+          </div>
+          {canWriteBase && <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nouvelle réclamation</Button>}
+        </div>
+
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {kpiCards.map((k) => (
+            <button
+              key={k.key}
+              type="button"
+              onClick={k.onClick}
+              className="rounded-lg border bg-background p-3 text-left transition-colors hover:bg-accent"
+            >
+              <div className={`text-2xl font-semibold ${k.danger ? "text-red-600" : ""}`}>{k.value}</div>
+              <div className="text-xs text-muted-foreground">{k.label}</div>
+            </button>
+          ))}
+        </div>
+
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div><CardTitle>Réclamations</CardTitle><CardDescription>Cliquez sur une ligne pour ouvrir la fiche détail.</CardDescription></div>
-            {canWriteBase && <Button size="sm" onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button>}
+            <div>
+              <CardTitle className="text-base">Liste des réclamations</CardTitle>
+              <CardDescription>Cliquez sur une ligne pour ouvrir la fiche détail.</CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant={todayView ? "default" : "outline"}
+              onClick={() => setTodayView((v) => !v)}
+            >
+              <Zap className="mr-2 h-4 w-4" /> À traiter aujourd'hui
+            </Button>
           </CardHeader>
           <CardContent>
             <FilterBar
               search={search}
               onSearchChange={setSearch}
-              searchPlaceholder="Référence, titre, bien ou occupant..."
+              searchPlaceholder="Rechercher une réclamation, un bien, un lot ou un occupant..."
               selects={[
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
                 { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: PRIORITES.map((s) => ({ value: s.value, label: s.label })) },
                 { key: "cat", label: "Catégorie", value: fCat, onChange: setFCat, options: CATEGORIES.map((c) => ({ value: c.value, label: c.label })) },
                 { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
+                { key: "assigne", label: "Assigné à", value: fAssigne, onChange: setFAssigne, options: [{ value: "none", label: "Non assignée" }, ...profiles.map((p) => ({ value: p.id, label: userName(p) }))], width: "w-48" },
+                { key: "echeance", label: "Échéance", value: fEcheance, onChange: setFEcheance, options: [
+                  { value: "today", label: "Aujourd'hui" },
+                  { value: "upcoming", label: "À venir" },
+                  { value: "late", label: "En retard" },
+                ] },
               ]}
-              onReset={() => { setSearch(""); setFStatut("all"); setFPrio("all"); setFCat("all"); setFBien("all"); }}
+              onReset={resetFilters}
+              extra={
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Trier par</span>
+                  <Select value={sort} onValueChange={setSort}>
+                    <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ops">Priorité opérationnelle</SelectItem>
+                      <SelectItem value="priorite">Priorité</SelectItem>
+                      <SelectItem value="echeance">Échéance</SelectItem>
+                      <SelectItem value="created">Date de création</SelectItem>
+                      <SelectItem value="statut">Statut</SelectItem>
+                      <SelectItem value="bien">Bien</SelectItem>
+                      <SelectItem value="assigne">Assigné</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              }
             />
+            {(todayView || fResolvedMonth) && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {todayView && <Badge variant="outline" className="gap-1"><Zap className="h-3 w-3" /> Vue « À traiter aujourd'hui »</Badge>}
+                {fResolvedMonth && <Badge variant="outline">Résolues ce mois</Badge>}
+                <button type="button" className="text-xs underline text-muted-foreground" onClick={resetFilters}>Réinitialiser les filtres</button>
+              </div>
+            )}
+
             {loading ? <p className="text-sm text-muted-foreground">Chargement...</p> : filtered.length === 0 ? <p className="text-sm text-muted-foreground">Aucune réclamation.</p> : (
-              <div className="overflow-x-auto"><Table>
-                <TableHeader><TableRow>
-                  <TableHead>Référence</TableHead><TableHead>Bien</TableHead><TableHead>Titre</TableHead>
-                  <TableHead>Occupant</TableHead><TableHead>Assigné</TableHead>
-                  <TableHead>Priorité</TableHead><TableHead>Statut</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>{filtered.map((r) => {
-                  const overdue = isOverdue(r);
-                  return (
-                    <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetail(r)}>
-                      <TableCell className="font-mono text-xs">{r.reference ?? "—"}</TableCell>
-                      <TableCell className="font-medium">{bienTitre(r.bien_id)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{r.titre}</span>
-                          {overdue && <Badge variant="destructive" className="text-[10px]">En retard</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>{locataireName(r.locataire_id)}</TableCell>
-                      <TableCell className="text-xs">{profEmail(r.assigne_a)}</TableCell>
-                      <TableCell><Badge variant={prioVariant(r.priorite)}>{PRIO_LABEL[r.priorite] ?? r.priorite}</Badge></TableCell>
-                      <TableCell><Badge>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell>
-                    </TableRow>
-                  );
-                })}</TableBody>
-              </Table></div>
+              <>
+                {/* Desktop / tablette */}
+                <div className="hidden overflow-x-auto md:block">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Réclamation</TableHead><TableHead>Bien / Lot</TableHead><TableHead>Occupant</TableHead>
+                      <TableHead>Priorité</TableHead><TableHead>Échéance</TableHead><TableHead>Assigné à</TableHead><TableHead>Statut</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>{filtered.map((r) => {
+                      const due = dueInfo(r);
+                      const b = bienOf(r.bien_id);
+                      const assigne = profileOf(r.assigne_a);
+                      return (
+                        <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetail(r)}>
+                          <TableCell>
+                            <div className="font-medium">{r.titre}</div>
+                            <div className="font-mono text-[11px] text-muted-foreground">{r.reference ?? "—"}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div>{b?.titre ?? "—"}</div>
+                            {b?.adresse && <div className="text-xs text-muted-foreground">{b.adresse}</div>}
+                          </TableCell>
+                          <TableCell>{locataireName(r.locataire_id)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`gap-1.5 ${PRIO_CLASS[r.priorite] ?? ""}`}>
+                              <span className={`h-2 w-2 rounded-full ${PRIO_DOT[r.priorite] ?? "bg-muted-foreground"}`} />
+                              {PRIO_LABEL[r.priorite] ?? r.priorite}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`text-xs ${DUE_CLASS[due.tone]}`}>{due.label}</TableCell>
+                          <TableCell className="text-xs">
+                            {assigne ? userName(assigne) : (
+                              <span className="inline-flex items-center gap-1 text-orange-600"><UserX className="h-3 w-3" /> Non assignée</span>
+                            )}
+                          </TableCell>
+                          <TableCell><Badge variant="outline" className={STATUT_CLASS[r.statut] ?? ""}>{STATUT_LABEL[r.statut] ?? r.statut}</Badge></TableCell>
+                        </TableRow>
+                      );
+                    })}</TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile : cartes compactes */}
+                <ul className="space-y-2 md:hidden">
+                  {filtered.map((r) => {
+                    const due = dueInfo(r);
+                    return (
+                      <li key={r.id}>
+                        <button type="button" onClick={() => setDetail(r)} className="w-full rounded-lg border bg-background p-3 text-left hover:bg-accent">
+                          <div className="font-medium">{r.titre}</div>
+                          <div className="font-mono text-[11px] text-muted-foreground">{r.reference ?? "—"}</div>
+                          <div className="mt-1 text-sm">{bienTitre(r.bien_id)}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className={`gap-1.5 ${PRIO_CLASS[r.priorite] ?? ""}`}>
+                              <span className={`h-2 w-2 rounded-full ${PRIO_DOT[r.priorite] ?? "bg-muted-foreground"}`} />
+                              {PRIO_LABEL[r.priorite] ?? r.priorite}
+                            </Badge>
+                            <Badge variant="outline" className={STATUT_CLASS[r.statut] ?? ""}>{STATUT_LABEL[r.statut] ?? r.statut}</Badge>
+                            <span className={`text-xs ${DUE_CLASS[due.tone]}`}>{due.label}</span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </CardContent>
         </Card>
@@ -225,7 +469,6 @@ function ReclamationsPage() {
             onDeleted={() => { setDetail(null); load(); }}
             onChanged={() => { setDetail(null); load(); }}
             onCreateTravaux={() => {
-              const b = biens.find((x) => x.id === detail.bien_id);
               navigate({
                 to: "/travaux",
                 search: {
@@ -237,7 +480,6 @@ function ReclamationsPage() {
                   open: undefined,
                 } as any,
               });
-              void b;
             }}
           />
         )}
@@ -286,7 +528,19 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
   onClose: () => void; onEdit: () => void; onDeleted: () => void; onChanged: () => void; onCreateTravaux: () => void;
 }) {
   const perms = recPerms(role, rec.created_by, rec.assigne_a, uid);
-  const [statutSaving, setStatutSaving] = useState(false);
+  const canAct = perms.canEditFull || perms.canEditLimited;
+  const canSeePersonal = role === "admin" || role === "direction" || role === "technique" || role === "gestion" || perms.canEditFull || FULL_ACCESS_USER_IDS.includes(uid);
+  const [saving, setSaving] = useState(false);
+  const [dueDraft, setDueDraft] = useState(rec.date_limite ?? "");
+
+  const patch = async (values: Record<string, any>, msg: string) => {
+    setSaving(true);
+    const { error } = await (supabase.from("reclamations") as any).update(values).eq("id", rec.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(msg);
+    onChanged();
+  };
 
   const changeStatut = async (v: string) => {
     if (v === rec.statut) return;
@@ -294,19 +548,16 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
       toast.error("Renseignez la solution via « Modifier » pour clôturer la réclamation.");
       return;
     }
-    setStatutSaving(true);
-    const { error } = await supabase.from("reclamations").update({ statut: v }).eq("id", rec.id);
-    setStatutSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Statut mis à jour");
-    onChanged();
+    await patch({ statut: v }, "Statut mis à jour");
   };
+
   const bien = biens.find((b) => b.id === rec.bien_id);
   const bailleur = bien?.bailleur_id ? bailleurs.find((b) => b.id === bien.bailleur_id) : null;
   const loc = rec.locataire_id ? locataires.find((l) => l.id === rec.locataire_id) : null;
   const assigne = rec.assigne_a ? profiles.find((p) => p.id === rec.assigne_a) : null;
   const prest = rec.prestataire_id ? prestataires.find((p) => p.id === rec.prestataire_id) : null;
   const overdue = isOverdue(rec);
+  const due = dueInfo(rec);
   const canCreateTravaux = role === "technique" || role === "admin" || role === "direction" || FULL_ACCESS_USER_IDS.includes(uid);
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -323,7 +574,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
     const ids = Array.from(new Set(rows.map((r) => r.auteur).filter((v): v is string => !!v)));
     if (ids.length) {
       const { data: profs } = await supabase.from("profiles").select("id, email").in("id", ids);
-      setAuthors(new Map(((profs ?? []) as { id: string; email: string | null }[]).map((p) => [p.id, p.email ?? "—"])));
+      setAuthors(new Map(((profs ?? []) as Profile[]).map((p) => [p.id, userName(p)])));
     }
   };
   const loadTravaux = async () => {
@@ -356,47 +607,118 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge>{STATUT_LABEL[rec.statut] ?? rec.statut}</Badge>
-            <Badge variant={rec.priorite === "haute" ? "destructive" : rec.priorite === "basse" ? "secondary" : "default"}>{PRIO_LABEL[rec.priorite] ?? rec.priorite}</Badge>
+            <Badge variant="outline" className={STATUT_CLASS[rec.statut] ?? ""}>{STATUT_LABEL[rec.statut] ?? rec.statut}</Badge>
+            <Badge variant="outline" className={`gap-1.5 ${PRIO_CLASS[rec.priorite] ?? ""}`}>
+              <span className={`h-2 w-2 rounded-full ${PRIO_DOT[rec.priorite] ?? "bg-muted-foreground"}`} />
+              {PRIO_LABEL[rec.priorite] ?? rec.priorite}
+            </Badge>
             {rec.categorie && <Badge variant="outline">{CAT_LABEL[rec.categorie] ?? rec.categorie}</Badge>}
+            {!isClosed(rec) && due.tone !== "none" && (
+              <Badge variant="outline" className={due.tone === "late" ? "border-red-500/40 bg-red-500/10 text-red-700" : due.tone === "soon" ? "border-orange-500/40 bg-orange-500/10 text-orange-700" : "border-green-600/40 bg-green-600/10 text-green-700"}>
+                <Clock className="mr-1 h-3 w-3" /> {due.label}
+              </Badge>
+            )}
+            {!rec.assigne_a && <Badge variant="outline" className="border-orange-500/40 bg-orange-500/10 text-orange-700 gap-1"><UserX className="h-3 w-3" /> Non assignée</Badge>}
             {overdue && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> En retard</Badge>}
           </div>
 
-          {(perms.canEditFull || perms.canEditLimited) && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Changer le statut :</span>
-              <Select value={rec.statut} onValueChange={changeStatut} disabled={statutSaving}>
-                <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          <section>
+            <h4 className="mb-2 font-semibold">Informations générales</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div><span className="text-muted-foreground">Référence : </span>{rec.reference ?? "—"}</div>
+              <div><span className="text-muted-foreground">Catégorie : </span>{rec.categorie ? CAT_LABEL[rec.categorie] ?? rec.categorie : "—"}</div>
+              <div><span className="text-muted-foreground">Créée le : </span>{new Date(rec.created_at).toLocaleString("fr-FR")}</div>
+              <div><span className="text-muted-foreground">Date d'incident : </span>{fmtDate(rec.date_incident)}</div>
+              <div><span className="text-muted-foreground">Échéance : </span>{fmtDate(rec.date_limite)}</div>
+              <div><span className="text-muted-foreground">Résolue le : </span>{rec.date_resolution ? new Date(rec.date_resolution).toLocaleDateString("fr-FR") : "—"}{rec.temps_traitement != null ? ` (${rec.temps_traitement} j)` : ""}</div>
             </div>
+          </section>
+
+          <section className="border-t pt-3">
+            <h4 className="mb-2 font-semibold">Bien concerné</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div><span className="text-muted-foreground">Bien : </span>{bien ? <Link to="/biens/$bienId" params={{ bienId: bien.id }} className="underline">{bien.titre}</Link> : "—"}</div>
+              <div><span className="text-muted-foreground">Adresse : </span>{bien?.adresse ?? "—"}</div>
+              <div><span className="text-muted-foreground">Propriétaire : </span>{bailleur ? `${bailleur.nom}${bailleur.prenom ? ` ${bailleur.prenom}` : ""}` : "—"}</div>
+            </div>
+          </section>
+
+          <section className="border-t pt-3">
+            <h4 className="mb-2 font-semibold">Occupant</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div><span className="text-muted-foreground">Nom : </span>{loc ? <Link to="/contacts/$contactId" params={{ contactId: loc.id }} className="underline">{loc.nom}{loc.prenom ? ` ${loc.prenom}` : ""}</Link> : "—"}</div>
+              {canSeePersonal && <div><span className="text-muted-foreground">Téléphone : </span>{loc?.telephone ?? "—"}</div>}
+              {canSeePersonal && <div><span className="text-muted-foreground">Email : </span>{loc?.email ?? "—"}</div>}
+            </div>
+          </section>
+
+          <section className="border-t pt-3">
+            <h4 className="mb-2 font-semibold">Assignation</h4>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div><span className="text-muted-foreground">Responsable : </span>{assigne ? userName(assigne) : "Non assignée"}</div>
+              {canSeePersonal && <div><span className="text-muted-foreground">Email : </span>{assigne?.email ?? "—"}</div>}
+              <div><span className="text-muted-foreground">Prestataire : </span>{prest ? <Link to="/contacts/$contactId" params={{ contactId: prest.id }} className="underline">{prest.nom}{prest.prenom ? ` ${prest.prenom}` : ""}</Link> : "—"}</div>
+            </div>
+          </section>
+
+          <section className="border-t pt-3">
+            <h4 className="mb-2 font-semibold">Description</h4>
+            <div className="whitespace-pre-wrap rounded bg-muted/40 p-2">{rec.description || "—"}</div>
+          </section>
+
+          {canAct && (
+            <section className="border-t pt-3">
+              <h4 className="mb-2 font-semibold">Actions</h4>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-1">
+                  <Label className="text-xs">Assigner</Label>
+                  <Select value={rec.assigne_a ?? "none"} onValueChange={(v) => patch({ assigne_a: v === "none" ? null : v }, "Assignation mise à jour")} disabled={saving}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Non assignée</SelectItem>
+                      {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{userName(p)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Statut</Label>
+                  <Select value={rec.statut} onValueChange={changeStatut} disabled={saving}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Priorité</Label>
+                  <Select value={PRIORITES.some((p) => p.value === rec.priorite) ? rec.priorite : ""} onValueChange={(v) => patch({ priorite: v }, "Priorité mise à jour")} disabled={saving}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder={PRIO_LABEL[rec.priorite] ?? rec.priorite} /></SelectTrigger>
+                    <SelectContent>{PRIORITES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Échéance</Label>
+                  <div className="flex gap-2">
+                    <Input type="date" className="h-8" value={dueDraft} onChange={(e) => setDueDraft(e.target.value)} />
+                    <Button size="sm" variant="secondary" disabled={saving || dueDraft === (rec.date_limite ?? "")} onClick={() => patch({ date_limite: dueDraft || null }, "Échéance mise à jour")}>OK</Button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {canCreateTravaux && (
+                  <Button size="sm" variant="secondary" onClick={onCreateTravaux}><Hammer className="mr-2 h-4 w-4" /> Planifier une intervention (travaux)</Button>
+                )}
+                {rec.statut !== "resolue" && (
+                  <Button size="sm" onClick={() => (rec.solution ?? "").trim() ? changeStatut("resolue") : (toast.error("Renseignez la solution via « Modifier » pour clôturer."), onEdit())}>
+                    Résoudre la réclamation
+                  </Button>
+                )}
+              </div>
+            </section>
           )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div><span className="text-muted-foreground">Bien : </span>{bien?.titre ?? "—"}</div>
-            <div><span className="text-muted-foreground">Propriétaire : </span>{bailleur ? `${bailleur.nom}${bailleur.prenom ? ` ${bailleur.prenom}` : ""}` : "—"}</div>
-            <div><span className="text-muted-foreground">Occupant : </span>{loc ? `${loc.nom}${loc.prenom ? ` ${loc.prenom}` : ""}` : "—"}</div>
-            <div><span className="text-muted-foreground">Utilisateur assigné : </span>{assigne?.email ?? "—"}</div>
-            <div><span className="text-muted-foreground">Prestataire : </span>{prest ? <Link to="/contacts/$contactId" params={{ contactId: prest.id }} className="underline">{prest.nom}{prest.prenom ? ` ${prest.prenom}` : ""}</Link> : "—"}</div>
-            <div><span className="text-muted-foreground">Date d'incident : </span>{fmtDate(rec.date_incident)}</div>
-            <div><span className="text-muted-foreground">Date limite : </span>{fmtDate(rec.date_limite)}</div>
-            <div><span className="text-muted-foreground">Résolue le : </span>{rec.date_resolution ? new Date(rec.date_resolution).toLocaleDateString("fr-FR") : "—"}{rec.temps_traitement != null ? ` (${rec.temps_traitement} j)` : ""}</div>
-          </div>
-
-          {rec.description && <div className="bg-muted/40 rounded p-2 whitespace-pre-wrap">{rec.description}</div>}
 
           {rec.statut === "resolue" && rec.solution && (
             <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3">
               <div className="text-xs font-semibold text-green-700 mb-1">Solution apportée{rec.prestataire_contacte ? " (prestataire contacté)" : ""}</div>
               <div className="whitespace-pre-wrap">{rec.solution}</div>
-            </div>
-          )}
-
-          {canCreateTravaux && (
-            <div>
-              <Button size="sm" variant="secondary" onClick={onCreateTravaux}><Hammer className="mr-2 h-4 w-4" /> Créer un travaux associé</Button>
             </div>
           )}
 
@@ -416,12 +738,12 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
           )}
 
           <div className="border-t pt-3">
-            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><FileText className="h-4 w-4" /> Documents</h4>
+            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><FileText className="h-4 w-4" /> Pièces jointes</h4>
             <DocumentsSection
               bucket="reclamations-documents"
               recordId={rec.id}
-              canWrite={perms.canEditFull || perms.canEditLimited}
-              description="PDF, images, Word, Excel — 10 Mo max par fichier."
+              canWrite={canAct}
+              description="Photos, devis, factures, rapports — 10 Mo max par fichier."
               allowedExtensions={[".pdf", ".jpg", ".jpeg", ".png", ".docx", ".xlsx"]}
               allowedMimeTypes={[
                 "application/pdf",
@@ -449,12 +771,12 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
                       {h.champ_modifie === "statut" ? (
                         <>{" : "}<span className="text-muted-foreground">{STATUT_LABEL[h.ancienne_valeur ?? ""] ?? h.ancienne_valeur ?? "—"}</span> → <span className="font-medium">{STATUT_LABEL[h.nouvelle_valeur ?? ""] ?? h.nouvelle_valeur}</span></>
                       ) : h.champ_modifie === "assigne_a" ? (
-                        <>{" : "}{h.nouvelle_valeur ? (profiles.find((p) => p.id === h.nouvelle_valeur)?.email ?? "—") : "désassigné"}</>
+                        <>{" : "}{h.nouvelle_valeur ? userName(profiles.find((p) => p.id === h.nouvelle_valeur)) : "désassigné"}</>
                       ) : h.champ_modifie === "creation" ? null : (
                         <>{" : "}{h.nouvelle_valeur ?? "—"}</>
                       )}
                     </span>
-                    <span className="text-muted-foreground whitespace-nowrap">{h.auteur ? authors.get(h.auteur) ?? "—" : "—"} • {new Date(h.created_at).toLocaleString("fr-FR")}</span>
+                    <span className="text-muted-foreground whitespace-nowrap">{h.auteur ? authors.get(h.auteur) ?? "—" : "Système"} • {new Date(h.created_at).toLocaleString("fr-FR")}</span>
                   </li>
                 ))}
               </ul>
@@ -467,7 +789,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
         </div>
         <DialogFooter className="gap-2">
           {perms.canDelete && <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
-          {(perms.canEditFull || perms.canEditLimited) && <Button size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>}
+          {canAct && <Button size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>}
           <Button variant="outline" size="sm" onClick={onClose}>Fermer</Button>
         </DialogFooter>
       </DialogContent>
@@ -493,7 +815,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
     date_incident: initial?.date_incident ?? "",
     date_limite: initial?.date_limite ?? "",
     statut: initial?.statut ?? "ouverte",
-    priorite: initial?.priorite ?? "normale",
+    priorite: initial?.priorite ?? "moyenne",
     assigne_a: initial?.assigne_a ?? "",
     prestataire_id: initial?.prestataire_id ?? "",
     solution: initial?.solution ?? "",
@@ -542,13 +864,17 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
     }
   };
 
+  const prioOptions = PRIORITES.some((p) => p.value === form.priorite)
+    ? PRIORITES.map((p) => ({ value: p.value, label: p.label }))
+    : [{ value: form.priorite, label: `${PRIO_LABEL[form.priorite] ?? form.priorite} (valeur historique)` }, ...PRIORITES.map((p) => ({ value: p.value, label: p.label }))];
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{isEdit ? "Modifier la réclamation" : "Nouvelle réclamation"}</DialogTitle>
-            <DialogDescription>{limited ? "En tant que profil technique : statut, priorité, assignation, prestataire et solution uniquement." : "Renseignez les informations."}</DialogDescription>
+            <DialogDescription>{limited ? "Droits limités : statut, priorité, assignation, prestataire et solution uniquement." : "Renseignez les informations."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>Bien *</Label>
@@ -582,7 +908,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
               <div className="grid gap-2"><Label>Utilisateur assigné</Label>
                 <Select value={form.assigne_a || "none"} onValueChange={(v) => setForm({ ...form, assigne_a: v === "none" ? "" : v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">—</SelectItem>{profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.email ?? p.id}</SelectItem>)}</SelectContent>
+                  <SelectContent><SelectItem value="none">—</SelectItem>{profiles.map((p) => <SelectItem key={p.id} value={p.id}>{userName(p)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2"><Label>Prestataire</Label>
@@ -603,14 +929,14 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
               <div className="grid gap-2"><Label>Priorité</Label>
                 <Select value={form.priorite} onValueChange={(v) => setForm({ ...form, priorite: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{prioOptions.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid gap-2"><Label>Date limite</Label>
+            <div className="grid gap-2"><Label>Échéance</Label>
               <Input type="date" value={form.date_limite} onChange={(e) => setForm({ ...form, date_limite: e.target.value })} disabled={limited} />
-              <p className="text-xs text-muted-foreground">Calculée automatiquement à la création selon la priorité, modifiable.</p>
+              <p className="text-xs text-muted-foreground">Si vide : calculée automatiquement selon la priorité (Critique 24 h, Haute 48 h, Moyenne 72 h, Basse 7 jours).</p>
             </div>
 
             {form.statut === "resolue" && (
