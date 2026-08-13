@@ -77,7 +77,7 @@ type Profile = { id: string; email: string | null };
 type Travail = { id: string; titre: string; statut: string };
 
 const isOverdue = (r: Reclamation) => {
-  if (r.statut === "resolue" || !r.date_limite) return false;
+  if (r.statut === "resolue" || r.statut === "fermee" || !r.date_limite) return false;
   const today = new Date(); today.setHours(0,0,0,0);
   return new Date(r.date_limite) < today;
 };
@@ -151,7 +151,7 @@ function ReclamationsPage() {
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
-  const prioVariant = (p: string): "default" | "secondary" | "destructive" => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
+  const prioVariant = (p: string): "default" | "secondary" | "destructive" => p === "critique" || p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -190,7 +190,7 @@ function ReclamationsPage() {
               searchPlaceholder="Référence, titre, bien ou occupant..."
               selects={[
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
-                { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: PRIORITES.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: [...PRIORITES, ...PRIORITES_LEGACY].map((s) => ({ value: s.value, label: s.label })) },
                 { key: "cat", label: "Catégorie", value: fCat, onChange: setFCat, options: CATEGORIES.map((c) => ({ value: c.value, label: c.label })) },
                 { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
               ]}
@@ -366,7 +366,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
         <div className="space-y-4 text-sm">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge>{STATUT_LABEL[rec.statut] ?? rec.statut}</Badge>
-            <Badge variant={rec.priorite === "haute" ? "destructive" : rec.priorite === "basse" ? "secondary" : "default"}>{PRIO_LABEL[rec.priorite] ?? rec.priorite}</Badge>
+            <Badge variant={rec.priorite === "critique" || rec.priorite === "haute" ? "destructive" : rec.priorite === "basse" ? "secondary" : "default"}>{PRIO_LABEL[rec.priorite] ?? rec.priorite}</Badge>
             {rec.categorie && <Badge variant="outline">{CAT_LABEL[rec.categorie] ?? rec.categorie}</Badge>}
             {overdue && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> En retard</Badge>}
           </div>
@@ -502,7 +502,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
     date_incident: initial?.date_incident ?? "",
     date_limite: initial?.date_limite ?? "",
     statut: initial?.statut ?? "ouverte",
-    priorite: initial?.priorite ?? "normale",
+    priorite: initial?.priorite ?? "moyenne",
     assigne_a: initial?.assigne_a ?? "",
     prestataire_id: initial?.prestataire_id ?? "",
     solution: initial?.solution ?? "",
