@@ -223,6 +223,7 @@ function ReclamationsPage() {
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
+            onChanged={() => { setDetail(null); load(); }}
             onCreateTravaux={() => {
               const b = biens.find((x) => x.id === detail.bien_id);
               navigate({
@@ -269,12 +270,37 @@ const CHAMP_LABEL: Record<string, string> = {
   retard: "Retard",
 };
 
-function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataires, bailleurs, onClose, onEdit, onDeleted, onCreateTravaux }: {
+// Permissions réclamation : l'assigné a les mêmes droits que le profil technique
+// (statut, priorité, assignation, prestataire, catégorie, solution).
+function recPerms(role: string, createdBy: string | null, assigneA: string | null, uid: string) {
+  const base = computePerms(role, createdBy, uid);
+  const isAssignee = !!assigneA && assigneA === uid;
+  if (!isAssignee || base.canEditFull) return base;
+  return { ...base, canRead: true, canComment: true, canEditLimited: true };
+}
+
+
+function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataires, bailleurs, onClose, onEdit, onDeleted, onChanged, onCreateTravaux }: {
   rec: Reclamation; uid: string; role: string;
   biens: Bien[]; locataires: Contact[]; profiles: Profile[]; prestataires: Contact[]; bailleurs: Contact[];
-  onClose: () => void; onEdit: () => void; onDeleted: () => void; onCreateTravaux: () => void;
+  onClose: () => void; onEdit: () => void; onDeleted: () => void; onChanged: () => void; onCreateTravaux: () => void;
 }) {
-  const perms = computePerms(role, rec.created_by, uid);
+  const perms = recPerms(role, rec.created_by, rec.assigne_a, uid);
+  const [statutSaving, setStatutSaving] = useState(false);
+
+  const changeStatut = async (v: string) => {
+    if (v === rec.statut) return;
+    if (v === "resolue" && !(rec.solution ?? "").trim()) {
+      toast.error("Renseignez la solution via « Modifier » pour clôturer la réclamation.");
+      return;
+    }
+    setStatutSaving(true);
+    const { error } = await supabase.from("reclamations").update({ statut: v }).eq("id", rec.id);
+    setStatutSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Statut mis à jour");
+    onChanged();
+  };
   const bien = biens.find((b) => b.id === rec.bien_id);
   const bailleur = bien?.bailleur_id ? bailleurs.find((b) => b.id === bien.bailleur_id) : null;
   const loc = rec.locataire_id ? locataires.find((l) => l.id === rec.locataire_id) : null;
@@ -335,6 +361,18 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
             {rec.categorie && <Badge variant="outline">{CAT_LABEL[rec.categorie] ?? rec.categorie}</Badge>}
             {overdue && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> En retard</Badge>}
           </div>
+
+          {(perms.canEditFull || perms.canEditLimited) && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Changer le statut :</span>
+              <Select value={rec.statut} onValueChange={changeStatut} disabled={statutSaving}>
+                <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div><span className="text-muted-foreground">Bien : </span>{bien?.titre ?? "—"}</div>
@@ -443,7 +481,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
   onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
-  const perms = computePerms(role, initial?.created_by ?? uid, uid);
+  const perms = recPerms(role, initial?.created_by ?? uid, initial?.assigne_a ?? null, uid);
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
