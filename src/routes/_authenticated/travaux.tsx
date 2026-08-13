@@ -833,7 +833,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
             {edl && (
               <div className="mt-3 border-t pt-2">
                 <h4 className="mb-1 text-sm font-semibold">État des lieux associé</h4>
-                <Link to="/etats-des-lieux" search={{ open: edl.id }} className="text-primary underline-offset-2 hover:underline">
+                <Link to="/etats-des-lieux" className="text-primary underline-offset-2 hover:underline">
                   État des lieux {edl.type} — {fmtDate(edl.date_realisation)}
                 </Link>
               </div>
