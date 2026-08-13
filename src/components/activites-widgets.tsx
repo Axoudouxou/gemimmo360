@@ -98,10 +98,9 @@ export function ActiviteTypeBadge({ type, className = "" }: { type: string; clas
 
 export const STATUT_LABELS: Record<string, string> = {
   a_faire: "À faire",
-  en_cours: "En cours",
-  fait: "Fait",
   planifiee: "Planifiée",
-  realisee: "Réalisée",
+  en_cours: "En cours",
+  terminee: "Terminée",
   annulee: "Annulée",
 };
 
@@ -129,7 +128,7 @@ function ActiviteRow({
   showDate?: boolean;
 }) {
   const link = linkFor(a);
-  const done = a.statut === "fait" || a.statut === "realisee";
+  const done = a.statut === "terminee";
   return (
     <div className="flex items-start gap-3 rounded-md border p-3 hover:bg-muted/40">
       <Checkbox
@@ -163,7 +162,7 @@ function ActiviteRow({
 }
 
 async function markDone(id: string) {
-  const { error } = await supabase.from("activites").update({ statut: "fait" }).eq("id", id);
+  const { error } = await supabase.from("activites").update({ statut: "terminee" }).eq("id", id);
   if (error) toast.error(error.message);
   else toast.success("Marqué comme fait");
 }
@@ -179,8 +178,7 @@ export function MesTachesSemaine({ userId }: { userId: string | null }) {
       .from("activites")
       .select("*")
       .eq("assigne_a", userId)
-      .neq("statut", "fait")
-      .neq("statut", "realisee")
+      .neq("statut", "terminee")
       .neq("statut", "annulee")
       .or(`date_debut.gte.${start.toISOString()},date_debut.is.null`)
       .lte("date_debut", end.toISOString())

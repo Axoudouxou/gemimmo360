@@ -564,7 +564,7 @@ export function SuiviEquipe() {
       const map = new Map<string, { aFaire: number; enRetard: number; derniere: string }>();
       (acts ?? []).forEach((a: { assigne_a: string; statut: string; date_debut: string | null; updated_at: string }) => {
         const cur = map.get(a.assigne_a) ?? { aFaire: 0, enRetard: 0, derniere: "" };
-        if (a.statut !== "fait" && a.statut !== "realisee" && a.statut !== "annulee") {
+        if (a.statut !== "terminee" && a.statut !== "annulee") {
           cur.aFaire++;
           if (a.date_debut && new Date(a.date_debut) < now) cur.enRetard++;
         }
@@ -656,7 +656,7 @@ export function TachesEntrepriseDonut() {
   useEffect(() => {
     (async () => {
       const { data: rows } = await supabase.from("activites").select("statut");
-      const labels: Record<string, string> = { a_faire: "À faire", en_cours: "En cours", fait: "Fait", planifiee: "Planifiée", realisee: "Réalisée", annulee: "Annulée" };
+      const labels: Record<string, string> = { a_faire: "À faire", planifiee: "Planifiée", en_cours: "En cours", terminee: "Terminée", annulee: "Annulée" };
       const map: Record<string, number> = {};
       (rows ?? []).forEach((r: { statut: string }) => { map[r.statut] = (map[r.statut] ?? 0) + 1; });
       setData(Object.entries(map).map(([k, v], i) => ({ name: labels[k] ?? k, value: v, color: COLORS[i % COLORS.length] })));
@@ -971,7 +971,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
       const { data: actsDone } = await supabase
         .from("activites")
         .select("id, titre, updated_at, assigne_a, created_by, bien_id, lot_id, contrat_id, contact_id, statut, priorite")
-        .in("statut", ["fait", "realisee"])
+        .in("statut", ["terminee"])
         .order("updated_at", { ascending: false })
         .limit(40);
       for (const a of (actsDone ?? []) as Array<{
