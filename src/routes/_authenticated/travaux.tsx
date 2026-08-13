@@ -198,7 +198,7 @@ function TravauxPage() {
                       <TableCell>{t.titre}</TableCell>
                       <TableCell className="text-xs">{profEmail(t.assigne_a)}</TableCell>
                       <TableCell className="text-xs">{t.charge_financiere ? CHARGE_LABEL[t.charge_financiere] ?? t.charge_financiere : "—"}</TableCell>
-                      <TableCell><Badge variant={STATUT_VARIANT[t.statut] ?? "default"}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
+                      <TableCell><Badge className={STATUT_CLASS[t.statut] ?? ""}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -366,7 +366,7 @@ function DetailDialog({ travail, uid, role, email, biens, profiles, onClose, onE
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={STATUT_VARIANT[travail.statut] ?? "default"}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
+            <Badge className={STATUT_CLASS[travail.statut] ?? ""}>{STATUT_LABEL[travail.statut] ?? travail.statut}</Badge>
             {travail.origine && <Badge variant="outline">Origine : {travail.origine}</Badge>}
           </div>
           <div className="grid grid-cols-2 gap-3">
