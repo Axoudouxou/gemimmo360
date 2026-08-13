@@ -39,11 +39,12 @@ export function computeActivitePerms(
   const isCreator = a.created_by === meId;
   const isAssignee = a.assigne_a === meId;
   const isAdminDir = role === "admin" || role === "direction";
-  const canEditAll = isCreator || isAdminDir;
+  // Créateur, assigné, admin et direction ont les pleins droits.
+  const canEditAll = isCreator || isAssignee || isAdminDir;
   return {
     canEditAll,
-    canChangeStatut: canEditAll || isAssignee,
-    canDelete: canEditAll,
+    canChangeStatut: canEditAll,
+    canDelete: isCreator || isAdminDir,
   };
 }
 
