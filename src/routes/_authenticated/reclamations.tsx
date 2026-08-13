@@ -362,6 +362,18 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
             {overdue && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> En retard</Badge>}
           </div>
 
+          {(perms.canEditFull || perms.canEditLimited) && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Changer le statut :</span>
+              <Select value={rec.statut} onValueChange={changeStatut} disabled={statutSaving}>
+                <SelectTrigger className="w-[180px] h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div><span className="text-muted-foreground">Bien : </span>{bien?.titre ?? "—"}</div>
             <div><span className="text-muted-foreground">Propriétaire : </span>{bailleur ? `${bailleur.nom}${bailleur.prenom ? ` ${bailleur.prenom}` : ""}` : "—"}</div>
