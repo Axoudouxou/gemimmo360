@@ -29,13 +29,19 @@ export const Route = createFileRoute("/_authenticated/reclamations")({
 const STATUTS = [
   { value: "ouverte", label: "Ouverte" },
   { value: "en_cours", label: "En cours" },
+  { value: "en_attente", label: "En attente" },
   { value: "resolue", label: "Résolue" },
+  { value: "fermee", label: "Fermée" },
 ] as const;
+// Valeurs sélectionnables dans les formulaires
 const PRIORITES = [
-  { value: "basse", label: "Basse" },
-  { value: "normale", label: "Normale" },
+  { value: "critique", label: "Critique" },
   { value: "haute", label: "Haute" },
+  { value: "moyenne", label: "Moyenne" },
+  { value: "basse", label: "Basse" },
 ] as const;
+// "normale" reste affichable (anciennes réclamations) mais non resélectionnable
+const PRIORITES_LEGACY = [{ value: "normale", label: "Normale" }] as const;
 const CATEGORIES = [
   { value: "plomberie", label: "Plomberie" },
   { value: "electricite", label: "Électricité" },
@@ -44,7 +50,10 @@ const CATEGORIES = [
   { value: "autre", label: "Autre" },
 ] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS.map((s) => [s.value, s.label]));
-const PRIO_LABEL: Record<string, string> = Object.fromEntries(PRIORITES.map((s) => [s.value, s.label]));
+const PRIO_LABEL: Record<string, string> = Object.fromEntries(
+  [...PRIORITES, ...PRIORITES_LEGACY].map((s) => [s.value, s.label]),
+);
+
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 
 type Reclamation = {
@@ -68,7 +77,7 @@ type Profile = { id: string; email: string | null };
 type Travail = { id: string; titre: string; statut: string };
 
 const isOverdue = (r: Reclamation) => {
-  if (r.statut === "resolue" || !r.date_limite) return false;
+  if (r.statut === "resolue" || r.statut === "fermee" || !r.date_limite) return false;
   const today = new Date(); today.setHours(0,0,0,0);
   return new Date(r.date_limite) < today;
 };
@@ -142,7 +151,7 @@ function ReclamationsPage() {
   const bienTitre = (id: string) => biens.find((b) => b.id === id)?.titre ?? "—";
   const locataireName = (id: string | null) => { if (!id) return "—"; const l = locataires.find((x) => x.id === id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const profEmail = (id: string | null) => id ? profiles.find((p) => p.id === id)?.email ?? "—" : "—";
-  const prioVariant = (p: string): "default" | "secondary" | "destructive" => p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
+  const prioVariant = (p: string): "default" | "secondary" | "destructive" => p === "critique" || p === "haute" ? "destructive" : p === "basse" ? "secondary" : "default";
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -181,7 +190,7 @@ function ReclamationsPage() {
               searchPlaceholder="Référence, titre, bien ou occupant..."
               selects={[
                 { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
-                { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: PRIORITES.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "prio", label: "Priorité", value: fPrio, onChange: setFPrio, options: [...PRIORITES, ...PRIORITES_LEGACY].map((s) => ({ value: s.value, label: s.label })) },
                 { key: "cat", label: "Catégorie", value: fCat, onChange: setFCat, options: CATEGORIES.map((c) => ({ value: c.value, label: c.label })) },
                 { key: "bien", label: "Bien", value: fBien, onChange: setFBien, options: biens.map((b) => ({ value: b.id, label: b.titre })), width: "w-52" },
               ]}
@@ -357,7 +366,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
         <div className="space-y-4 text-sm">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge>{STATUT_LABEL[rec.statut] ?? rec.statut}</Badge>
-            <Badge variant={rec.priorite === "haute" ? "destructive" : rec.priorite === "basse" ? "secondary" : "default"}>{PRIO_LABEL[rec.priorite] ?? rec.priorite}</Badge>
+            <Badge variant={rec.priorite === "critique" || rec.priorite === "haute" ? "destructive" : rec.priorite === "basse" ? "secondary" : "default"}>{PRIO_LABEL[rec.priorite] ?? rec.priorite}</Badge>
             {rec.categorie && <Badge variant="outline">{CAT_LABEL[rec.categorie] ?? rec.categorie}</Badge>}
             {overdue && <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> En retard</Badge>}
           </div>
@@ -493,7 +502,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
     date_incident: initial?.date_incident ?? "",
     date_limite: initial?.date_limite ?? "",
     statut: initial?.statut ?? "ouverte",
-    priorite: initial?.priorite ?? "normale",
+    priorite: initial?.priorite ?? "moyenne",
     assigne_a: initial?.assigne_a ?? "",
     prestataire_id: initial?.prestataire_id ?? "",
     solution: initial?.solution ?? "",
@@ -603,14 +612,19 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
               <div className="grid gap-2"><Label>Priorité</Label>
                 <Select value={form.priorite} onValueChange={(v) => setForm({ ...form, priorite: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {PRIORITES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    {!PRIORITES.some((p) => p.value === form.priorite) && form.priorite && (
+                      <SelectItem value={form.priorite} disabled>{PRIO_LABEL[form.priorite] ?? form.priorite}</SelectItem>
+                    )}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="grid gap-2"><Label>Date limite</Label>
               <Input type="date" value={form.date_limite} onChange={(e) => setForm({ ...form, date_limite: e.target.value })} disabled={limited} />
-              <p className="text-xs text-muted-foreground">Calculée automatiquement à la création selon la priorité, modifiable.</p>
+              <p className="text-xs text-muted-foreground">Calculée automatiquement à la création selon la priorité (Critique 24 h, Haute 48 h, Moyenne 72 h, Basse 7 jours) si laissée vide.</p>
             </div>
 
             {form.statut === "resolue" && (
