@@ -612,14 +612,19 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
               <div className="grid gap-2"><Label>Priorité</Label>
                 <Select value={form.priorite} onValueChange={(v) => setForm({ ...form, priorite: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {PRIORITES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    {!PRIORITES.some((p) => p.value === form.priorite) && form.priorite && (
+                      <SelectItem value={form.priorite} disabled>{PRIO_LABEL[form.priorite] ?? form.priorite}</SelectItem>
+                    )}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="grid gap-2"><Label>Date limite</Label>
               <Input type="date" value={form.date_limite} onChange={(e) => setForm({ ...form, date_limite: e.target.value })} disabled={limited} />
-              <p className="text-xs text-muted-foreground">Calculée automatiquement à la création selon la priorité, modifiable.</p>
+              <p className="text-xs text-muted-foreground">Calculée automatiquement à la création selon la priorité (Critique 24 h, Haute 48 h, Moyenne 72 h, Basse 7 jours) si laissée vide.</p>
             </div>
 
             {form.statut === "resolue" && (
