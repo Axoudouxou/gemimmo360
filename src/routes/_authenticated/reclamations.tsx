@@ -517,8 +517,9 @@ const CHAMP_LABEL: Record<string, string> = {
 function recPerms(role: string, createdBy: string | null, assigneA: string | null, uid: string) {
   const base = computePerms(role, createdBy, uid);
   const isAssignee = !!assigneA && assigneA === uid;
-  if (!isAssignee || base.canEditFull) return base;
-  return { ...base, canRead: true, canComment: true, canEditLimited: true };
+  if (!isAssignee) return base;
+  // L'assigné a les pleins droits (comme le créateur).
+  return { ...base, canRead: true, canComment: true, canEditFull: true, canEditLimited: false };
 }
 
 
