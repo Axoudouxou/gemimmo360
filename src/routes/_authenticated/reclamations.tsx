@@ -280,12 +280,27 @@ function recPerms(role: string, createdBy: string | null, assigneA: string | nul
 }
 
 
-function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataires, bailleurs, onClose, onEdit, onDeleted, onCreateTravaux }: {
+function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataires, bailleurs, onClose, onEdit, onDeleted, onChanged, onCreateTravaux }: {
   rec: Reclamation; uid: string; role: string;
   biens: Bien[]; locataires: Contact[]; profiles: Profile[]; prestataires: Contact[]; bailleurs: Contact[];
-  onClose: () => void; onEdit: () => void; onDeleted: () => void; onCreateTravaux: () => void;
+  onClose: () => void; onEdit: () => void; onDeleted: () => void; onChanged: () => void; onCreateTravaux: () => void;
 }) {
   const perms = recPerms(role, rec.created_by, rec.assigne_a, uid);
+  const [statutSaving, setStatutSaving] = useState(false);
+
+  const changeStatut = async (v: string) => {
+    if (v === rec.statut) return;
+    if (v === "resolue" && !(rec.solution ?? "").trim()) {
+      toast.error("Renseignez la solution via « Modifier » pour clôturer la réclamation.");
+      return;
+    }
+    setStatutSaving(true);
+    const { error } = await supabase.from("reclamations").update({ statut: v }).eq("id", rec.id);
+    setStatutSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Statut mis à jour");
+    onChanged();
+  };
   const bien = biens.find((b) => b.id === rec.bien_id);
   const bailleur = bien?.bailleur_id ? bailleurs.find((b) => b.id === bien.bailleur_id) : null;
   const loc = rec.locataire_id ? locataires.find((l) => l.id === rec.locataire_id) : null;
