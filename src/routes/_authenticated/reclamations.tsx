@@ -481,7 +481,7 @@ function EditDialog({ initial, uid, role, biens, locataires, profiles, prestatai
   onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
-  const perms = computePerms(role, initial?.created_by ?? uid, uid);
+  const perms = recPerms(role, initial?.created_by ?? uid, initial?.assigne_a ?? null, uid);
   const limited = isEdit && perms.canEditLimited && !perms.canEditFull;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => ({
