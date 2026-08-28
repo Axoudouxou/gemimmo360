@@ -128,6 +128,37 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    let subscription: { unsubscribe: () => void } | undefined;
+    let cancelled = false;
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      if (cancelled) return;
+      // Gère l'expiration du jeton (JWT expired) : déconnexion propre et retour à /auth
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED" && event !== "TOKEN_REFRESHED") return;
+        if (event === "SIGNED_OUT") {
+          queryClient.clear();
+          if (window.location.pathname !== "/auth") {
+            window.location.href = "/auth";
+          }
+          return;
+        }
+        router.invalidate();
+        queryClient.invalidateQueries();
+      });
+      subscription = data.subscription;
+      // Sécurité : si le refresh échoue au démarrage (session expirée), on nettoie
+      supabase.auth.getSession().then(({ error }) => {
+        if (error) void supabase.auth.signOut();
+      });
+    });
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe();
+    };
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
