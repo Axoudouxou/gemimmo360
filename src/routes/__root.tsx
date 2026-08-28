@@ -137,7 +137,7 @@ function RootComponent() {
       if (cancelled) return;
       // Gère l'expiration du jeton (JWT expired) : déconnexion propre et retour à /auth
       const { data } = supabase.auth.onAuthStateChange((event) => {
-        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED" && event !== "TOKEN_REFRESHED") return;
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
         if (event === "SIGNED_OUT") {
           queryClient.clear();
           if (window.location.pathname !== "/auth") {
