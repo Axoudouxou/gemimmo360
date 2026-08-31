@@ -127,7 +127,11 @@ function CalendrierPage() {
       .or(filter)
       .order("date_debut", { ascending: true, nullsFirst: false });
     setItems((data ?? []) as Activite[]);
-  }, [viewingUserId]);
+    if (me?.id) {
+      setMyCoIds(me.id === viewingUserId ? new Set(coIds) : new Set(await fetchActiviteIdsForUser(me.id)));
+    }
+  }, [viewingUserId, me?.id]);
+
 
 
   useEffect(() => { load(); }, [load]);
