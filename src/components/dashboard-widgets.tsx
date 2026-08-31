@@ -433,7 +433,7 @@ export function ListeEcheances({ scope, limit = 5 }: { scope?: { gestionnaire_id
         id: r.id,
         date_fin: r.date_fin,
         loyer_mensuel: r.loyer_mensuel,
-        locataire: r.locataire ? `${r.locataire.prenom ?? ""} ${r.locataire.nom ?? ""}`.trim() : "—",
+        locataire: r.locataire ? `${r.locataire.nom ?? ""} ${r.locataire.prenom ?? ""}`.trim() : "—",
         bien: r.lots?.biens?.titre ?? "—",
         gestionnaire: r.lots?.biens?.gestionnaire_id,
       }));
