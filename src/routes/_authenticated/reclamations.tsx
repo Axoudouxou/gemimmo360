@@ -488,7 +488,7 @@ function ReclamationsPage() {
         )}
 
         {(creating || editing) && (
-          <EditDialog initial={editing} uid={uid} role={role} biens={biens} locataires={locataires} profiles={profiles} prestataires={prestataires}
+          <EditDialog initial={editing} uid={uid} role={role} biens={biens} locataires={allContacts} profiles={profiles} prestataires={allContacts}
             onClose={() => { setCreating(false); setEditing(null); }}
             onSaved={() => { setCreating(false); setEditing(null); load(); }}
           />
