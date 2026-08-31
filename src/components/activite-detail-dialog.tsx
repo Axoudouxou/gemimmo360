@@ -83,10 +83,26 @@ export function ActiviteDetailDialog({
   const [commentaires, setCommentaires] = useState<Commentaire[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [assignes, setAssignes] = useState<string[]>([]);
+  const [biens, setBiens] = useState<Array<{ id: string; titre: string }>>([]);
 
   useEffect(() => {
     if (activite) setStatut(activite.statut);
   }, [activite]);
+
+  useEffect(() => {
+    if (!open || !activite) return;
+    (async () => {
+      const ids = await fetchAssignesSupp(activite.id);
+      setAssignes(Array.from(new Set([activite.assigne_a, ...ids])));
+      const bienIds = await fetchBiensLies(activite.id);
+      const all = Array.from(new Set([...(activite.bien_id ? [activite.bien_id] : []), ...bienIds]));
+      if (all.length === 0) { setBiens([]); return; }
+      const { data } = await supabase.from("biens").select("id, titre").in("id", all);
+      setBiens(((data ?? []) as Array<{ id: string; titre: string | null }>).map((b) => ({ id: b.id, titre: b.titre ?? b.id.slice(0, 8) })));
+    })();
+  }, [open, activite]);
+
 
   const perms = computeActivitePerms(activite, me?.id ?? null, role);
   const link = activite ? linkFor(activite) : null;
