@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      activite_assignes: {
+        Row: {
+          activite_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          activite_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          activite_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activite_assignes_activite_id_fkey"
+            columns: ["activite_id"]
+            isOneToOne: false
+            referencedRelation: "activites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activite_assignes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activite_biens: {
+        Row: {
+          activite_id: string
+          bien_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          activite_id: string
+          bien_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          activite_id?: string
+          bien_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activite_biens_activite_id_fkey"
+            columns: ["activite_id"]
+            isOneToOne: false
+            referencedRelation: "activites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activite_biens_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activite_commentaires: {
         Row: {
           activite_id: string
