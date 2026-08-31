@@ -188,9 +188,26 @@ export function ActiviteDetailDialog({
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Assigné à</div>
-              <div>{nameOf(activite.assigne_a)}</div>
+              <div className="flex flex-wrap gap-1">
+                {(assignes.length > 0 ? assignes : [activite.assigne_a]).map((id) => (
+                  <Badge key={id} variant="secondary">{nameOf(id)}</Badge>
+                ))}
+              </div>
             </div>
+            {biens.length > 0 && (
+              <div className="col-span-2">
+                <div className="text-xs text-muted-foreground">Biens concernés</div>
+                <div className="flex flex-wrap gap-1">
+                  {biens.map((b) => (
+                    <Badge key={b.id} variant="outline" asChild>
+                      <Link to="/biens/$bienId" params={{ bienId: b.id }}>{b.titre}</Link>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
 
           {activite.notes && (
             <div>
