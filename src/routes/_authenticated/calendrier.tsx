@@ -640,6 +640,10 @@ function ActiviteDialog({
   const [statut, setStatut] = useState(initial?.statut ?? "a_faire");
   const [recurrence, setRecurrence] = useState<string>(initial?.recurrence ?? "aucune");
   const [saving, setSaving] = useState(false);
+  const [coAssignes, setCoAssignes] = useState<string[]>([]);
+  const [biensLies, setBiensLies] = useState<string[]>([]);
+  const [biensOpts, setBiensOpts] = useState<LinkOpt[]>([]);
+
 
   // Lié à
   const initialLieType: string = initial?.bien_id ? "bien"
