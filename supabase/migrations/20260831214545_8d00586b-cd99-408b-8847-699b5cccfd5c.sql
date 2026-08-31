@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.notify_activite_coassigne() FROM PUBLIC, anon, authenticated;
