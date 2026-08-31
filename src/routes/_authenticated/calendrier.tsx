@@ -90,6 +90,8 @@ function CalendrierPage() {
   const [detail, setDetail] = useState<Activite | null>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
+  const [myCoIds, setMyCoIds] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     (async () => {
