@@ -845,6 +845,27 @@ function ActiviteDialog({
               </Select>
             </div>
           </div>
+          <div>
+            <Label>Autres personnes assignées</Label>
+            <MultiSelect
+              values={coAssignes}
+              onChange={setCoAssignes}
+              options={profiles.filter((p) => p.id !== assigne).map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+              placeholder="Ajouter un collaborateur..."
+              emptyLabel="Aucun collaborateur supplémentaire"
+            />
+          </div>
+          <div>
+            <Label>Biens concernés</Label>
+            <MultiSelect
+              values={biensLies}
+              onChange={setBiensLies}
+              options={biensOpts.map((b) => ({ value: b.id, label: b.label }))}
+              placeholder="Ajouter un bien..."
+              emptyLabel="Aucun bien lié"
+            />
+          </div>
+
           {isEdit && (
             <div>
               <Label>Statut</Label>
