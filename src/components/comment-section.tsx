@@ -6,7 +6,11 @@ import { Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Comment = { id: string; auteur: string; contenu: string; created_at: string };
-type Profile = { id: string; email: string | null };
+type Profile = { id: string; email: string | null; role?: string | null };
+
+const TEAM_HANDLE = "equipe";
+const INACTIVE_ROLES = ["en_attente", "inactif"];
+type Suggestion = { kind: "team" } | { kind: "user"; profile: Profile };
 
 type CommentTable = "travaux_commentaires" | "reclamations_commentaires" | "impayes_commentaires" | "activite_commentaires";
 type FkColumn = "travaux_id" | "reclamation_id" | "impaye_id" | "activite_id";
@@ -65,13 +69,18 @@ export function CommentSection(
 
   const authorsMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const knownHandles = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>([TEAM_HANDLE]);
     for (const p of profiles) {
       const lp = localPart(p.email).toLowerCase();
       if (lp) s.add(lp);
     }
     return s;
   }, [profiles]);
+
+  const teamMembers = useMemo(
+    () => profiles.filter((p) => p.id !== me && !INACTIVE_ROLES.includes(p.role ?? "")),
+    [profiles, me],
+  );
 
   const load = async () => {
     const { data: userRes } = await supabase.auth.getUser();
@@ -85,7 +94,7 @@ export function CommentSection(
   };
 
   const loadProfiles = async () => {
-    const { data } = await supabase.from("profiles").select("id, email").order("email");
+    const { data } = await supabase.from("profiles").select("id, email, role").order("email");
     setProfiles((data ?? []) as Profile[]);
   };
 
@@ -96,16 +105,19 @@ export function CommentSection(
     loadProfiles();
   }, []);
 
-  const filteredMentions = useMemo(() => {
+  const filteredMentions = useMemo<Suggestion[]>(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
-    return profiles
-      .filter((p) => p.id !== me)
+    const users: Suggestion[] = profiles
+      .filter((p) => p.id !== me && !INACTIVE_ROLES.includes(p.role ?? ""))
       .filter((p) => {
         const lp = localPart(p.email).toLowerCase();
         return !q || lp.startsWith(q) || lp.includes(q);
       })
-      .slice(0, 6);
+      .slice(0, 6)
+      .map((profile) => ({ kind: "user", profile }));
+    const teamMatches = !q || TEAM_HANDLE.startsWith(q) || "tous".startsWith(q) || "team".startsWith(q);
+    return teamMatches ? [{ kind: "team" } as Suggestion, ...users] : users;
   }, [mentionQuery, profiles, me]);
 
   function onContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -122,13 +134,13 @@ export function CommentSection(
     }
   }
 
-  function insertMention(profile: Profile) {
+  function insertMention(s: Suggestion) {
     const el = textareaRef.current;
     if (!el) return;
     const caret = el.selectionStart ?? content.length;
     const before = content.slice(0, caret);
     const after = content.slice(caret);
-    const handle = localPart(profile.email);
+    const handle = s.kind === "team" ? TEAM_HANDLE : localPart(s.profile.email);
     const replaced = before.replace(/(?:^|\s)@([\w.-]*)$/, (m) => {
       const lead = m.startsWith("@") ? "" : m.charAt(0);
       return `${lead}@${handle} `;
@@ -165,6 +177,10 @@ export function CommentSection(
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
       const handle = m[1].toLowerCase();
+      if (handle === TEAM_HANDLE) {
+        for (const p of teamMembers) found.add(p.id);
+        continue;
+      }
       const prof = profiles.find((p) => localPart(p.email).toLowerCase() === handle);
       if (prof && prof.id !== me) found.add(prof.id);
     }
@@ -251,7 +267,7 @@ export function CommentSection(
               value={content}
               onChange={onContentChange}
               onKeyDown={onKeyDown}
-              placeholder="Ajouter un commentaire... (tapez @ pour mentionner)"
+              placeholder="Ajouter un commentaire... (tapez @ pour mentionner, @equipe pour toute l\u2019équipe)"
             />
             <Button size="icon" onClick={submit} disabled={sending || !content.trim()}>
               <Send className="h-4 w-4" />
@@ -259,18 +275,29 @@ export function CommentSection(
           </div>
           {mentionQuery !== null && filteredMentions.length > 0 && (
             <div className="absolute z-30 left-0 bottom-full mb-1 w-64 rounded-md border bg-popover shadow-md p-1">
-              {filteredMentions.map((p, i) => (
+              {filteredMentions.map((s, i) => (
                 <button
-                  key={p.id}
+                  key={s.kind === "team" ? "__team__" : s.profile.id}
                   type="button"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    insertMention(p);
+                    insertMention(s);
                   }}
                   className={`w-full text-left px-2 py-1.5 text-sm rounded ${i === mentionIndex ? "bg-accent" : "hover:bg-accent/60"}`}
                 >
-                  <span className="text-emerald-600 font-medium">@{localPart(p.email)}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{p.email}</span>
+                  {s.kind === "team" ? (
+                    <>
+                      <span className="text-emerald-600 font-medium">@{TEAM_HANDLE}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        Toute l&rsquo;équipe ({teamMembers.length})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-emerald-600 font-medium">@{localPart(s.profile.email)}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{s.profile.email}</span>
+                    </>
+                  )}
                 </button>
               ))}
             </div>
