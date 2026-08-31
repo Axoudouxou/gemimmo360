@@ -36,13 +36,15 @@ export function computeActivitePerms(
   a: Pick<Activite, "created_by" | "assigne_a"> | null,
   meId: string | null,
   role: string,
+  coAssignes: string[] = [],
 ): Perms {
   if (!a || !meId) return { canEditAll: false, canChangeStatut: false, canDelete: false };
   const isCreator = a.created_by === meId;
-  const isAssignee = a.assigne_a === meId;
+  const isAssignee = a.assigne_a === meId || coAssignes.includes(meId);
   const isAdminDir = role === "admin" || role === "direction";
-  // Créateur, assigné, admin et direction ont les pleins droits.
+  // Créateur, assignés (principal ou secondaires), admin et direction ont les pleins droits.
   const canEditAll = isCreator || isAssignee || isAdminDir;
+
   return {
     canEditAll,
     canChangeStatut: canEditAll,
