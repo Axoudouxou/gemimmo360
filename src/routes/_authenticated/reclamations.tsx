@@ -145,7 +145,9 @@ function ReclamationsPage() {
   const [role, setRole] = useState<string>("");
   const [items, setItems] = useState<Reclamation[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [locataires, setLocataires] = useState<Contact[]>([]);
+
   const [prestataires, setPrestataires] = useState<Contact[]>([]);
   const [bailleurs, setBailleurs] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
