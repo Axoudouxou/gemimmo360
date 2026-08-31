@@ -199,13 +199,14 @@ export function ActiviteDetailDialog({
                 <div className="text-xs text-muted-foreground">Biens concernés</div>
                 <div className="flex flex-wrap gap-1">
                   {biens.map((b) => (
-                    <Badge key={b.id} variant="outline" asChild>
-                      <Link to="/biens/$bienId" params={{ bienId: b.id }}>{b.titre}</Link>
-                    </Badge>
+                    <Link key={b.id} to="/biens/$bienId" params={{ bienId: b.id }}>
+                      <Badge variant="outline">{b.titre}</Badge>
+                    </Link>
                   ))}
                 </div>
               </div>
             )}
+
           </div>
 
 
