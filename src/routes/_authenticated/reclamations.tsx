@@ -183,21 +183,22 @@ function ReclamationsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: rData, error }, { data: bData }, { data: lData }, { data: prData }, { data: baData }, { data: pData }] = await Promise.all([
+    const [{ data: rData, error }, { data: bData }, { data: cData }, { data: pData }] = await Promise.all([
       (supabase.from("reclamations") as any).select("*").order("created_at", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
-      supabase.from("contacts").select("id, nom, prenom, telephone, email").eq("type_contact", "locataire").eq("archive", false).order("nom"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "prestataire").eq("archive", false).order("nom"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
+      supabase.from("contacts").select("id, nom, prenom, telephone, email, type_contact").order("nom"),
       supabase.from("profiles").select("id, email").order("email"),
     ]);
     if (error) toast.error(error.message);
     else setItems((rData ?? []) as Reclamation[]);
     setBiens((bData ?? []) as Bien[]);
-    setLocataires((lData ?? []) as Contact[]);
-    setPrestataires((prData ?? []) as Contact[]);
-    setBailleurs((baData ?? []) as Contact[]);
+    const all = (cData ?? []) as (Contact & { type_contact: string | null })[];
+    setAllContacts(all);
+    setLocataires(all.filter((c) => c.type_contact === "locataire"));
+    setPrestataires(all.filter((c) => c.type_contact === "prestataire"));
+    setBailleurs(all.filter((c) => c.type_contact === "bailleur"));
     setProfiles((pData ?? []) as Profile[]);
+
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
