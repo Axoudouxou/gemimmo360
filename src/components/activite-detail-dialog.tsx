@@ -108,7 +108,7 @@ export function ActiviteDetailDialog({
   }, [open, activite]);
 
 
-  const perms = computeActivitePerms(activite, me?.id ?? null, role);
+  const perms = computeActivitePerms(activite, me?.id ?? null, role, assignes);
   const link = activite ? linkFor(activite) : null;
 
   const nameOf = (id: string | null) => {
