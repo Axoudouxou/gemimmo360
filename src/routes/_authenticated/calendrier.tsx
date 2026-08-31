@@ -31,6 +31,9 @@ import {
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_BADGE_CLASSES, ActiviteTypeBadge, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
 import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { fetchActiviteIdsForUser, fetchAssignesSupp, fetchBiensLies, syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
+
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
