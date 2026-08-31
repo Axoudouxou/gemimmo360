@@ -466,7 +466,7 @@ function ReclamationsPage() {
         </Card>
 
         {detail && (
-          <DetailDialog rec={detail} uid={uid} role={role} biens={biens} locataires={locataires} profiles={profiles} prestataires={prestataires} bailleurs={bailleurs}
+          <DetailDialog rec={detail} uid={uid} role={role} biens={biens} locataires={allContacts} profiles={profiles} prestataires={allContacts} bailleurs={allContacts}
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
