@@ -516,6 +516,8 @@ function TaskColumn({
   targetStatut,
   items,
   me,
+  coIds,
+
   onOpen,
   onToggle,
   onEdit,
