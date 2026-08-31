@@ -665,6 +665,24 @@ function ActiviteDialog({
 
   useEffect(() => { if (open && !isEdit) setAssigne(defaultAssignee); }, [open, defaultAssignee, isEdit]);
 
+  // Liste des biens (multi) + liaisons existantes
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from("biens").select("id, titre").order("titre").limit(1000);
+      setBiensOpts((data ?? []).map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
+      if (initial) {
+        const [aa, bb] = await Promise.all([fetchAssignesSupp(initial.id), fetchBiensLies(initial.id)]);
+        setCoAssignes(aa.filter((id) => id !== initial.assigne_a));
+        setBiensLies(bb);
+      } else {
+        setCoAssignes([]);
+        setBiensLies(defaults.bien_id ? [defaults.bien_id] : []);
+      }
+    })();
+  }, [open, initial, defaults.bien_id]);
+
+
   // Load link options for the selected "Lié à" type
   useEffect(() => {
     if (!open || lieType === "none") { setLinkOpts([]); return; }
