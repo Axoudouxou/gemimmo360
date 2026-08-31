@@ -483,7 +483,7 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
       setRows((data ?? []).map((r: any) => ({
         id: r.id,
         contrat_id: r.contrat_id,
-        locataire: r.contrats?.locataire ? `${r.contrats.locataire.prenom ?? ""} ${r.contrats.locataire.nom ?? ""}`.trim() : "—",
+        locataire: r.contrats?.locataire ? `${r.contrats.locataire.nom ?? ""} ${r.contrats.locataire.prenom ?? ""}`.trim() : "—",
         montant: Number(r.montant_du ?? 0) - Number(r.montant_paye ?? 0),
         date_echeance: r.date_echeance,
       })));
