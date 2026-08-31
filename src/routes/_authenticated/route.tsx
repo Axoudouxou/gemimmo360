@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated")({
       .select("role")
       .eq("id", data.user.id)
       .maybeSingle();
-    if (!profile || profile.role === "en_attente") {
+    if (!profile || profile.role === "en_attente" || profile.role === "inactif") {
       await supabase.auth.signOut();
       throw redirect({ to: "/compte-en-attente" });
     }
