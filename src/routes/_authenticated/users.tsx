@@ -48,8 +48,10 @@ const ROLES = [
   { value: "gestion_locative", label: "Gestion locative" },
   { value: "recouvrement", label: "Recouvrement" },
   { value: "technique", label: "Technique" },
+  { value: "technico_commercial", label: "Technico-commercial" },
   { value: "juridique", label: "Juridique" },
   { value: "commercial", label: "Commercial" },
+  { value: "inactif", label: "Inactif (accès révoqué)" },
 ] as const;
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(ROLES.map((r) => [r.value, r.label]));

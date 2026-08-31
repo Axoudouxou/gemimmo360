@@ -49,7 +49,7 @@ function LotDetailPage() {
 
   const canCreateContrat = myRole === "admin" || myRole === "juridique";
   const canCreateEdl = !!myRole && myRole !== "recouvrement" && myRole !== "en_attente";
-  const canEditLot = ["admin", "juridique", "gestion_locative", "commercial"].includes(myRole);
+  const canEditLot = ["admin", "juridique", "gestion_locative", "commercial", "technico_commercial"].includes(myRole);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);

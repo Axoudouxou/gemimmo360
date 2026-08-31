@@ -533,7 +533,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
 }) {
   const perms = recPerms(role, rec.created_by, rec.assigne_a, uid);
   const canAct = perms.canEditFull || perms.canEditLimited;
-  const canSeePersonal = role === "admin" || role === "direction" || role === "technique" || role === "gestion" || perms.canEditFull || FULL_ACCESS_USER_IDS.includes(uid);
+  const canSeePersonal = role === "admin" || role === "direction" || role === "technique" || role === "technico_commercial" || role === "gestion" || perms.canEditFull || FULL_ACCESS_USER_IDS.includes(uid);
   const [saving, setSaving] = useState(false);
   const [dueDraft, setDueDraft] = useState(rec.date_limite ?? "");
 
@@ -562,7 +562,7 @@ function DetailDialog({ rec, uid, role, biens, locataires, profiles, prestataire
   const prest = rec.prestataire_id ? prestataires.find((p) => p.id === rec.prestataire_id) : null;
   const overdue = isOverdue(rec);
   const due = dueInfo(rec);
-  const canCreateTravaux = role === "technique" || role === "admin" || role === "direction" || FULL_ACCESS_USER_IDS.includes(uid);
+  const canCreateTravaux = role === "technique" || role === "technico_commercial" || role === "admin" || role === "direction" || FULL_ACCESS_USER_IDS.includes(uid);
 
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [authors, setAuthors] = useState<Map<string, string>>(new Map());

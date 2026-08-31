@@ -50,7 +50,7 @@ export function ContratPropositions({ contratId, contrat, myRole, onApproved }: 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ champ: "loyer_mensuel", nouvelle: "", commentaire: "" });
 
-  const canPropose = ["gestion_locative", "commercial", "admin", "juridique"].includes(myRole);
+  const canPropose = ["gestion_locative", "commercial", "technico_commercial", "admin", "juridique"].includes(myRole);
   const canDecide = myRole === "admin" || myRole === "juridique";
 
   const load = async () => {

@@ -572,7 +572,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
   const canSubmit =
     (travail.statut === "a_qualifier" || travail.statut === "planifie") &&
     travail.budget_prevu != null &&
-    (role === "technique" || role === "admin" || role === "direction");
+    (role === "technique" || role === "technico_commercial" || role === "admin" || role === "direction");
   const canDecide = travail.statut === "a_valider" && role === "direction";
 
   const loadHistory = async () => {

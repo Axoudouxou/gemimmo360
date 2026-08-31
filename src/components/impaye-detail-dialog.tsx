@@ -100,6 +100,7 @@ const WRITE_ROLES = new Set([
   "direction",
   "recouvrement",
   "commercial",
+  "technico_commercial",
   "gestion_locative",
   "juridique",
 ]);

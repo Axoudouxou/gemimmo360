@@ -954,7 +954,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
     (async () => {
       if (!userId) return;
       setLoading(true);
-      const scoped = role === "gestion_locative" || role === "commercial";
+      const scoped = role === "gestion_locative" || role === "commercial" || role === "technico_commercial";
       const scope = scoped ? await resolveScopeIds(userId) : null;
 
       const { data: profs } = await supabase.from("profiles").select("id, email");
