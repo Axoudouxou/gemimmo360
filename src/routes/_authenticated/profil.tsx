@@ -23,6 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
   technique: "Technique",
   juridique: "Juridique",
   commercial: "Commercial",
+  technico_commercial: "Technico-commercial",
 };
 
 function ProfilPage() {

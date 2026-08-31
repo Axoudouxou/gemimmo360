@@ -60,6 +60,7 @@ const ROLE_LABELS: Record<string, string> = {
   technique: "Technique",
   juridique: "Juridique",
   commercial: "Commercial",
+  technico_commercial: "Technico-commercial",
 };
 
 function fmtMoney(n: number | null | undefined) {
@@ -219,7 +220,7 @@ function Dashboard() {
       }
 
       // Technique stats
-      if (userRole === "technique" || userRole === "admin" || userRole === "direction") {
+      if (userRole === "technique" || userRole === "technico_commercial" || userRole === "admin" || userRole === "direction") {
         const { data: trs } = await supabase.from("travaux").select("date_debut, date_fin, budget_depense").gte("date_debut", startMonthStr);
         const budgetMois = (trs ?? []).reduce((s: number, r: { budget_depense: number | null }) => s + Number(r.budget_depense ?? 0), 0);
         const { data: closed } = await supabase.from("travaux").select("date_debut, date_fin").eq("statut", "termine").not("date_fin", "is", null).limit(200);
@@ -239,7 +240,7 @@ function Dashboard() {
       }
 
       // Portfolio for gestion_locative / commercial
-      if (userRole === "gestion_locative" || userRole === "commercial") {
+      if (userRole === "gestion_locative" || userRole === "commercial" || userRole === "technico_commercial") {
         const { data: myBiens } = await supabase.from("biens").select("id").eq("gestionnaire_id", user.id);
         const ids = (myBiens ?? []).map((b: { id: string }) => b.id);
         const mesBiens = ids.length;
@@ -263,8 +264,8 @@ function Dashboard() {
   const tauxOccupation = common.lotsTotal > 0 ? Math.round((common.lotsLoues / common.lotsTotal) * 100) : 0;
   const tauxPorto = porto.mesLotsTotal > 0 ? Math.round((porto.mesLotsLoues / porto.mesLotsTotal) * 100) : 0;
 
-  const canCreateContact = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
-  const canCreateBien = ["admin", "direction", "commercial", "gestion_locative"].includes(role);
+  const canCreateContact = ["admin", "direction", "commercial", "technico_commercial", "gestion_locative"].includes(role);
+  const canCreateBien = ["admin", "direction", "commercial", "technico_commercial", "gestion_locative"].includes(role);
   const canCreateContrat = ["admin", "direction", "juridique", "gestion_locative"].includes(role);
 
   const isAdminLike = role === "admin" || role === "direction";
@@ -331,7 +332,7 @@ function Dashboard() {
       )}
 
       {/* GESTION LOCATIVE & COMMERCIAL */}
-      {(role === "gestion_locative" || role === "commercial") && (
+      {(role === "gestion_locative" || role === "commercial" || role === "technico_commercial") && (
         <>
           <StatCardGrid cards={[
             { key: "mb", label: "Mes biens", value: porto.mesBiens, icon: Home, to: "/biens" },
@@ -346,7 +347,7 @@ function Dashboard() {
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <MesActivites7j userId={userId} />
-            {role === "commercial" && <PipelineFunnel />}
+            {(role === "commercial" || role === "technico_commercial") && <PipelineFunnel />}
           </div>
         </>
       )}
@@ -369,7 +370,7 @@ function Dashboard() {
       )}
 
       {/* TECHNIQUE */}
-      {role === "technique" && (
+      {(role === "technique" || role === "technico_commercial") && (
         <>
           <StatCardGrid cards={[
             { key: "tec", label: "Travaux en cours", value: common.travauxEnCours, icon: Hammer, to: "/travaux" },

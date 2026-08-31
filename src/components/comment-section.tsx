@@ -284,7 +284,7 @@ export function CommentSection(
 export function computePerms(role: string, createdBy: string | null, uid: string) {
   const isCreator = !!createdBy && createdBy === uid;
   const isAdmin = role === "admin" || role === "direction";
-  const isTech = role === "technique";
+  const isTech = role === "technique" || role === "technico_commercial";
   const isJuridique = role === "juridique";
   const locked = role === "recouvrement" || role === "en_attente";
   return {

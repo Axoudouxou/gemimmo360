@@ -207,7 +207,7 @@ function BienDetailPage() {
   const openGestionnaire = async () => {
     setGestOpen(true);
     if (gestionnaires.length === 0) {
-      const { data } = await supabase.from("profiles").select("id, email, role").in("role", ["gestion_locative", "commercial", "admin", "direction"]).order("email");
+      const { data } = await supabase.from("profiles").select("id, email, role").in("role", ["gestion_locative", "commercial", "technico_commercial", "admin", "direction"]).order("email");
       setGestionnaires((data ?? []) as Gestionnaire[]);
     }
   };

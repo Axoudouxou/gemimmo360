@@ -171,7 +171,7 @@ function ContratDetailPage() {
         : "montant non renseigné";
 
       const [{ data: techUser }, { data: recUser }] = await Promise.all([
-        supabase.from("profiles").select("id").eq("role", "technique").limit(1).maybeSingle(),
+        supabase.from("profiles").select("id").in("role", ["technique", "technico_commercial"]).limit(1).maybeSingle(),
         supabase.from("profiles").select("id").eq("role", "recouvrement").limit(1).maybeSingle(),
       ]);
 

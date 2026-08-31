@@ -54,7 +54,7 @@ const OVERVIEW: NavItem[] = [
   { title: "Aide", url: "/aide", icon: HelpCircle },
 ];
 
-const NON_RECOUVREMENT = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial"];
+const NON_RECOUVREMENT = ["admin", "direction", "juridique", "gestion_locative", "technique", "commercial", "technico_commercial"];
 
 const GESTION: NavItem[] = [
   { title: "Biens", url: "/biens", icon: Home },
@@ -64,9 +64,9 @@ const GESTION: NavItem[] = [
 ];
 
 const FINANCE: NavItem[] = [
-  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "gestion_locative", "juridique"] },
+  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
-  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+  { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial", "technico_commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
   { title: "Fiscalité", url: "/fiscalite", icon: Landmark, roles: ["admin", "direction", "juridique"] },
 ];
 

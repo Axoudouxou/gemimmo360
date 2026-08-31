@@ -57,7 +57,7 @@ const defaultExclusivite = (t: string): "" | "exclusif" | "non_exclusif" => {
   if (t === "mandat_vente" || t === "mandat_location") return "non_exclusif";
   return "";
 };
-const ALLOWED = ["admin", "direction", "commercial"] as const;
+const ALLOWED = ["admin", "direction", "commercial", "technico_commercial"] as const;
 const COMMERCIAL_TYPES = ["prospect", "acheteur", "vendeur"];
 
 type Tx = {
@@ -188,12 +188,12 @@ function TransactionsPage() {
     exclusivite: "non_exclusif", motif_perdu: "", motif_perdu_autre: "",
     date_debut_mandat: "", duree_indeterminee: true, date_fin_mandat: "",
     montant_estime: "", date_cloture_prevue: "",
-    gestionnaire_id: role === "commercial" ? (uid ?? "") : "",
+    gestionnaire_id: role === "commercial" || role === "technico_commercial" ? (uid ?? "") : "",
   });
 
   // Prefill gestionnaire when the current user is commercial
   useEffect(() => {
-    if (role === "commercial" && uid) {
+    if ((role === "commercial" || role === "technico_commercial") && uid) {
       setForm((f) => (f.gestionnaire_id ? f : { ...f, gestionnaire_id: uid }));
     }
   }, [role, uid]);
@@ -441,7 +441,7 @@ function TransactionsPage() {
           canEditGestionnaire={role === "admin" || role === "direction"}
           canDelete={
             role === "admin" || role === "direction" || role === "juridique" ||
-            (role === "commercial" && !!detail && detail.gestionnaire_id === uid) ||
+            ((role === "commercial" || role === "technico_commercial") && !!detail && detail.gestionnaire_id === uid) ||
             (!!uid && FULL_ACCESS_USER_IDS.includes(uid))
           }
         />

@@ -115,7 +115,7 @@ function BiensPage() {
     const [{ data: biensData, error }, { data: bData, error: bErr }, { data: gData }] = await Promise.all([
       supabase.from("biens").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
-      supabase.from("profiles").select("id, email").in("role", ["gestion_locative", "commercial", "admin", "direction"]).order("email"),
+      supabase.from("profiles").select("id, email").in("role", ["gestion_locative", "commercial", "technico_commercial", "admin", "direction"]).order("email"),
     ]);
     if (error) toast.error(error.message);
     else setBiens((biensData ?? []) as Bien[]);
