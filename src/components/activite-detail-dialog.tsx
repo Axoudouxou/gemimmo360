@@ -13,6 +13,8 @@ import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
 import { CommentSection } from "@/components/comment-section";
+import { fetchAssignesSupp, fetchBiensLies } from "@/lib/activite-liaisons";
+
 
 type Profile = { id: string; email: string | null; role?: string };
 
