@@ -182,7 +182,7 @@ function CalendrierPage() {
   const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
 
   const setStatut = async (a: Activite, newStatut: string) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canChangeStatut) {
       toast.error("Vous ne pouvez pas modifier cette tâche.");
       return;
@@ -226,7 +226,7 @@ function CalendrierPage() {
   };
 
   const handleDelete = async (a: Activite) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canDelete) return;
     if (!confirm("Supprimer cette tâche ?")) return;
     const { error } = await supabase.from("activites").delete().eq("id", a.id);
@@ -415,6 +415,7 @@ function CalendrierPage() {
               targetStatut="a_faire"
               items={tasksAFaire}
               me={me}
+              coIds={myCoIds}
               onOpen={setDetail}
               onToggle={handleToggle}
               onEdit={setEditing}
@@ -432,10 +433,10 @@ function CalendrierPage() {
                 </div>
               }
             />
-            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
-            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
+            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
           </div>
         </TabsContent>
       </Tabs>
@@ -527,6 +528,7 @@ function TaskColumn({
   targetStatut: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee";
   items: Activite[];
   me: Profile | null;
+  coIds: Set<string>;
   onOpen: (a: Activite) => void;
   onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
@@ -557,7 +559,7 @@ function TaskColumn({
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
         ) : items.map((a) => {
-          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
           const isDoneCard = a.statut === "terminee";
           return (
             <div
