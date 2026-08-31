@@ -31,6 +31,9 @@ import {
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_BADGE_CLASSES, ActiviteTypeBadge, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
 import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { fetchActiviteIdsForUser, fetchAssignesSupp, fetchBiensLies, syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
+
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
@@ -87,6 +90,8 @@ function CalendrierPage() {
   const [detail, setDetail] = useState<Activite | null>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
+  const [myCoIds, setMyCoIds] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     (async () => {
@@ -113,13 +118,23 @@ function CalendrierPage() {
 
   const load = useCallback(async () => {
     if (!viewingUserId) return;
+    // Tâches dont l'utilisateur est le responsable principal OU un co-assigné
+    const coIds = await fetchActiviteIdsForUser(viewingUserId);
+    const filter = coIds.length > 0
+      ? `assigne_a.eq.${viewingUserId},id.in.(${coIds.join(",")})`
+      : `assigne_a.eq.${viewingUserId}`;
     const { data } = await supabase
       .from("activites")
       .select("*")
-      .eq("assigne_a", viewingUserId)
+      .or(filter)
       .order("date_debut", { ascending: true, nullsFirst: false });
     setItems((data ?? []) as Activite[]);
-  }, [viewingUserId]);
+    if (me?.id) {
+      setMyCoIds(me.id === viewingUserId ? new Set(coIds) : new Set(await fetchActiviteIdsForUser(me.id)));
+    }
+  }, [viewingUserId, me?.id]);
+
+
 
   useEffect(() => { load(); }, [load]);
 
@@ -167,7 +182,7 @@ function CalendrierPage() {
   const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
 
   const setStatut = async (a: Activite, newStatut: string) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canChangeStatut) {
       toast.error("Vous ne pouvez pas modifier cette tâche.");
       return;
@@ -211,7 +226,7 @@ function CalendrierPage() {
   };
 
   const handleDelete = async (a: Activite) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canDelete) return;
     if (!confirm("Supprimer cette tâche ?")) return;
     const { error } = await supabase.from("activites").delete().eq("id", a.id);
@@ -400,6 +415,7 @@ function CalendrierPage() {
               targetStatut="a_faire"
               items={tasksAFaire}
               me={me}
+              coIds={myCoIds}
               onOpen={setDetail}
               onToggle={handleToggle}
               onEdit={setEditing}
@@ -417,10 +433,10 @@ function CalendrierPage() {
                 </div>
               }
             />
-            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
-            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
+            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
+            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
           </div>
         </TabsContent>
       </Tabs>
@@ -500,6 +516,8 @@ function TaskColumn({
   targetStatut,
   items,
   me,
+  coIds,
+
   onOpen,
   onToggle,
   onEdit,
@@ -512,6 +530,7 @@ function TaskColumn({
   targetStatut: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee";
   items: Activite[];
   me: Profile | null;
+  coIds: Set<string>;
   onOpen: (a: Activite) => void;
   onToggle: (a: Activite, done: boolean) => void;
   onEdit: (a: Activite) => void;
@@ -542,7 +561,7 @@ function TaskColumn({
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
         ) : items.map((a) => {
-          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "");
+          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
           const isDoneCard = a.statut === "terminee";
           return (
             <div
@@ -631,6 +650,10 @@ function ActiviteDialog({
   const [statut, setStatut] = useState(initial?.statut ?? "a_faire");
   const [recurrence, setRecurrence] = useState<string>(initial?.recurrence ?? "aucune");
   const [saving, setSaving] = useState(false);
+  const [coAssignes, setCoAssignes] = useState<string[]>([]);
+  const [biensLies, setBiensLies] = useState<string[]>([]);
+  const [biensOpts, setBiensOpts] = useState<LinkOpt[]>([]);
+
 
   // Lié à
   const initialLieType: string = initial?.bien_id ? "bien"
@@ -651,6 +674,24 @@ function ActiviteDialog({
   const [linkOpts, setLinkOpts] = useState<LinkOpt[]>([]);
 
   useEffect(() => { if (open && !isEdit) setAssigne(defaultAssignee); }, [open, defaultAssignee, isEdit]);
+
+  // Liste des biens (multi) + liaisons existantes
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from("biens").select("id, titre").order("titre").limit(1000);
+      setBiensOpts((data ?? []).map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
+      if (initial) {
+        const [aa, bb] = await Promise.all([fetchAssignesSupp(initial.id), fetchBiensLies(initial.id)]);
+        setCoAssignes(aa.filter((id) => id !== initial.assigne_a));
+        setBiensLies(bb);
+      } else {
+        setCoAssignes([]);
+        setBiensLies(defaults.bien_id ? [defaults.bien_id] : []);
+      }
+    })();
+  }, [open, initial, defaults.bien_id]);
+
 
   // Load link options for the selected "Lié à" type
   useEffect(() => {
@@ -691,8 +732,9 @@ function ActiviteDialog({
       return;
     }
     setSaving(true);
+    const principalBien = lieType === "bien" ? lieId || null : (biensLies[0] ?? null);
     const link = {
-      bien_id: lieType === "bien" ? lieId || null : null,
+      bien_id: principalBien,
       lot_id: lieType === "lot" ? lieId || null : null,
       contrat_id: lieType === "contrat" ? lieId || null : null,
       contact_id: lieType === "contact" ? lieId || null : null,
@@ -709,28 +751,39 @@ function ActiviteDialog({
       notes: notes.trim() || null,
       recurrence,
     };
+    const allBiens = Array.from(new Set([...biensLies, ...(principalBien ? [principalBien] : [])]));
     let error;
+    let activiteId = initial?.id ?? null;
     if (isEdit && initial) {
       ({ error } = await supabase.from("activites").update({ ...payload, ...link, statut }).eq("id", initial.id));
     } else {
       const { data: u } = await supabase.auth.getUser();
-      ({ error } = await supabase.from("activites").insert({
+      const res = await supabase.from("activites").insert({
         ...payload,
         ...link,
         created_by: u.user?.id ?? null,
         statut: type === "tache" ? "a_faire" : "planifiee",
-      }));
+      }).select("id").single();
+      error = res.error;
+      activiteId = res.data?.id ?? null;
+    }
+    if (!error && activiteId) {
+      await Promise.all([
+        syncAssignes(activiteId, [assigne, ...coAssignes]),
+        syncBiensLies(activiteId, allBiens),
+      ]);
     }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(isEdit ? "Tâche mise à jour" : "Activité créée");
     if (!isEdit) {
       setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache"); setRecurrence("aucune");
-      setLieType("none"); setLieId("");
+      setLieType("none"); setLieId(""); setCoAssignes([]); setBiensLies([]);
     }
     setOpen(false);
     onSaved();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -802,6 +855,27 @@ function ActiviteDialog({
               </Select>
             </div>
           </div>
+          <div>
+            <Label>Autres personnes assignées</Label>
+            <MultiSelect
+              values={coAssignes}
+              onChange={setCoAssignes}
+              options={profiles.filter((p) => p.id !== assigne).map((p) => ({ value: p.id, label: p.email ?? p.id }))}
+              placeholder="Ajouter un collaborateur..."
+              emptyLabel="Aucun collaborateur supplémentaire"
+            />
+          </div>
+          <div>
+            <Label>Biens concernés</Label>
+            <MultiSelect
+              values={biensLies}
+              onChange={setBiensLies}
+              options={biensOpts.map((b) => ({ value: b.id, label: b.label }))}
+              placeholder="Ajouter un bien..."
+              emptyLabel="Aucun bien lié"
+            />
+          </div>
+
           {isEdit && (
             <div>
               <Label>Statut</Label>

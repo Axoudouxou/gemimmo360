@@ -13,6 +13,8 @@ import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
 import { CommentSection } from "@/components/comment-section";
+import { fetchAssignesSupp, fetchBiensLies } from "@/lib/activite-liaisons";
+
 
 type Profile = { id: string; email: string | null; role?: string };
 
@@ -34,13 +36,15 @@ export function computeActivitePerms(
   a: Pick<Activite, "created_by" | "assigne_a"> | null,
   meId: string | null,
   role: string,
+  coAssignes: string[] = [],
 ): Perms {
   if (!a || !meId) return { canEditAll: false, canChangeStatut: false, canDelete: false };
   const isCreator = a.created_by === meId;
-  const isAssignee = a.assigne_a === meId;
+  const isAssignee = a.assigne_a === meId || coAssignes.includes(meId);
   const isAdminDir = role === "admin" || role === "direction";
-  // Créateur, assigné, admin et direction ont les pleins droits.
+  // Créateur, assignés (principal ou secondaires), admin et direction ont les pleins droits.
   const canEditAll = isCreator || isAssignee || isAdminDir;
+
   return {
     canEditAll,
     canChangeStatut: canEditAll,
@@ -83,12 +87,28 @@ export function ActiviteDetailDialog({
   const [commentaires, setCommentaires] = useState<Commentaire[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [assignes, setAssignes] = useState<string[]>([]);
+  const [biens, setBiens] = useState<Array<{ id: string; titre: string }>>([]);
 
   useEffect(() => {
     if (activite) setStatut(activite.statut);
   }, [activite]);
 
-  const perms = computeActivitePerms(activite, me?.id ?? null, role);
+  useEffect(() => {
+    if (!open || !activite) return;
+    (async () => {
+      const ids = await fetchAssignesSupp(activite.id);
+      setAssignes(Array.from(new Set([activite.assigne_a, ...ids])));
+      const bienIds = await fetchBiensLies(activite.id);
+      const all = Array.from(new Set([...(activite.bien_id ? [activite.bien_id] : []), ...bienIds]));
+      if (all.length === 0) { setBiens([]); return; }
+      const { data } = await supabase.from("biens").select("id, titre").in("id", all);
+      setBiens(((data ?? []) as Array<{ id: string; titre: string | null }>).map((b) => ({ id: b.id, titre: b.titre ?? b.id.slice(0, 8) })));
+    })();
+  }, [open, activite]);
+
+
+  const perms = computeActivitePerms(activite, me?.id ?? null, role, assignes);
   const link = activite ? linkFor(activite) : null;
 
   const nameOf = (id: string | null) => {
@@ -188,9 +208,27 @@ export function ActiviteDetailDialog({
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Assigné à</div>
-              <div>{nameOf(activite.assigne_a)}</div>
+              <div className="flex flex-wrap gap-1">
+                {(assignes.length > 0 ? assignes : [activite.assigne_a]).map((id) => (
+                  <Badge key={id} variant="secondary">{nameOf(id)}</Badge>
+                ))}
+              </div>
             </div>
+            {biens.length > 0 && (
+              <div className="col-span-2">
+                <div className="text-xs text-muted-foreground">Biens concernés</div>
+                <div className="flex flex-wrap gap-1">
+                  {biens.map((b) => (
+                    <Link key={b.id} to="/biens/$bienId" params={{ bienId: b.id }}>
+                      <Badge variant="outline">{b.titre}</Badge>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
+
 
           {activite.notes && (
             <div>
