@@ -214,7 +214,7 @@ function ReclamationsPage() {
 
   const bienOf = (id: string) => biens.find((b) => b.id === id);
   const bienTitre = (id: string) => bienOf(id)?.titre ?? "—";
-  const locataireOf = (id: string | null) => (id ? locataires.find((x) => x.id === id) ?? null : null);
+  const locataireOf = (id: string | null) => (id ? allContacts.find((x) => x.id === id) ?? null : null);
   const locataireName = (id: string | null) => { const l = locataireOf(id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const profileOf = (id: string | null) => (id ? profiles.find((p) => p.id === id) ?? null : null);
 
