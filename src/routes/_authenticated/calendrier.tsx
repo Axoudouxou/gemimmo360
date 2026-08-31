@@ -113,13 +113,19 @@ function CalendrierPage() {
 
   const load = useCallback(async () => {
     if (!viewingUserId) return;
+    // Tâches dont l'utilisateur est le responsable principal OU un co-assigné
+    const coIds = await fetchActiviteIdsForUser(viewingUserId);
+    const filter = coIds.length > 0
+      ? `assigne_a.eq.${viewingUserId},id.in.(${coIds.join(",")})`
+      : `assigne_a.eq.${viewingUserId}`;
     const { data } = await supabase
       .from("activites")
       .select("*")
-      .eq("assigne_a", viewingUserId)
+      .or(filter)
       .order("date_debut", { ascending: true, nullsFirst: false });
     setItems((data ?? []) as Activite[]);
   }, [viewingUserId]);
+
 
   useEffect(() => { load(); }, [load]);
 
