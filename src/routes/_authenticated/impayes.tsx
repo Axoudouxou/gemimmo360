@@ -115,7 +115,7 @@ function ImpayesPage() {
   const [selected, setSelected] = useState<Impaye | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [fStatut, setFStatut] = useState("en_retard");
+  const [fStatut, setFStatut] = useState("actifs");
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("priorite");
@@ -257,11 +257,14 @@ function ImpayesPage() {
       if (fStatut === "solde") {
         if (!isResolved) return false;
       } else if (fStatut === "all") {
-        // include everything
+        // tout inclure
+      } else if (fStatut === "actifs") {
+        if (isResolved) return false;
       } else {
         if (isResolved) return false;
         if (i.statut !== fStatut) return false;
       }
+
       if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
@@ -469,11 +472,12 @@ function ImpayesPage() {
               onSearchChange={setSearch}
               searchPlaceholder="Bien ou locataire..."
               selects={[
-                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: STATUTS.map((s) => ({ value: s.value, label: s.label })) },
+                { key: "statut", label: "Statut", value: fStatut, onChange: setFStatut, options: [{ value: "actifs", label: "Dossiers actifs" }, ...STATUTS.map((s) => ({ value: s.value, label: s.label })), { value: "solde", label: "Soldé" }] },
                 { key: "service", label: "Service en charge", value: fService, onChange: setFService, options: [{ value: "recouvrement", label: "Recouvrement" }, { value: "juridique", label: "Juridique" }] },
               ]}
               dateRange={{ label: "Échéance", from: dFrom, to: dTo, onFromChange: setDFrom, onToChange: setDTo }}
-              onReset={() => { setSearch(""); setFStatut("en_retard"); setFService("all"); setDFrom(""); setDTo(""); }}
+              onReset={() => { setSearch(""); setFStatut("actifs"); setFService("all"); setDFrom(""); setDTo(""); }}
+
             />
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement...</p>

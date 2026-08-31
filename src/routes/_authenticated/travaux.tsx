@@ -133,7 +133,7 @@ function TravauxPage() {
     setEdls((eData ?? []) as unknown as Edl[]);
     const occ: Record<string, string> = {};
     for (const c of (cData ?? []) as any[]) {
-      if (c.lot_id && c.contacts) occ[c.lot_id] = `${c.contacts.prenom ?? ""} ${c.contacts.nom ?? ""}`.trim();
+      if (c.lot_id && c.contacts) occ[c.lot_id] = `${c.contacts.nom ?? ""} ${c.contacts.prenom ?? ""}`.trim();
     }
     setOccupants(occ);
     setLoading(false);

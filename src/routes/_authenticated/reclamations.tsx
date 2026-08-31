@@ -145,7 +145,9 @@ function ReclamationsPage() {
   const [role, setRole] = useState<string>("");
   const [items, setItems] = useState<Reclamation[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [locataires, setLocataires] = useState<Contact[]>([]);
+
   const [prestataires, setPrestataires] = useState<Contact[]>([]);
   const [bailleurs, setBailleurs] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -183,21 +185,22 @@ function ReclamationsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: rData, error }, { data: bData }, { data: lData }, { data: prData }, { data: baData }, { data: pData }] = await Promise.all([
+    const [{ data: rData, error }, { data: bData }, { data: cData }, { data: pData }] = await Promise.all([
       (supabase.from("reclamations") as any).select("*").order("created_at", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
-      supabase.from("contacts").select("id, nom, prenom, telephone, email").eq("type_contact", "locataire").eq("archive", false).order("nom"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "prestataire").eq("archive", false).order("nom"),
-      supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "bailleur").eq("archive", false).order("nom"),
+      supabase.from("contacts").select("id, nom, prenom, telephone, email, type_contact").order("nom"),
       supabase.from("profiles").select("id, email").order("email"),
     ]);
     if (error) toast.error(error.message);
     else setItems((rData ?? []) as Reclamation[]);
     setBiens((bData ?? []) as Bien[]);
-    setLocataires((lData ?? []) as Contact[]);
-    setPrestataires((prData ?? []) as Contact[]);
-    setBailleurs((baData ?? []) as Contact[]);
+    const all = (cData ?? []) as (Contact & { type_contact: string | null })[];
+    setAllContacts(all);
+    setLocataires(all.filter((c) => c.type_contact === "locataire"));
+    setPrestataires(all.filter((c) => c.type_contact === "prestataire"));
+    setBailleurs(all.filter((c) => c.type_contact === "bailleur"));
     setProfiles((pData ?? []) as Profile[]);
+
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -211,7 +214,7 @@ function ReclamationsPage() {
 
   const bienOf = (id: string) => biens.find((b) => b.id === id);
   const bienTitre = (id: string) => bienOf(id)?.titre ?? "—";
-  const locataireOf = (id: string | null) => (id ? locataires.find((x) => x.id === id) ?? null : null);
+  const locataireOf = (id: string | null) => (id ? allContacts.find((x) => x.id === id) ?? null : null);
   const locataireName = (id: string | null) => { const l = locataireOf(id); return l ? `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}` : "—"; };
   const profileOf = (id: string | null) => (id ? profiles.find((p) => p.id === id) ?? null : null);
 
@@ -463,7 +466,7 @@ function ReclamationsPage() {
         </Card>
 
         {detail && (
-          <DetailDialog rec={detail} uid={uid} role={role} biens={biens} locataires={locataires} profiles={profiles} prestataires={prestataires} bailleurs={bailleurs}
+          <DetailDialog rec={detail} uid={uid} role={role} biens={biens} locataires={allContacts} profiles={profiles} prestataires={allContacts} bailleurs={allContacts}
             onClose={() => setDetail(null)}
             onEdit={() => { setEditing(detail); setDetail(null); }}
             onDeleted={() => { setDetail(null); load(); }}
@@ -485,7 +488,7 @@ function ReclamationsPage() {
         )}
 
         {(creating || editing) && (
-          <EditDialog initial={editing} uid={uid} role={role} biens={biens} locataires={locataires} profiles={profiles} prestataires={prestataires}
+          <EditDialog initial={editing} uid={uid} role={role} biens={biens} locataires={allContacts} profiles={profiles} prestataires={allContacts}
             onClose={() => { setCreating(false); setEditing(null); }}
             onSaved={() => { setCreating(false); setEditing(null); load(); }}
           />
