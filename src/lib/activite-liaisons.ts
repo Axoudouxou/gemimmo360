@@ -35,7 +35,8 @@ async function sync(
 ) {
   const uniq = Array.from(new Set(wanted.filter(Boolean)));
   const { data } = await supabase.from(table).select(`id, ${column}`).eq("activite_id", activiteId);
-  const current = (data ?? []) as Array<Record<string, string>>;
+  const current = (data ?? []) as unknown as Array<Record<string, string>>;
+
   const currentIds = current.map((r) => r[column] as string);
 
   const toAdd = uniq.filter((v) => !currentIds.includes(v));
