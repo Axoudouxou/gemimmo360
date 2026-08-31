@@ -182,7 +182,7 @@ function CalendrierPage() {
   const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
 
   const setStatut = async (a: Activite, newStatut: string) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canChangeStatut) {
       toast.error("Vous ne pouvez pas modifier cette tâche.");
       return;
@@ -226,7 +226,7 @@ function CalendrierPage() {
   };
 
   const handleDelete = async (a: Activite) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
+    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
     if (!perms.canDelete) return;
     if (!confirm("Supprimer cette tâche ?")) return;
     const { error } = await supabase.from("activites").delete().eq("id", a.id);
