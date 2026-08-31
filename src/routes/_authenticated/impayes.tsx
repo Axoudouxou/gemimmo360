@@ -257,11 +257,14 @@ function ImpayesPage() {
       if (fStatut === "solde") {
         if (!isResolved) return false;
       } else if (fStatut === "all") {
-        // include everything
+        // tout inclure
+      } else if (fStatut === "actifs") {
+        if (isResolved) return false;
       } else {
         if (isResolved) return false;
         if (i.statut !== fStatut) return false;
       }
+
       if (fService !== "all" && (i.service_en_charge ?? "recouvrement") !== fService) return false;
       if (dFrom && i.date_echeance < dFrom) return false;
       if (dTo && i.date_echeance > dTo) return false;
