@@ -722,8 +722,9 @@ function ActiviteDialog({
       return;
     }
     setSaving(true);
+    const principalBien = lieType === "bien" ? lieId || null : (biensLies[0] ?? null);
     const link = {
-      bien_id: lieType === "bien" ? lieId || null : null,
+      bien_id: principalBien,
       lot_id: lieType === "lot" ? lieId || null : null,
       contrat_id: lieType === "contrat" ? lieId || null : null,
       contact_id: lieType === "contact" ? lieId || null : null,
@@ -740,28 +741,39 @@ function ActiviteDialog({
       notes: notes.trim() || null,
       recurrence,
     };
+    const allBiens = Array.from(new Set([...biensLies, ...(principalBien ? [principalBien] : [])]));
     let error;
+    let activiteId = initial?.id ?? null;
     if (isEdit && initial) {
       ({ error } = await supabase.from("activites").update({ ...payload, ...link, statut }).eq("id", initial.id));
     } else {
       const { data: u } = await supabase.auth.getUser();
-      ({ error } = await supabase.from("activites").insert({
+      const res = await supabase.from("activites").insert({
         ...payload,
         ...link,
         created_by: u.user?.id ?? null,
         statut: type === "tache" ? "a_faire" : "planifiee",
-      }));
+      }).select("id").single();
+      error = res.error;
+      activiteId = res.data?.id ?? null;
+    }
+    if (!error && activiteId) {
+      await Promise.all([
+        syncAssignes(activiteId, [assigne, ...coAssignes]),
+        syncBiensLies(activiteId, allBiens),
+      ]);
     }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(isEdit ? "Tâche mise à jour" : "Activité créée");
     if (!isEdit) {
       setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache"); setRecurrence("aucune");
-      setLieType("none"); setLieId("");
+      setLieType("none"); setLieId(""); setCoAssignes([]); setBiensLies([]);
     }
     setOpen(false);
     onSaved();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
