@@ -41,7 +41,7 @@ type Charge = {
 };
 type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
 type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; lot: { bien_id: string } | null };
-type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string };
+type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string; etape_traitement: string | null };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
   id: string; bien_id: string; titre: string; budget_depense: number | null; budget_prevu: number | null; statut: string;
@@ -123,7 +123,7 @@ function ChargesPage() {
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
-      supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance"),
+      supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
@@ -248,7 +248,14 @@ function ChargesPage() {
     if (!dBien) return null;
     const contratsBien = contrats.filter((c) => c.lot?.bien_id === dBien);
     const ids = new Set(contratsBien.map((c) => c.id));
-    const impayesMois = impayes.filter((i) => ids.has(i.contrat_id) && monthKey(i.date_echeance) === dMois);
+    // Seuls les impayés réellement non soldés réduisent les loyers encaissés
+    const nonSolde = (i: ImpayeRow) =>
+      !["a_jour", "solde", "resolu", "cloture"].includes(i.statut) &&
+      i.etape_traitement !== "resolu" &&
+      Number(i.montant_paye) < Number(i.montant_du);
+    const impayesMois = impayes.filter(
+      (i) => ids.has(i.contrat_id) && monthKey(i.date_echeance) === dMois && nonSolde(i),
+    );
     const actifs = contratsBien.filter(
       (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
     );
