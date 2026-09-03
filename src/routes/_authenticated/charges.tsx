@@ -274,24 +274,43 @@ function ChargesPage() {
       : [];
     const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
 
-    // Loyers encaissés par locataire (prorata des impayés du contrat)
-    const detailLoyers = actifs.map((c) => {
+    // Loyers du mois par locataire : tous les contrats concernés (actifs + ceux ayant un impayé sur le mois)
+    const contratsConcernes = contratsBien.filter(
+      (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
+    );
+    const nomLocataire = (id: string | null | undefined) => {
+      const contact = contacts.find((ct) => ct.id === id);
+      return contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire";
+    };
+    const detailLoyers = contratsConcernes.map((c) => {
       const du = impayesMois
         .filter((i) => i.contrat_id === c.id)
         .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
-      const contact = contacts.find((ct) => ct.id === c.locataire_id);
       return {
-        locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
+        locataire: nomLocataire(c.locataire_id),
         echeance: monthLabel(dMois),
         montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
       };
-    }).filter((l) => l.montant > 0);
+    });
+
+    // Impayés du mois (montant restant dû par locataire)
+    const detailImpayes = impayesMois
+      .map((i) => {
+        const contrat = contratsBien.find((c) => c.id === i.contrat_id);
+        return {
+          locataire: nomLocataire(contrat?.locataire_id),
+          echeance: monthLabel(dMois),
+          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+        };
+      })
+      .filter((i) => i.montant > 0);
 
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers, detailImpayes,
       net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dBien, dMois, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
 
