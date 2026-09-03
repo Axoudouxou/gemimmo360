@@ -200,10 +200,18 @@ export async function generateDecompteDocx(d: DecompteData) {
     }),
   );
 
+  const factures = d.loyersFactures ?? d.totalLoyers;
+  const impayes = d.impayes ?? [];
+  const totalImpayes = d.totalImpayes ?? impayes.reduce((s, i) => s + i.montant, 0);
+
   children.push(
-    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(d.totalLoyers)}`, { after: 60 }),
-    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 240 }),
+    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factures)}`, { after: 60 }),
+    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: totalImpayes > 0 ? 60 : 240 }),
   );
+  if (totalImpayes > 0) {
+    children.push(p(`• Montant des impayés : ${money(totalImpayes)}`, { after: 240 }));
+  }
+
 
   // Tableau Dépenses / Recettes
   const rows: TableRow[] = [
