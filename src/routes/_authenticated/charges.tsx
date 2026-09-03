@@ -480,6 +480,22 @@ function ChargesPage() {
                       <div className="mt-2 flex justify-between border-t pt-2 font-semibold"><span>Net à reverser au propriétaire</span><span>{fmtMoney(decompte.net)}</span></div>
                     </div>
 
+                    {decompte.detailImpayes.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-sm font-semibold">Impayés du mois (non encaissés)</h3>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Locataire</TableHead><TableHead>Échéance</TableHead><TableHead>Reste dû</TableHead></TableRow></TableHeader>
+                          <TableBody>{decompte.detailImpayes.map((i) => (
+                            <TableRow key={i.id}>
+                              <TableCell>{i.locataire}</TableCell>
+                              <TableCell className="text-muted-foreground">{i.echeance}</TableCell>
+                              <TableCell>{fmtMoney(i.montant)}</TableCell>
+                            </TableRow>
+                          ))}</TableBody>
+                        </Table>
+                      </div>
+                    )}
+
                     {(decompte.travauxMois.length > 0 || decompte.honoFiscauxMois.length > 0) && (
                       <div className="grid gap-6 md:grid-cols-2">
                         {decompte.travauxMois.length > 0 && (
