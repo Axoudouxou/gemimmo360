@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { hasModuleAccess } from "@/lib/access-overrides";
 
@@ -39,9 +39,15 @@ type Charge = {
   mois_rattachement: string; recurrence_debut: string | null; recurrence_fin: string | null;
   frequence: string; statut_imputation: string; decompte_mois: string | null;
 };
-type Bien = { id: string; titre: string };
-type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; lot: { bien_id: string } | null };
+type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
+type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; lot: { bien_id: string } | null };
 type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string };
+type ContactRow = { id: string; nom: string; prenom: string | null };
+type TravauxRow = {
+  id: string; bien_id: string; titre: string; budget_depense: number | null; statut: string;
+  date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
+};
+type HonoraireFiscalRow = { id: string; bailleur_id: string; montant: number; type_honoraire: string; periode: string | null; statut: string };
 
 const monthKey = (d: string | Date) => {
   const dt = typeof d === "string" ? new Date(d) : d;
@@ -61,6 +67,10 @@ function ChargesPage() {
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contrats, setContrats] = useState<ContratRow[]>([]);
   const [impayes, setImpayes] = useState<ImpayeRow[]>([]);
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [travaux, setTravaux] = useState<TravauxRow[]>([]);
+  const [honoFiscaux, setHonoFiscaux] = useState<HonoraireFiscalRow[]>([]);
+  const [exporting, setExporting] = useState(false);
   const [filterBien, setFilterBien] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [fRec, setFRec] = useState("all");
@@ -105,17 +115,26 @@ function ChargesPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cData, error }, { data: bData }, { data: ctData }, { data: imData }] = await Promise.all([
+    const [
+      { data: cData, error }, { data: bData }, { data: ctData }, { data: imData },
+      { data: coData }, { data: trData }, { data: hfData },
+    ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
-      supabase.from("biens").select("id, titre").order("titre"),
-      supabase.from("contrats").select("id, loyer_mensuel, statut, lot:lots(bien_id)"),
+      supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
+      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
       supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance"),
+      supabase.from("contacts").select("id, nom, prenom"),
+      supabase.from("travaux").select("id, bien_id, titre, budget_depense, statut, date_intervention_reelle, date_fin, date_echeance, updated_at"),
+      supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
     ]);
     if (error) toast.error(error.message);
     else setCharges((cData ?? []) as unknown as Charge[]);
     setBiens((bData ?? []) as Bien[]);
     setContrats((ctData ?? []) as unknown as ContratRow[]);
     setImpayes((imData ?? []) as ImpayeRow[]);
+    setContacts((coData ?? []) as ContactRow[]);
+    setTravaux((trData ?? []) as unknown as TravauxRow[]);
+    setHonoFiscaux((hfData ?? []) as unknown as HonoraireFiscalRow[]);
     setLoading(false);
   };
   useEffect(() => {
@@ -236,12 +255,75 @@ function ChargesPage() {
     const lignes = chargesDuMois(dBien, dMois);
     const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
     const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
+
+    // Dépenses réelles de travaux du mois (montant réellement dépensé)
+    const travauxMois = travaux.filter((t) => {
+      if (t.bien_id !== dBien) return false;
+      if (!(Number(t.budget_depense) > 0)) return false;
+      const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
+      return !!ref && monthKey(ref) === dMois;
+    });
+    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_depense || 0), 0);
+
+    // Honoraires de fiscalité du bailleur du bien sur le mois
+    const bailleurId = biens.find((b) => b.id === dBien)?.bailleur_id ?? null;
+    const honoFiscauxMois = bailleurId
+      ? honoFiscaux.filter((h) => h.bailleur_id === bailleurId && h.periode && monthKey(h.periode) === dMois)
+      : [];
+    const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
+
+    // Loyers encaissés par locataire (prorata des impayés du contrat)
+    const detailLoyers = actifs.map((c) => {
+      const du = impayesMois
+        .filter((i) => i.contrat_id === c.id)
+        .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
+      const contact = contacts.find((ct) => ct.id === c.locataire_id);
+      return {
+        locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
+        echeance: monthLabel(dMois),
+        montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
+      };
+    }).filter((l) => l.montant > 0);
+
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      net: loyersEncaisses - totalCharges - honoraires,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
+      net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dBien, dMois, tauxHono, charges, contrats, impayes]);
+  }, [dBien, dMois, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
+
+  const handleExportDocx = async () => {
+    if (!decompte || !dBien) return;
+    const bien = biens.find((b) => b.id === dBien);
+    const bailleur = contacts.find((c) => c.id === bien?.bailleur_id);
+    setExporting(true);
+    try {
+      const { generateDecompteDocx } = await import("@/lib/decompte-docx");
+      await generateDecompteDocx({
+        bienTitre: bien?.titre ?? "Bien",
+        bienAdresse: bien?.adresse ?? null,
+        proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
+        moisLabel: monthLabel(dMois),
+        loyers: decompte.detailLoyers,
+        totalLoyers: decompte.loyersEncaisses,
+        charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
+        totalCharges: decompte.totalCharges,
+        travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_depense || 0) })),
+        totalTravaux: decompte.totalTravaux,
+        honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
+        totalHonorairesFiscaux: decompte.totalHonoFiscaux,
+        tauxHonoraires: Number(tauxHono) || 0,
+        honorairesGestion: decompte.honoraires,
+        net: decompte.net,
+      });
+      toast.success("Décompte généré");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!checked) return null;
 
@@ -332,9 +414,14 @@ function ChargesPage() {
 
           <TabsContent value="decompte">
             <Card>
-              <CardHeader>
-                <CardTitle>Décompte propriétaire</CardTitle>
-                <CardDescription>Loyers encaissés − Charges du mois − Honoraires de gestion = Net à reverser.</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Décompte propriétaire</CardTitle>
+                  <CardDescription>Loyers encaissés − Charges − Travaux (dépense réelle) − Honoraires de fiscalité − Honoraires de gestion = Net à reverser.</CardDescription>
+                </div>
+                <Button size="sm" disabled={!decompte || exporting} onClick={handleExportDocx}>
+                  <FileDown className="mr-2 h-4 w-4" /> {exporting ? "Génération..." : "Générer le décompte"}
+                </Button>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -371,9 +458,38 @@ function ChargesPage() {
                     <div className="rounded-lg border bg-background p-4">
                       <div className="flex justify-between py-1 text-sm"><span>Loyers encaissés</span><span>{fmtMoney(decompte.loyersEncaisses)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Charges du mois</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Travaux (dépense réelle)</span><span>− {fmtMoney(decompte.totalTravaux)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Honoraires de fiscalité</span><span>− {fmtMoney(decompte.totalHonoFiscaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de gestion ({tauxHono || 0} %)</span><span>− {fmtMoney(decompte.honoraires)}</span></div>
                       <div className="mt-2 flex justify-between border-t pt-2 font-semibold"><span>Net à reverser au propriétaire</span><span>{fmtMoney(decompte.net)}</span></div>
                     </div>
+
+                    {(decompte.travauxMois.length > 0 || decompte.honoFiscauxMois.length > 0) && (
+                      <div className="grid gap-6 md:grid-cols-2">
+                        {decompte.travauxMois.length > 0 && (
+                          <div>
+                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                            <Table>
+                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Dépense réelle</TableHead></TableRow></TableHeader>
+                              <TableBody>{decompte.travauxMois.map((t) => (
+                                <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_depense || 0))}</TableCell></TableRow>
+                              ))}</TableBody>
+                            </Table>
+                          </div>
+                        )}
+                        {decompte.honoFiscauxMois.length > 0 && (
+                          <div>
+                            <h3 className="mb-2 text-sm font-semibold">Honoraires de fiscalité</h3>
+                            <Table>
+                              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
+                              <TableBody>{decompte.honoFiscauxMois.map((h) => (
+                                <TableRow key={h.id}><TableCell>{h.type_honoraire}</TableCell><TableCell>{fmtMoney(Number(h.montant || 0))}</TableCell></TableRow>
+                              ))}</TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{monthLabel(dMois)}</span></h3>
