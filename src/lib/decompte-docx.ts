@@ -187,11 +187,9 @@ export async function generateDecompteDocx(d: DecompteData) {
     }),
   );
 
-  const factureMois = d.totalLoyers + (d.totalImpayes ?? 0);
   children.push(
-    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factureMois)}`, { after: 60 }),
-    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 60 }),
-    p(`• Montant des impayés du mois de ${d.moisLabel} : ${money(d.totalImpayes ?? 0)}`, { after: 240 }),
+    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(d.totalLoyers)}`, { after: 60 }),
+    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 240 }),
   );
 
   // Tableau Dépenses / Recettes
