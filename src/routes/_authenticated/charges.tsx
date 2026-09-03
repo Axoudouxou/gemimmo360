@@ -277,15 +277,12 @@ function ChargesPage() {
       : [];
     const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
 
-    // Loyers du mois par locataire : tous les contrats concernés (actifs + ceux ayant un impayé sur le mois)
-    const contratsConcernes = contratsBien.filter(
-      (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
-    );
+    // Loyers du mois par locataire (contrats actifs + ceux ayant un impayé sur le mois)
     const nomLocataire = (id: string | null | undefined) => {
       const contact = contacts.find((ct) => ct.id === id);
       return contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire";
     };
-    const detailLoyers = contratsConcernes.map((c) => {
+    const detailLoyers = actifs.map((c) => {
       const du = impayesMois
         .filter((i) => i.contrat_id === c.id)
         .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
