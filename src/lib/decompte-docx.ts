@@ -26,8 +26,6 @@ export type DecompteData = {
   numero?: string;
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
-  impayes?: { locataire: string; echeance: string; montant: number }[];
-  totalImpayes?: number;
   charges: DecompteLigne[];
   totalCharges: number;
   travaux: DecompteLigne[];
@@ -96,9 +94,9 @@ function movRow(libelle: string, depense?: number, recette?: number, bold?: bool
   });
 }
 
-async function fetchLogo(): Promise<ArrayBuffer | null> {
+async function fetchImage(path: string): Promise<ArrayBuffer | null> {
   try {
-    const res = await fetch("/gem-logo.jpg");
+    const res = await fetch(path);
     if (!res.ok) return null;
     return await res.arrayBuffer();
   } catch {
@@ -107,18 +105,18 @@ async function fetchLogo(): Promise<ArrayBuffer | null> {
 }
 
 export async function generateDecompteDocx(d: DecompteData) {
-  const logo = await fetchLogo();
+  const [logo, agrement] = await Promise.all([fetchImage("/gem-logo.jpg"), fetchImage("/gem-agrement.png")]);
   const today = new Date();
   const dateStr = today.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
 
   const children: (Paragraph | Table)[] = [];
 
-  // En-tête : logo + agrément
+  // En-tête : logo GEM + logo agrément C.DA.IM
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [5000, 4360],
+      columnWidths: [4680, 4680],
       rows: [
         new TableRow({
           children: [
@@ -130,23 +128,33 @@ export async function generateDecompteDocx(d: DecompteData) {
                         new ImageRun({
                           type: "jpg",
                           data: logo,
-                          transformation: { width: 220, height: 119 },
+                          transformation: { width: 149, height: 105 },
                           altText: { title: "GEM Immobilier", description: "Logo GEM Immobilier", name: "Logo" },
                         }),
                       ],
                     }),
                   ]
                 : [p("GEM IMMOBILIER", { bold: true, size: 32 })],
-              5000,
+              4680,
               { borders: noBorders },
             ),
             cell(
-              [
-                p("AGENT IMMOBILIER AGRÉÉ", { bold: true, align: AlignmentType.RIGHT }),
-                p("Par l’État suivant Arrêté ministériel", { align: AlignmentType.RIGHT, size: 20 }),
-                p("N°14-0018 du 20 juin 2014", { align: AlignmentType.RIGHT, size: 20 }),
-              ],
-              4360,
+              agrement
+                ? [
+                    new Paragraph({
+                      alignment: AlignmentType.RIGHT,
+                      children: [
+                        new ImageRun({
+                          type: "png",
+                          data: agrement,
+                          transformation: { width: 178, height: 106 },
+                          altText: { title: "Agent immobilier agréé", description: "C.DA.IM", name: "Agrement" },
+                        }),
+                      ],
+                    }),
+                  ]
+                : [p("AGENT IMMOBILIER AGRÉÉ", { bold: true, align: AlignmentType.RIGHT })],
+              4680,
               { borders: noBorders },
             ),
           ],
@@ -189,11 +197,9 @@ export async function generateDecompteDocx(d: DecompteData) {
     }),
   );
 
-  const factureMois = d.totalLoyers + (d.totalImpayes ?? 0);
   children.push(
-    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factureMois)}`, { after: 60 }),
-    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 60 }),
-    p(`• Montant des impayés du mois de ${d.moisLabel} : ${money(d.totalImpayes ?? 0)}`, { after: 240 }),
+    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(d.totalLoyers)}`, { after: 60 }),
+    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 240 }),
   );
 
   // Tableau Dépenses / Recettes
@@ -225,11 +231,6 @@ export async function generateDecompteDocx(d: DecompteData) {
   rows.push(movRow("Par virement bancaire sur le compte du propriétaire", d.net));
   rows.push(movRow("TOTAL", totalDeduire + d.net, d.totalLoyers, true));
 
-  if (d.impayes && d.impayes.length) {
-    rows.push(movRow("IMPAYÉS DU MOIS (non encaissés)", undefined, undefined, true));
-    d.impayes.forEach((i) => rows.push(movRow(`${i.locataire} (${i.echeance})`, undefined, i.montant)));
-    rows.push(movRow("TOTAL IMPAYÉS", undefined, d.totalImpayes ?? 0, true));
-  }
 
   children.push(new Table({ width: { size: CONTENT_WIDTH, type: WidthType.DXA }, columnWidths: COL, rows }));
 
