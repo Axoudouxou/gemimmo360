@@ -458,9 +458,38 @@ function ChargesPage() {
                     <div className="rounded-lg border bg-background p-4">
                       <div className="flex justify-between py-1 text-sm"><span>Loyers encaissés</span><span>{fmtMoney(decompte.loyersEncaisses)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Charges du mois</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Travaux (dépense réelle)</span><span>− {fmtMoney(decompte.totalTravaux)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Honoraires de fiscalité</span><span>− {fmtMoney(decompte.totalHonoFiscaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de gestion ({tauxHono || 0} %)</span><span>− {fmtMoney(decompte.honoraires)}</span></div>
                       <div className="mt-2 flex justify-between border-t pt-2 font-semibold"><span>Net à reverser au propriétaire</span><span>{fmtMoney(decompte.net)}</span></div>
                     </div>
+
+                    {(decompte.travauxMois.length > 0 || decompte.honoFiscauxMois.length > 0) && (
+                      <div className="grid gap-6 md:grid-cols-2">
+                        {decompte.travauxMois.length > 0 && (
+                          <div>
+                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                            <Table>
+                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Dépense réelle</TableHead></TableRow></TableHeader>
+                              <TableBody>{decompte.travauxMois.map((t) => (
+                                <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_depense || 0))}</TableCell></TableRow>
+                              ))}</TableBody>
+                            </Table>
+                          </div>
+                        )}
+                        {decompte.honoFiscauxMois.length > 0 && (
+                          <div>
+                            <h3 className="mb-2 text-sm font-semibold">Honoraires de fiscalité</h3>
+                            <Table>
+                              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
+                              <TableBody>{decompte.honoFiscauxMois.map((h) => (
+                                <TableRow key={h.id}><TableCell>{h.type_honoraire}</TableCell><TableCell>{fmtMoney(Number(h.montant || 0))}</TableCell></TableRow>
+                              ))}</TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{monthLabel(dMois)}</span></h3>
