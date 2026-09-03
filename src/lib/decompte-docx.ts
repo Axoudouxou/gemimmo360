@@ -26,6 +26,9 @@ export type DecompteData = {
   numero?: string;
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
+  loyersFactures?: number;
+  impayes?: { locataire: string; echeance: string; montant: number }[];
+  totalImpayes?: number;
   charges: DecompteLigne[];
   totalCharges: number;
   travaux: DecompteLigne[];
@@ -197,10 +200,18 @@ export async function generateDecompteDocx(d: DecompteData) {
     }),
   );
 
+  const factures = d.loyersFactures ?? d.totalLoyers;
+  const impayes = d.impayes ?? [];
+  const totalImpayes = d.totalImpayes ?? impayes.reduce((s, i) => s + i.montant, 0);
+
   children.push(
-    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(d.totalLoyers)}`, { after: 60 }),
-    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 240 }),
+    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factures)}`, { after: 60 }),
+    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: totalImpayes > 0 ? 60 : 240 }),
   );
+  if (totalImpayes > 0) {
+    children.push(p(`• Montant des impayés : ${money(totalImpayes)}`, { after: 240 }));
+  }
+
 
   // Tableau Dépenses / Recettes
   const rows: TableRow[] = [
@@ -219,6 +230,13 @@ export async function generateDecompteDocx(d: DecompteData) {
     rows.push(movRow("Aucun loyer encaissé sur la période", undefined, 0));
   }
   rows.push(movRow("TOTAL encaissement de la période", undefined, d.totalLoyers, true));
+
+  if (impayes.length) {
+    rows.push(movRow("IMPAYÉS DU MOIS", undefined, undefined, true));
+    impayes.forEach((i) => rows.push(movRow(`Impayé — ${i.locataire} (${i.echeance})`, undefined, i.montant)));
+    rows.push(movRow("TOTAL DES IMPAYÉS", undefined, totalImpayes, true));
+  }
+
 
   rows.push(movRow("A DÉDUIRE", undefined, undefined, true));
   rows.push(movRow(`Honoraires de gérance (${d.tauxHonoraires} %)`, d.honorairesGestion));

@@ -247,12 +247,15 @@ function ChargesPage() {
   const decompte = useMemo(() => {
     if (!dBien) return null;
     const contratsBien = contrats.filter((c) => c.lot?.bien_id === dBien);
-    const actifs = contratsBien.filter((c) => c.statut === "actif");
-    const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
     const ids = new Set(contratsBien.map((c) => c.id));
     const impayesMois = impayes.filter((i) => ids.has(i.contrat_id) && monthKey(i.date_echeance) === dMois);
+    const actifs = contratsBien.filter(
+      (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
+    );
+    const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
     const resteDu = impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
     const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
+
     const lignes = chargesDuMois(dBien, dMois);
     const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
     const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
@@ -274,24 +277,40 @@ function ChargesPage() {
       : [];
     const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
 
-    // Loyers encaissés par locataire (prorata des impayés du contrat)
+    // Loyers du mois par locataire (contrats actifs + ceux ayant un impayé sur le mois)
+    const nomLocataire = (id: string | null | undefined) => {
+      const contact = contacts.find((ct) => ct.id === id);
+      return contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire";
+    };
     const detailLoyers = actifs.map((c) => {
       const du = impayesMois
         .filter((i) => i.contrat_id === c.id)
         .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
-      const contact = contacts.find((ct) => ct.id === c.locataire_id);
       return {
-        locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
+        locataire: nomLocataire(c.locataire_id),
         echeance: monthLabel(dMois),
         montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
       };
-    }).filter((l) => l.montant > 0);
+    });
+
+    // Impayés du mois (montant restant dû par locataire)
+    const detailImpayes = impayesMois
+      .map((i) => {
+        const contrat = contratsBien.find((c) => c.id === i.contrat_id);
+        return {
+          locataire: nomLocataire(contrat?.locataire_id),
+          echeance: monthLabel(dMois),
+          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+        };
+      })
+      .filter((i) => i.montant > 0);
 
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers, detailImpayes,
       net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dBien, dMois, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
 
@@ -309,6 +328,9 @@ function ChargesPage() {
         moisLabel: monthLabel(dMois),
         loyers: decompte.detailLoyers,
         totalLoyers: decompte.loyersEncaisses,
+        loyersFactures: decompte.loyersAttendus,
+        impayes: decompte.detailImpayes,
+        totalImpayes: decompte.resteDu,
         charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
         totalCharges: decompte.totalCharges,
         travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_prevu ?? t.budget_depense ?? 0) })),
