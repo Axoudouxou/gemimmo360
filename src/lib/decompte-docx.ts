@@ -199,6 +199,37 @@ export async function generateDecompteDocx(d: DecompteData) {
     }),
   );
 
+  // 1 bis. Impayés
+  if (d.impayes && d.impayes.length) {
+    children.push(sectionTitle("Impayés du mois (non encaissés)"));
+    children.push(
+      new Table({
+        width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+        columnWidths: [4680, 2000, 2680],
+        rows: [
+          headerRow(["Locataire", "Échéance", "Reste dû"], [4680, 2000, 2680]),
+          ...d.impayes.map(
+            (i) =>
+              new TableRow({
+                children: [
+                  cell([p(i.locataire)], { width: 4680 }),
+                  cell([p(i.echeance)], { width: 2000 }),
+                  cell([p(money(i.montant), { right: true })], { width: 2680 }),
+                ],
+              }),
+          ),
+          new TableRow({
+            children: [
+              cell([p("Total impayés", { bold: true })], { width: 4680, fill: GEM_LIGHT }),
+              cell([p("")], { width: 2000, fill: GEM_LIGHT }),
+              cell([p(money(d.totalImpayes ?? 0), { bold: true, right: true })], { width: 2680, fill: GEM_LIGHT }),
+            ],
+          }),
+        ],
+      }),
+    );
+  }
+
   // 2. Charges
   children.push(sectionTitle("2. Charges déduites"));
   children.push(
