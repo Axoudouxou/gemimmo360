@@ -367,28 +367,49 @@ export type Database = {
           bien_id: string
           created_at: string
           date: string
+          decompte_mois: string | null
+          frequence: string
           id: string
           libelle: string
+          mois_rattachement: string
           montant: number
+          recurrence_debut: string | null
+          recurrence_fin: string | null
           recurrente: boolean
+          statut_imputation: string
+          updated_at: string
         }
         Insert: {
           bien_id: string
           created_at?: string
           date: string
+          decompte_mois?: string | null
+          frequence?: string
           id?: string
           libelle: string
+          mois_rattachement?: string
           montant: number
+          recurrence_debut?: string | null
+          recurrence_fin?: string | null
           recurrente?: boolean
+          statut_imputation?: string
+          updated_at?: string
         }
         Update: {
           bien_id?: string
           created_at?: string
           date?: string
+          decompte_mois?: string | null
+          frequence?: string
           id?: string
           libelle?: string
+          mois_rattachement?: string
           montant?: number
+          recurrence_debut?: string | null
+          recurrence_fin?: string | null
           recurrente?: boolean
+          statut_imputation?: string
+          updated_at?: string
         }
         Relationships: [
           {
