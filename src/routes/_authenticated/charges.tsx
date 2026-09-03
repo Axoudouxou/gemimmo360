@@ -287,23 +287,9 @@ function ChargesPage() {
       };
     }).filter((l) => l.montant > 0);
 
-    // Détail des impayés du mois (non encaissés, déjà déduits des loyers)
-    const detailImpayes = impayesMois
-      .map((i) => {
-        const ct = contratsBien.find((c) => c.id === i.contrat_id);
-        const contact = contacts.find((c) => c.id === ct?.locataire_id);
-        return {
-          id: i.id,
-          locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
-          echeance: fmtDate(i.date_echeance),
-          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
-        };
-      })
-      .filter((i) => i.montant > 0);
-
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers, detailImpayes,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
       net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
