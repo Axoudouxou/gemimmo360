@@ -285,9 +285,23 @@ function ChargesPage() {
       };
     }).filter((l) => l.montant > 0);
 
+    // Détail des impayés du mois (non encaissés, déjà déduits des loyers)
+    const detailImpayes = impayesMois
+      .map((i) => {
+        const ct = contratsBien.find((c) => c.id === i.contrat_id);
+        const contact = contacts.find((c) => c.id === ct?.locataire_id);
+        return {
+          id: i.id,
+          locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
+          echeance: fmtDate(i.date_echeance),
+          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+        };
+      })
+      .filter((i) => i.montant > 0);
+
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers, detailImpayes,
       net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,6 +321,8 @@ function ChargesPage() {
         moisLabel: monthLabel(dMois),
         loyers: decompte.detailLoyers,
         totalLoyers: decompte.loyersEncaisses,
+        impayes: decompte.detailImpayes.map((i) => ({ locataire: i.locataire, echeance: i.echeance, montant: i.montant })),
+        totalImpayes: decompte.resteDu,
         charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
         totalCharges: decompte.totalCharges,
         travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_depense || 0) })),
@@ -463,6 +479,22 @@ function ChargesPage() {
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de gestion ({tauxHono || 0} %)</span><span>− {fmtMoney(decompte.honoraires)}</span></div>
                       <div className="mt-2 flex justify-between border-t pt-2 font-semibold"><span>Net à reverser au propriétaire</span><span>{fmtMoney(decompte.net)}</span></div>
                     </div>
+
+                    {decompte.detailImpayes.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-sm font-semibold">Impayés du mois (non encaissés)</h3>
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Locataire</TableHead><TableHead>Échéance</TableHead><TableHead>Reste dû</TableHead></TableRow></TableHeader>
+                          <TableBody>{decompte.detailImpayes.map((i) => (
+                            <TableRow key={i.id}>
+                              <TableCell>{i.locataire}</TableCell>
+                              <TableCell className="text-muted-foreground">{i.echeance}</TableCell>
+                              <TableCell>{fmtMoney(i.montant)}</TableCell>
+                            </TableRow>
+                          ))}</TableBody>
+                        </Table>
+                      </div>
+                    )}
 
                     {(decompte.travauxMois.length > 0 || decompte.honoFiscauxMois.length > 0) && (
                       <div className="grid gap-6 md:grid-cols-2">
