@@ -125,7 +125,7 @@ function ChargesPage() {
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
       supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance"),
       supabase.from("contacts").select("id, nom, prenom"),
-      supabase.from("travaux").select("id, bien_id, titre, budget_depense, statut, date_intervention_reelle, date_fin, date_echeance, updated_at"),
+      supabase.from("travaux").select("id, bien_id, titre, budget_depense, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
     ]);
     if (error) toast.error(error.message);
@@ -260,6 +260,7 @@ function ChargesPage() {
     // Dépenses réelles de travaux du mois (montant réellement dépensé)
     const travauxMois = travaux.filter((t) => {
       if (t.bien_id !== dBien) return false;
+      if (t.charge_financiere !== "bailleur") return false;
       if (!(Number(t.budget_depense) > 0)) return false;
       const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
       return !!ref && monthKey(ref) === dMois;
