@@ -39,9 +39,15 @@ type Charge = {
   mois_rattachement: string; recurrence_debut: string | null; recurrence_fin: string | null;
   frequence: string; statut_imputation: string; decompte_mois: string | null;
 };
-type Bien = { id: string; titre: string };
-type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; lot: { bien_id: string } | null };
+type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
+type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; lot: { bien_id: string } | null };
 type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string };
+type ContactRow = { id: string; nom: string; prenom: string | null };
+type TravauxRow = {
+  id: string; bien_id: string; titre: string; budget_depense: number | null; statut: string;
+  date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
+};
+type HonoraireFiscalRow = { id: string; bailleur_id: string; montant: number; type_honoraire: string; periode: string | null; statut: string };
 
 const monthKey = (d: string | Date) => {
   const dt = typeof d === "string" ? new Date(d) : d;
