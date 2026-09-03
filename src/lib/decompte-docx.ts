@@ -223,11 +223,6 @@ export async function generateDecompteDocx(d: DecompteData) {
   rows.push(movRow("Par virement bancaire sur le compte du propriétaire", d.net));
   rows.push(movRow("TOTAL", totalDeduire + d.net, d.totalLoyers, true));
 
-  if (d.impayes && d.impayes.length) {
-    rows.push(movRow("IMPAYÉS DU MOIS (non encaissés)", undefined, undefined, true));
-    d.impayes.forEach((i) => rows.push(movRow(`${i.locataire} (${i.echeance})`, undefined, i.montant)));
-    rows.push(movRow("TOTAL IMPAYÉS", undefined, d.totalImpayes ?? 0, true));
-  }
 
   children.push(new Table({ width: { size: CONTENT_WIDTH, type: WidthType.DXA }, columnWidths: COL, rows }));
 
