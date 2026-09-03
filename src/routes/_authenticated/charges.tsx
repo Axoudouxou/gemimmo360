@@ -46,6 +46,7 @@ type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
   id: string; bien_id: string; titre: string; budget_depense: number | null; statut: string;
   date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
+  charge_financiere: string | null;
 };
 type HonoraireFiscalRow = { id: string; bailleur_id: string; montant: number; type_honoraire: string; periode: string | null; statut: string };
 
