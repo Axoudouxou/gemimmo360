@@ -231,6 +231,13 @@ export async function generateDecompteDocx(d: DecompteData) {
   }
   rows.push(movRow("TOTAL encaissement de la période", undefined, d.totalLoyers, true));
 
+  if (impayes.length) {
+    rows.push(movRow("IMPAYÉS DU MOIS", undefined, undefined, true));
+    impayes.forEach((i) => rows.push(movRow(`Impayé — ${i.locataire} (${i.echeance})`, undefined, i.montant)));
+    rows.push(movRow("TOTAL DES IMPAYÉS", undefined, totalImpayes, true));
+  }
+
+
   rows.push(movRow("A DÉDUIRE", undefined, undefined, true));
   rows.push(movRow(`Honoraires de gérance (${d.tauxHonoraires} %)`, d.honorairesGestion));
   d.charges.forEach((c) => rows.push(movRow(c.detail ? `${c.libelle} (${c.detail})` : c.libelle, c.montant)));
