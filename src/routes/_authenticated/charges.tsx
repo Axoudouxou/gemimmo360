@@ -414,9 +414,14 @@ function ChargesPage() {
 
           <TabsContent value="decompte">
             <Card>
-              <CardHeader>
-                <CardTitle>Décompte propriétaire</CardTitle>
-                <CardDescription>Loyers encaissés − Charges du mois − Honoraires de gestion = Net à reverser.</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Décompte propriétaire</CardTitle>
+                  <CardDescription>Loyers encaissés − Charges − Travaux (dépense réelle) − Honoraires de fiscalité − Honoraires de gestion = Net à reverser.</CardDescription>
+                </div>
+                <Button size="sm" disabled={!decompte || exporting} onClick={handleExportDocx}>
+                  <FileDown className="mr-2 h-4 w-4" /> {exporting ? "Génération..." : "Générer le décompte"}
+                </Button>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-3">
