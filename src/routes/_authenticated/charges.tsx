@@ -44,7 +44,7 @@ type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; lo
 type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
-  id: string; bien_id: string; titre: string; budget_depense: number | null; statut: string;
+  id: string; bien_id: string; titre: string; budget_depense: number | null; budget_prevu: number | null; statut: string;
   date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
   charge_financiere: string | null;
 };
@@ -125,7 +125,7 @@ function ChargesPage() {
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
       supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance"),
       supabase.from("contacts").select("id, nom, prenom"),
-      supabase.from("travaux").select("id, bien_id, titre, budget_depense, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
+      supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
     ]);
     if (error) toast.error(error.message);
@@ -265,7 +265,7 @@ function ChargesPage() {
       const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
       return !!ref && monthKey(ref) === dMois;
     });
-    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_depense || 0), 0);
+    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_prevu ?? t.budget_depense ?? 0), 0);
 
     // Honoraires de fiscalité du bailleur du bien sur le mois
     const bailleurId = biens.find((b) => b.id === dBien)?.bailleur_id ?? null;
@@ -311,7 +311,7 @@ function ChargesPage() {
         totalLoyers: decompte.loyersEncaisses,
         charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
         totalCharges: decompte.totalCharges,
-        travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_depense || 0) })),
+        travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_prevu ?? t.budget_depense ?? 0) })),
         totalTravaux: decompte.totalTravaux,
         honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
         totalHonorairesFiscaux: decompte.totalHonoFiscaux,
@@ -472,9 +472,9 @@ function ChargesPage() {
                           <div>
                             <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
                             <Table>
-                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Dépense réelle</TableHead></TableRow></TableHeader>
+                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
                               <TableBody>{decompte.travauxMois.map((t) => (
-                                <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_depense || 0))}</TableCell></TableRow>
+                                <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_prevu ?? t.budget_depense ?? 0))}</TableCell></TableRow>
                               ))}</TableBody>
                             </Table>
                           </div>
