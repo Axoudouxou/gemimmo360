@@ -472,7 +472,7 @@ function ChargesPage() {
                           <div>
                             <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
                             <Table>
-                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Coût estimé</TableHead></TableRow></TableHeader>
+                              <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
                               <TableBody>{decompte.travauxMois.map((t) => (
                                 <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_prevu ?? t.budget_depense ?? 0))}</TableCell></TableRow>
                               ))}</TableBody>
