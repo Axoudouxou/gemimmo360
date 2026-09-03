@@ -115,17 +115,26 @@ function ChargesPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cData, error }, { data: bData }, { data: ctData }, { data: imData }] = await Promise.all([
+    const [
+      { data: cData, error }, { data: bData }, { data: ctData }, { data: imData },
+      { data: coData }, { data: trData }, { data: hfData },
+    ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
-      supabase.from("biens").select("id, titre").order("titre"),
-      supabase.from("contrats").select("id, loyer_mensuel, statut, lot:lots(bien_id)"),
+      supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
+      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
       supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance"),
+      supabase.from("contacts").select("id, nom, prenom"),
+      supabase.from("travaux").select("id, bien_id, titre, budget_depense, statut, date_intervention_reelle, date_fin, date_echeance, updated_at"),
+      supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
     ]);
     if (error) toast.error(error.message);
     else setCharges((cData ?? []) as unknown as Charge[]);
     setBiens((bData ?? []) as Bien[]);
     setContrats((ctData ?? []) as unknown as ContratRow[]);
     setImpayes((imData ?? []) as ImpayeRow[]);
+    setContacts((coData ?? []) as ContactRow[]);
+    setTravaux((trData ?? []) as unknown as TravauxRow[]);
+    setHonoFiscaux((hfData ?? []) as unknown as HonoraireFiscalRow[]);
     setLoading(false);
   };
   useEffect(() => {
