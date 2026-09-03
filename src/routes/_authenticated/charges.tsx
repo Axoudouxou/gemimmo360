@@ -247,12 +247,15 @@ function ChargesPage() {
   const decompte = useMemo(() => {
     if (!dBien) return null;
     const contratsBien = contrats.filter((c) => c.lot?.bien_id === dBien);
-    const actifs = contratsBien.filter((c) => c.statut === "actif");
-    const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
     const ids = new Set(contratsBien.map((c) => c.id));
     const impayesMois = impayes.filter((i) => ids.has(i.contrat_id) && monthKey(i.date_echeance) === dMois);
+    const actifs = contratsBien.filter(
+      (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
+    );
+    const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
     const resteDu = impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
     const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
+
     const lignes = chargesDuMois(dBien, dMois);
     const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
     const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
