@@ -30,6 +30,8 @@ export type DecompteData = {
   moisLabel: string;
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
+  impayes?: { locataire: string; echeance: string; montant: number }[];
+  totalImpayes?: number;
   charges: DecompteLigne[];
   totalCharges: number;
   travaux: DecompteLigne[];
