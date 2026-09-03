@@ -105,7 +105,7 @@ async function fetchImage(path: string): Promise<ArrayBuffer | null> {
 }
 
 export async function generateDecompteDocx(d: DecompteData) {
-  const [logo, agrement] = await Promise.all([fetchImage("/gem-logo.jpg"), fetchImage("/gem-agrement.png")]);
+  const [logo, agrement] = await Promise.all([fetchImage("/gem-logo.png"), fetchImage("/gem-agrement.png")]);
   const today = new Date();
   const dateStr = today.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
@@ -126,7 +126,7 @@ export async function generateDecompteDocx(d: DecompteData) {
                     new Paragraph({
                       children: [
                         new ImageRun({
-                          type: "jpg",
+                          type: "png",
                           data: logo,
                           transformation: { width: 149, height: 105 },
                           altText: { title: "GEM Immobilier", description: "Logo GEM Immobilier", name: "Logo" },
