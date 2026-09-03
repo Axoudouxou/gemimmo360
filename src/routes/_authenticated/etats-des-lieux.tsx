@@ -63,7 +63,7 @@ function EDLPage() {
   const [form, setForm] = useState({ lot_id: "", contrat_id: "", type: "entree", date_realisation: "", observations: "" });
   const [editing, setEditing] = useState<EDL | null>(null);
   const [anomalies, setAnomalies] = useState<Anomalie[]>([newAnomalie()]);
-  const [summary, setSummary] = useState<{ count: number; travaux: { id: string; titre: string }[] } | null>(null);
+  const [summary, setSummary] = useState<{ id: string; count: number; travaux: { id: string; titre: string }[] } | null>(null);
   const [detail, setDetail] = useState<EDL | null>(null);
   const [search, setSearch] = useState("");
   const [fType, setFType] = useState("all");
@@ -212,7 +212,7 @@ function EDLPage() {
     setOpen(false);
     resetForm();
     load();
-    setSummary({ count: created.length, travaux: created });
+    setSummary({ id: edl.id, count: created.length, travaux: created });
     toast.success(`État des lieux enregistré, ${created.length} travaux créés`);
   };
 
@@ -300,6 +300,12 @@ function EDLPage() {
                         <div className="grid gap-2"><Label htmlFor="dr">Date *</Label><Input id="dr" type="date" required value={form.date_realisation} onChange={(e) => setForm({ ...form, date_realisation: e.target.value })} /></div>
                       </div>
                       <div className="grid gap-2"><Label htmlFor="obs">Observations</Label><Textarea id="obs" rows={3} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} /></div>
+
+                      {editing && (
+                        <div className="border-t pt-4">
+                          <DocumentsSection bucket="edl-documents" recordId={editing.id} canWrite title="Documents" description="Rapport Kizeo et pièces jointes (PDF)." />
+                        </div>
+                      )}
 
                       {!editing && <div className="border-t pt-4">
                         <div className="flex items-center justify-between mb-3">
@@ -399,11 +405,16 @@ function EDLPage() {
         />
 
         <Dialog open={!!summary} onOpenChange={(o) => { if (!o) setSummary(null); }}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>État des lieux enregistré</DialogTitle>
               <DialogDescription>{summary?.count ?? 0} travaux créés automatiquement.</DialogDescription>
             </DialogHeader>
+            {summary && (
+              <div className="py-2">
+                <DocumentsSection bucket="edl-documents" recordId={summary.id} canWrite title="Joindre l'état des lieux" description="Ajoutez le rapport d'état des lieux (PDF)." />
+              </div>
+            )}
             {summary && summary.travaux.length > 0 && (
               <ul className="space-y-2 py-2">
                 {summary.travaux.map((t) => (
