@@ -309,8 +309,6 @@ function ChargesPage() {
         moisLabel: monthLabel(dMois),
         loyers: decompte.detailLoyers,
         totalLoyers: decompte.loyersEncaisses,
-        impayes: decompte.detailImpayes.map((i) => ({ locataire: i.locataire, echeance: i.echeance, montant: i.montant })),
-        totalImpayes: decompte.resteDu,
         charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
         totalCharges: decompte.totalCharges,
         travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_depense || 0) })),
