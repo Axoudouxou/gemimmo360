@@ -67,6 +67,10 @@ function ChargesPage() {
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contrats, setContrats] = useState<ContratRow[]>([]);
   const [impayes, setImpayes] = useState<ImpayeRow[]>([]);
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [travaux, setTravaux] = useState<TravauxRow[]>([]);
+  const [honoFiscaux, setHonoFiscaux] = useState<HonoraireFiscalRow[]>([]);
+  const [exporting, setExporting] = useState(false);
   const [filterBien, setFilterBien] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [fRec, setFRec] = useState("all");
