@@ -443,10 +443,9 @@ function ChargesPage() {
 
                 {!decompte ? <p className="text-sm text-muted-foreground">Sélectionnez un bien pour générer le décompte.</p> : (
                   <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       {[
                         { l: "Loyers attendus", v: decompte.loyersAttendus },
-                        { l: "Impayés du mois", v: -decompte.resteDu },
                         { l: "Loyers encaissés", v: decompte.loyersEncaisses },
                         { l: "Charges du mois", v: -decompte.totalCharges },
                       ].map((k) => (
