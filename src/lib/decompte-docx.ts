@@ -2,23 +2,18 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
-  HeadingLevel,
   ImageRun,
   Packer,
   Paragraph,
-  ShadingType,
   Table,
   TableCell,
   TableRow,
   TextRun,
+  UnderlineType,
   WidthType,
 } from "docx";
 
-const GEM_GREEN = "8AB334";
-const GEM_GREEN_DARK = "5E7A22";
-const GEM_GREY = "4A4A4A";
-const GEM_LIGHT = "EEF6DC";
-
+const GREY = "3A3A3A";
 const CONTENT_WIDTH = 9360;
 
 export type DecompteLigne = { libelle: string; detail?: string; montant: number };
@@ -28,6 +23,7 @@ export type DecompteData = {
   bienAdresse?: string | null;
   proprietaire: string;
   moisLabel: string;
+  numero?: string;
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
   impayes?: { locataire: string; echeance: string; montant: number }[];
@@ -43,69 +39,66 @@ export type DecompteData = {
   net: number;
 };
 
-const money = (n: number) => `${Math.round(Number(n) || 0).toLocaleString("fr-FR")} FCFA`;
+const money = (n: number) => `${Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/\u202f/g, " ")}`;
 
-function txt(text: string, opts: { bold?: boolean; color?: string; size?: number; italics?: boolean } = {}) {
-  return new TextRun({ text, bold: opts.bold, color: opts.color ?? GEM_GREY, size: opts.size ?? 20, italics: opts.italics });
+function txt(
+  text: string,
+  o: { bold?: boolean; size?: number; italics?: boolean; underline?: boolean; color?: string } = {},
+) {
+  return new TextRun({
+    text,
+    bold: o.bold,
+    italics: o.italics,
+    size: o.size ?? 22,
+    color: o.color ?? GREY,
+    underline: o.underline ? { type: UnderlineType.SINGLE } : undefined,
+  });
 }
 
-const border = { style: BorderStyle.SINGLE, size: 1, color: "DDE3D5" };
-const borders = { top: border, bottom: border, left: border, right: border };
+function p(
+  text: string,
+  o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number; italics?: boolean; underline?: boolean; before?: number; after?: number } = {},
+) {
+  return new Paragraph({
+    alignment: o.align,
+    spacing: { before: o.before, after: o.after },
+    children: [txt(text, { bold: o.bold, size: o.size, italics: o.italics, underline: o.underline })],
+  });
+}
 
-function cell(children: Paragraph[], opts: { width: number; fill?: string } = { width: 3120 }) {
+const thin = { style: BorderStyle.SINGLE, size: 1, color: "999999" };
+const cellBorders = { top: thin, bottom: thin, left: thin, right: thin };
+const noBorders = {
+  top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+};
+
+function cell(children: Paragraph[], width: number, opts: { borders?: typeof cellBorders | typeof noBorders } = {}) {
   return new TableCell({
-    borders,
-    width: { size: opts.width, type: WidthType.DXA },
-    shading: opts.fill ? { fill: opts.fill, type: ShadingType.CLEAR } : undefined,
-    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    borders: opts.borders ?? cellBorders,
+    width: { size: width, type: WidthType.DXA },
+    margins: { top: 60, bottom: 60, left: 120, right: 120 },
     children,
   });
 }
 
-function p(text: string, opts: { bold?: boolean; right?: boolean; color?: string; italics?: boolean } = {}) {
-  return new Paragraph({
-    alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT,
-    children: [txt(text, { bold: opts.bold, color: opts.color, italics: opts.italics })],
-  });
-}
+const COL = [5560, 1900, 1900];
 
-function sectionTitle(text: string) {
-  return new Paragraph({
-    spacing: { before: 280, after: 120 },
-    children: [txt(text, { bold: true, color: GEM_GREEN_DARK, size: 24 })],
-  });
-}
-
-function twoColTable(rows: { l: string; r: number; bold?: boolean; fill?: string }[]) {
-  return new Table({
-    width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-    columnWidths: [6360, 3000],
-    rows: rows.map(
-      (r) =>
-        new TableRow({
-          children: [
-            cell([p(r.l, { bold: r.bold })], { width: 6360, fill: r.fill }),
-            cell([p(money(r.r), { bold: r.bold, right: true })], { width: 3000, fill: r.fill }),
-          ],
-        }),
-    ),
-  });
-}
-
-function headerRow(labels: string[], widths: number[]) {
+function movRow(libelle: string, depense?: number, recette?: number, bold?: boolean) {
   return new TableRow({
-    children: labels.map((l, i) =>
-      cell([p(l.toUpperCase(), { bold: true, color: GEM_GREEN_DARK, right: i === labels.length - 1 })], {
-        width: widths[i]!,
-        fill: GEM_LIGHT,
-      }),
-    ),
+    children: [
+      cell([p(libelle, { bold })], COL[0]!),
+      cell([p(depense === undefined ? "" : money(depense), { bold, align: AlignmentType.RIGHT })], COL[1]!),
+      cell([p(recette === undefined ? "" : money(recette), { bold, align: AlignmentType.RIGHT })], COL[2]!),
+    ],
   });
 }
 
 async function fetchLogo(): Promise<ArrayBuffer | null> {
   try {
-    const res = await fetch("/apple-touch-icon.png");
+    const res = await fetch("/gem-logo.jpg");
     if (!res.ok) return null;
     return await res.arrayBuffer();
   } catch {
@@ -115,210 +108,166 @@ async function fetchLogo(): Promise<ArrayBuffer | null> {
 
 export async function generateDecompteDocx(d: DecompteData) {
   const logo = await fetchLogo();
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
+
   const children: (Paragraph | Table)[] = [];
 
-  if (logo) {
-    children.push(
-      new Paragraph({
-        children: [
-          new ImageRun({
-            type: "png",
-            data: logo,
-            transformation: { width: 64, height: 64 },
-            altText: { title: "GEM Immobilier", description: "Logo GEM Immobilier", name: "Logo" },
-          }),
-        ],
-      }),
-    );
-  }
-
-  children.push(
-    new Paragraph({ children: [txt("GEM IMMOBILIER", { bold: true, color: GEM_GREEN, size: 32 })] }),
-    new Paragraph({
-      spacing: { after: 200 },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: GEM_GREEN, space: 4 } },
-      children: [txt("Administration de biens — Abidjan, Côte d’Ivoire", { italics: true, color: "808080" })],
-    }),
-    new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 200, after: 80 },
-      children: [txt("DÉCOMPTE PROPRIÉTAIRE", { bold: true, size: 30, color: GEM_GREY })],
-    }),
-    new Paragraph({ spacing: { after: 200 }, children: [txt(`Période : ${d.moisLabel}`, { bold: true })] }),
-    new Table({
-      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [4680, 4680],
-      rows: [
-        headerRow(["Bien", "Propriétaire"], [4680, 4680]),
-        new TableRow({
-          children: [
-            cell([p(d.bienTitre, { bold: true }), ...(d.bienAdresse ? [p(d.bienAdresse)] : [])], { width: 4680 }),
-            cell([p(d.proprietaire, { bold: true })], { width: 4680 }),
-          ],
-        }),
-      ],
-    }),
-  );
-
-  // 1. Loyers
-  children.push(sectionTitle("1. Loyers encaissés"));
+  // En-tête : logo + agrément
   children.push(
     new Table({
       width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [4680, 2000, 2680],
-      rows: [
-        headerRow(["Locataire", "Échéance", "Montant"], [4680, 2000, 2680]),
-        ...(d.loyers.length
-          ? d.loyers.map(
-              (l) =>
-                new TableRow({
-                  children: [
-                    cell([p(l.locataire)], { width: 4680 }),
-                    cell([p(l.echeance)], { width: 2000 }),
-                    cell([p(money(l.montant), { right: true })], { width: 2680 }),
-                  ],
-                }),
-            )
-          : [
-              new TableRow({
-                children: [
-                  cell([p("Aucun loyer encaissé sur la période")], { width: 4680 }),
-                  cell([p("—")], { width: 2000 }),
-                  cell([p(money(0), { right: true })], { width: 2680 }),
-                ],
-              }),
-            ]),
-        new TableRow({
-          children: [
-            cell([p("Total loyers encaissés", { bold: true })], { width: 4680, fill: GEM_LIGHT }),
-            cell([p("")], { width: 2000, fill: GEM_LIGHT }),
-            cell([p(money(d.totalLoyers), { bold: true, right: true })], { width: 2680, fill: GEM_LIGHT }),
-          ],
-        }),
-      ],
-    }),
-  );
-
-  // 1 bis. Impayés
-  if (d.impayes && d.impayes.length) {
-    children.push(sectionTitle("Impayés du mois (non encaissés)"));
-    children.push(
-      new Table({
-        width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-        columnWidths: [4680, 2000, 2680],
-        rows: [
-          headerRow(["Locataire", "Échéance", "Reste dû"], [4680, 2000, 2680]),
-          ...d.impayes.map(
-            (i) =>
-              new TableRow({
-                children: [
-                  cell([p(i.locataire)], { width: 4680 }),
-                  cell([p(i.echeance)], { width: 2000 }),
-                  cell([p(money(i.montant), { right: true })], { width: 2680 }),
-                ],
-              }),
-          ),
-          new TableRow({
-            children: [
-              cell([p("Total impayés", { bold: true })], { width: 4680, fill: GEM_LIGHT }),
-              cell([p("")], { width: 2000, fill: GEM_LIGHT }),
-              cell([p(money(d.totalImpayes ?? 0), { bold: true, right: true })], { width: 2680, fill: GEM_LIGHT }),
-            ],
-          }),
-        ],
-      }),
-    );
-  }
-
-  // 2. Charges
-  children.push(sectionTitle("2. Charges déduites"));
-  children.push(
-    twoColTable([
-      ...(d.charges.length
-        ? d.charges.map((c) => ({ l: c.detail ? `${c.libelle} (${c.detail})` : c.libelle, r: c.montant }))
-        : [{ l: "Aucune charge sur la période", r: 0 }]),
-      { l: "Total charges", r: d.totalCharges, bold: true, fill: GEM_LIGHT },
-    ]),
-  );
-
-  // 3. Travaux
-  children.push(sectionTitle("3. Dépenses réelles de travaux"));
-  children.push(
-    twoColTable([
-      ...(d.travaux.length
-        ? d.travaux.map((t) => ({ l: t.libelle, r: t.montant }))
-        : [{ l: "Aucun travaux réglé sur la période", r: 0 }]),
-      { l: "Total travaux", r: d.totalTravaux, bold: true, fill: GEM_LIGHT },
-    ]),
-  );
-
-  // 4. Honoraires fiscalité
-  children.push(sectionTitle("4. Honoraires de fiscalité"));
-  children.push(
-    twoColTable([
-      ...(d.honorairesFiscaux.length
-        ? d.honorairesFiscaux.map((h) => ({ l: h.libelle, r: h.montant }))
-        : [{ l: "Aucun honoraire fiscal sur la période", r: 0 }]),
-      { l: "Total honoraires de fiscalité", r: d.totalHonorairesFiscaux, bold: true, fill: GEM_LIGHT },
-    ]),
-  );
-
-  // 5. Honoraires de gestion
-  children.push(sectionTitle("5. Honoraires de gestion"));
-  children.push(
-    twoColTable([
-      { l: `Honoraires d’agence (${d.tauxHonoraires} % du loyer encaissé)`, r: d.honorairesGestion },
-    ]),
-  );
-
-  // Net
-  children.push(
-    new Paragraph({ spacing: { before: 320 } }),
-    new Table({
-      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [6360, 3000],
+      columnWidths: [5000, 4360],
       rows: [
         new TableRow({
           children: [
-            cell([new Paragraph({ children: [txt("MONTANT NET REVERSÉ AU PROPRIÉTAIRE", { bold: true, color: "FFFFFF", size: 24 })] })], {
-              width: 6360,
-              fill: GEM_GREEN,
-            }),
             cell(
-              [new Paragraph({ alignment: AlignmentType.RIGHT, children: [txt(money(d.net), { bold: true, color: "FFFFFF", size: 24 })] })],
-              { width: 3000, fill: GEM_GREEN },
+              logo
+                ? [
+                    new Paragraph({
+                      children: [
+                        new ImageRun({
+                          type: "jpg",
+                          data: logo,
+                          transformation: { width: 220, height: 119 },
+                          altText: { title: "GEM Immobilier", description: "Logo GEM Immobilier", name: "Logo" },
+                        }),
+                      ],
+                    }),
+                  ]
+                : [p("GEM IMMOBILIER", { bold: true, size: 32 })],
+              5000,
+              { borders: noBorders },
+            ),
+            cell(
+              [
+                p("AGENT IMMOBILIER AGRÉÉ", { bold: true, align: AlignmentType.RIGHT }),
+                p("Par l’État suivant Arrêté ministériel", { align: AlignmentType.RIGHT, size: 20 }),
+                p("N°14-0018 du 20 juin 2014", { align: AlignmentType.RIGHT, size: 20 }),
+              ],
+              4360,
+              { borders: noBorders },
             ),
           ],
         }),
       ],
     }),
-    new Paragraph({
-      spacing: { before: 160 },
-      children: [
-        txt(
-          `Détail : ${money(d.totalLoyers)} (loyers) − ${money(d.totalCharges)} (charges) − ${money(d.totalTravaux)} (travaux) − ${money(d.totalHonorairesFiscaux)} (honoraires fiscalité) − ${money(d.honorairesGestion)} (honoraires de gestion) = ${money(d.net)}`,
-          { italics: true, color: "808080" },
-        ),
-      ],
-    }),
-    new Paragraph({
-      spacing: { before: 320 },
-      children: [
-        txt("Document généré automatiquement par Immo360 — GEM Immobilier. Pour toute question, contactez votre gestionnaire.", {
-          italics: true,
-          color: "808080",
-          size: 18,
+  );
+
+  children.push(
+    p(`Abidjan, le ${dateStr}`, { align: AlignmentType.RIGHT, before: 320, after: 240 }),
+    p(d.proprietaire.toUpperCase(), { bold: true }),
+    p("Propriétaire Immobilier"),
+    p("Abidjan", { bold: true, underline: true, after: 240 }),
+  );
+
+  // Titre encadré
+  children.push(
+    new Table({
+      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+      columnWidths: [CONTENT_WIDTH],
+      rows: [
+        new TableRow({
+          children: [
+            cell(
+              [p(`DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE N°${numero}`, { bold: true, align: AlignmentType.CENTER, size: 24 })],
+              CONTENT_WIDTH,
+            ),
+          ],
         }),
       ],
     }),
   );
 
+  children.push(
+    p(`${d.bienTitre}${d.bienAdresse ? `, ${d.bienAdresse}` : ""}`.toUpperCase(), {
+      bold: true,
+      underline: true,
+      before: 280,
+      after: 160,
+    }),
+  );
+
+  const factureMois = d.totalLoyers + (d.totalImpayes ?? 0);
+  children.push(
+    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factureMois)}`, { after: 60 }),
+    p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: 60 }),
+    p(`• Montant des impayés du mois de ${d.moisLabel} : ${money(d.totalImpayes ?? 0)}`, { after: 240 }),
+  );
+
+  // Tableau Dépenses / Recettes
+  const rows: TableRow[] = [
+    new TableRow({
+      children: [
+        cell([p("")], COL[0]!),
+        cell([p("DÉPENSES", { bold: true, align: AlignmentType.CENTER })], COL[1]!),
+        cell([p("RECETTES", { bold: true, align: AlignmentType.CENTER })], COL[2]!),
+      ],
+    }),
+  ];
+
+  if (d.loyers.length) {
+    d.loyers.forEach((l) => rows.push(movRow(`Loyer encaissé — ${l.locataire} (${l.echeance})`, undefined, l.montant)));
+  } else {
+    rows.push(movRow("Aucun loyer encaissé sur la période", undefined, 0));
+  }
+  rows.push(movRow("TOTAL encaissement de la période", undefined, d.totalLoyers, true));
+
+  rows.push(movRow("A DÉDUIRE", undefined, undefined, true));
+  rows.push(movRow(`Honoraires de gérance (${d.tauxHonoraires} %)`, d.honorairesGestion));
+  d.charges.forEach((c) => rows.push(movRow(c.detail ? `${c.libelle} (${c.detail})` : c.libelle, c.montant)));
+  d.travaux.forEach((t) => rows.push(movRow(t.libelle, t.montant)));
+  d.honorairesFiscaux.forEach((h) => rows.push(movRow(h.libelle, h.montant)));
+
+  const totalDeduire = d.honorairesGestion + d.totalCharges + d.totalTravaux + d.totalHonorairesFiscaux;
+  rows.push(movRow("TOTAL À DÉDUIRE", totalDeduire, undefined, true));
+  rows.push(movRow("Par virement bancaire sur le compte du propriétaire", d.net));
+  rows.push(movRow("TOTAL", totalDeduire + d.net, d.totalLoyers, true));
+
+  if (d.impayes && d.impayes.length) {
+    rows.push(movRow("IMPAYÉS DU MOIS (non encaissés)", undefined, undefined, true));
+    d.impayes.forEach((i) => rows.push(movRow(`${i.locataire} (${i.echeance})`, undefined, i.montant)));
+    rows.push(movRow("TOTAL IMPAYÉS", undefined, d.totalImpayes ?? 0, true));
+  }
+
+  children.push(new Table({ width: { size: CONTENT_WIDTH, type: WidthType.DXA }, columnWidths: COL, rows }));
+
+  children.push(
+    p("GEM IMMOBILIER", { bold: true, before: 480 }),
+    p("La Direction", { italics: true, after: 480 }),
+    new Paragraph({
+      border: { top: { style: BorderStyle.SINGLE, size: 6, color: "999999", space: 6 } },
+      spacing: { before: 240 },
+      children: [
+        txt(
+          "SARL au capital de 3 000 000 FCFA — 27 BP 759 Abidjan 27 — Tél/Fax : 27 22 51 07 98 — Siège social : Abidjan Cocody II Plateaux Aghien (Las Palmas)",
+          { size: 16, color: "777777" },
+        ),
+      ],
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        txt("Cité SICOGI Bat C 3ème Étage Porte N°35 — RC N° CI-ABJ-03-2014-B13-04343 — NCC : 1412349 D — Compte Bancaire NSIA BANQUE N° 020616902001-58", {
+          size: 16,
+          color: "777777",
+        }),
+      ],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [txt("E-mail : gemimmobilier14@gmail.com — www.gem-immobilier.org", { size: 16, color: "777777" })],
+    }),
+  );
+
   const doc = new Document({
-    styles: { default: { document: { run: { font: "Inter", size: 20, color: GEM_GREY } } } },
+    styles: { default: { document: { run: { font: "Arial", size: 22, color: GREY } } } },
     sections: [
       {
         properties: {
-          page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+          page: { size: { width: 12240, height: 15840 }, margin: { top: 1080, right: 1440, bottom: 1080, left: 1440 } },
         },
         children,
       },
