@@ -255,12 +255,75 @@ function ChargesPage() {
     const lignes = chargesDuMois(dBien, dMois);
     const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
     const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
+
+    // Dépenses réelles de travaux du mois (montant réellement dépensé)
+    const travauxMois = travaux.filter((t) => {
+      if (t.bien_id !== dBien) return false;
+      if (!(Number(t.budget_depense) > 0)) return false;
+      const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
+      return !!ref && monthKey(ref) === dMois;
+    });
+    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_depense || 0), 0);
+
+    // Honoraires de fiscalité du bailleur du bien sur le mois
+    const bailleurId = biens.find((b) => b.id === dBien)?.bailleur_id ?? null;
+    const honoFiscauxMois = bailleurId
+      ? honoFiscaux.filter((h) => h.bailleur_id === bailleurId && h.periode && monthKey(h.periode) === dMois)
+      : [];
+    const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
+
+    // Loyers encaissés par locataire (prorata des impayés du contrat)
+    const detailLoyers = actifs.map((c) => {
+      const du = impayesMois
+        .filter((i) => i.contrat_id === c.id)
+        .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
+      const contact = contacts.find((ct) => ct.id === c.locataire_id);
+      return {
+        locataire: contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire",
+        echeance: monthLabel(dMois),
+        montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
+      };
+    }).filter((l) => l.montant > 0);
+
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
-      net: loyersEncaisses - totalCharges - honoraires,
+      travauxMois, totalTravaux, honoFiscauxMois, totalHonoFiscaux, detailLoyers,
+      net: loyersEncaisses - totalCharges - totalTravaux - totalHonoFiscaux - honoraires,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dBien, dMois, tauxHono, charges, contrats, impayes]);
+  }, [dBien, dMois, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
+
+  const handleExportDocx = async () => {
+    if (!decompte || !dBien) return;
+    const bien = biens.find((b) => b.id === dBien);
+    const bailleur = contacts.find((c) => c.id === bien?.bailleur_id);
+    setExporting(true);
+    try {
+      const { generateDecompteDocx } = await import("@/lib/decompte-docx");
+      await generateDecompteDocx({
+        bienTitre: bien?.titre ?? "Bien",
+        bienAdresse: bien?.adresse ?? null,
+        proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
+        moisLabel: monthLabel(dMois),
+        loyers: decompte.detailLoyers,
+        totalLoyers: decompte.loyersEncaisses,
+        charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
+        totalCharges: decompte.totalCharges,
+        travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_depense || 0) })),
+        totalTravaux: decompte.totalTravaux,
+        honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
+        totalHonorairesFiscaux: decompte.totalHonoFiscaux,
+        tauxHonoraires: Number(tauxHono) || 0,
+        honorairesGestion: decompte.honoraires,
+        net: decompte.net,
+      });
+      toast.success("Décompte généré");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!checked) return null;
 
