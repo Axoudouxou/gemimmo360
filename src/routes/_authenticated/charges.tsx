@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat } from "lucide-react";
+import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { hasModuleAccess } from "@/lib/access-overrides";
 
