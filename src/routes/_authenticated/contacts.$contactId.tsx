@@ -425,7 +425,7 @@ function ContactDetailPage() {
                   key={c.id}
                   contratId={c.id}
                   canWrite={canWriteFinance(myRole)}
-                  isAdmin={myRole === "admin"}
+                  isAdmin={myRole === "admin" || myRole === "direction"}
                   title={`Situation locative — ${c.bien?.titre ?? "—"} — ${c.lot?.label ?? "—"}`}
                 />
               ))}
