@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ETAPE_LABELS } from "@/lib/echeance-statut";
+import { ETAPE_LABELS, JOUR_ECHEANCE, dateEcheanceForPeriode } from "@/lib/echeance-statut";
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
@@ -51,7 +51,7 @@ export function EcheanceDialog({
   const isEdit = !!echeance;
   const [contrat, setContrat] = useState(contratId ?? "");
   const [mois, setMois] = useState(monthNow());
-  const [dateEcheance, setDateEcheance] = useState(`${monthNow()}-01`);
+  const dateEcheance = dateEcheanceForPeriode(mois || monthNow());
   const [montant, setMontant] = useState("");
   const [etape, setEtape] = useState("recouvrement");
   const [service, setService] = useState("recouvrement");
@@ -63,7 +63,6 @@ export function EcheanceDialog({
     if (echeance) {
       setContrat(echeance.contrat_id);
       setMois(String(echeance.periode).slice(0, 7));
-      setDateEcheance(String(echeance.date_echeance).slice(0, 10));
       setMontant(String(echeance.montant_du));
       setEtape(echeance.etape_traitement ?? "recouvrement");
       setService(echeance.service_en_charge ?? "recouvrement");
@@ -72,7 +71,6 @@ export function EcheanceDialog({
     }
     setContrat(contratId ?? "");
     setMois(monthNow());
-    setDateEcheance(`${monthNow()}-01`);
     setMontant("");
     setEtape("recouvrement");
     setService("recouvrement");
@@ -109,7 +107,7 @@ export function EcheanceDialog({
         .from("echeances")
         .update({
           periode: `${mois}-01`,
-          date_echeance: dateEcheance || `${mois}-01`,
+          date_echeance: dateEcheance,
           montant_du: m,
           etape_traitement: etape,
           service_en_charge: service,
@@ -133,7 +131,7 @@ export function EcheanceDialog({
     const { error } = await supabase.from("echeances").insert({
       contrat_id: contrat,
       periode: `${mois}-01`,
-      date_echeance: dateEcheance || `${mois}-01`,
+      date_echeance: dateEcheance,
       montant_du: m,
       statut: "impaye",
       etape_traitement: etape,
@@ -174,7 +172,7 @@ export function EcheanceDialog({
           <DialogTitle>{isEdit ? "Modifier l'impayé" : "Saisir un impayé"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Corrigez la période, la date d'échéance, le montant dû ou le suivi. Les paiements déjà affectés sont conservés."
+              ? "Corrigez la période, le montant dû ou le suivi. Les paiements déjà affectés sont conservés."
               : "Un impayé est toujours rattaché à un mois précis. Aucune échéance n'est créée automatiquement."}
           </DialogDescription>
         </DialogHeader>
@@ -198,15 +196,15 @@ export function EcheanceDialog({
               <Input
                 type="month"
                 value={mois}
-                onChange={(e) => {
-                  setMois(e.target.value);
-                  if (e.target.value) setDateEcheance(`${e.target.value}-01`);
-                }}
+                onChange={(e) => setMois(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Date d'échéance *</Label>
-              <Input type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)} />
+              <Label>Date limite de paiement</Label>
+              <Input type="date" value={dateEcheance} readOnly disabled />
+              <p className="text-xs text-muted-foreground">
+                Fixée au {JOUR_ECHEANCE} du mois pour tous les contrats.
+              </p>
             </div>
           </div>
 
