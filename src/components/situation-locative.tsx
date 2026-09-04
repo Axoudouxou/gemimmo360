@@ -293,6 +293,9 @@ export function SituationLocative({
             <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Paiement
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+              <FileText className="mr-2 h-4 w-4" /> Générer quittance
+            </Button>
           </div>
         )}
       </CardHeader>
