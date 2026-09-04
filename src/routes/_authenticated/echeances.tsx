@@ -110,7 +110,6 @@ function EcheancesPage() {
   }, [navigate]);
 
   const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
-  const isAdmin = role === "admin";
 
   const load = async () => {
     setLoading(true);
