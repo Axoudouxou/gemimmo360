@@ -150,7 +150,9 @@ function ImpayesPage() {
     })();
   }, [navigate]);
 
-  const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
+  // Écran d'archive : l'ancien modèle reste consultable, la saisie se fait sur les échéances.
+  const canWrite = false && !!role && (WRITE_ROLES as readonly string[]).includes(role);
+
 
   const load = async () => {
     setLoading(true);
