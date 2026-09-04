@@ -60,6 +60,7 @@ export function SituationLocative({
   const [payOpen, setPayOpen] = useState(false);
   const [echOpen, setEchOpen] = useState(false);
   const [reaff, setReaff] = useState<Paiement | null>(null);
+  const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
