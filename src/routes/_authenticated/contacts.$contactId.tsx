@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, ArrowLeft, Pencil, UserCog } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
 import { SituationLocative } from "@/components/situation-locative";
+import { canWriteFinance } from "@/lib/echeance-statut";
 
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
@@ -423,8 +424,8 @@ function ContactDetailPage() {
                 <SituationLocative
                   key={c.id}
                   contratId={c.id}
-                  canWrite={!!myRole}
-                  isAdmin={myRole === "admin"}
+                  canWrite={canWriteFinance(myRole)}
+                  isAdmin={myRole === "admin" || myRole === "direction"}
                   title={`Situation locative — ${c.bien?.titre ?? "—"} — ${c.lot?.label ?? "—"}`}
                 />
               ))}

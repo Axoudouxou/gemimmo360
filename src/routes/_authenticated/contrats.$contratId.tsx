@@ -18,6 +18,7 @@ import { ContratPropositions } from "@/components/contrat-propositions";
 import { DocumentsSection } from "@/components/documents-section";
 import { ImpayeDetailDialog } from "@/components/impaye-detail-dialog";
 import { SituationLocative } from "@/components/situation-locative";
+import { canWriteFinance } from "@/lib/echeance-statut";
 
 import { toast } from "sonner";
 
@@ -376,8 +377,8 @@ function ContratDetailPage() {
 
             <SituationLocative
               contratId={contratId}
-              canWrite={canEdit}
-              isAdmin={myRole === "admin"}
+              canWrite={canWriteFinance(myRole)}
+              isAdmin={myRole === "admin" || myRole === "direction"}
             />
 
             <Card>

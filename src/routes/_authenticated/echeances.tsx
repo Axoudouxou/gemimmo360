@@ -41,15 +41,7 @@ export const Route = createFileRoute("/_authenticated/echeances")({
 });
 
 const READ_BLOCKED = ["en_attente"] as const;
-const WRITE_ROLES = [
-  "admin",
-  "direction",
-  "recouvrement",
-  "commercial",
-  "technico_commercial",
-  "gestion_locative",
-  "juridique",
-] as const;
+const WRITE_ROLES = ["admin", "direction", "recouvrement", "gestion_locative"] as const;
 
 type Echeance = {
   id: string;

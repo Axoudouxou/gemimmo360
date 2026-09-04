@@ -85,3 +85,9 @@ export const fmtPeriode = (d: string | null | undefined) =>
   d
     ? new Date(d).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
     : "—";
+
+/** Profils autorisés à créer/modifier impayés, paiements et affectations. */
+export const FINANCE_WRITE_ROLES = ["admin", "direction", "recouvrement", "gestion_locative"] as const;
+
+export const canWriteFinance = (role: string | null | undefined) =>
+  !!role && (FINANCE_WRITE_ROLES as readonly string[]).includes(role);
