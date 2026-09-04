@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Plus } from "lucide-react";
 import { PaiementDialog } from "@/components/paiement-dialog";
-import { EcheanceDialog } from "@/components/echeance-dialog";
+import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
 import {
   computeEcheanceStatut,
@@ -60,6 +60,7 @@ export function SituationLocative({
   const [payOpen, setPayOpen] = useState(false);
   const [echOpen, setEchOpen] = useState(false);
   const [reaff, setReaff] = useState<Paiement | null>(null);
+  const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -216,6 +217,7 @@ export function SituationLocative({
                           <TableHead>Payé</TableHead>
                           <TableHead>Reste</TableHead>
                           <TableHead>Statut</TableHead>
+                          {canWrite && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -232,6 +234,17 @@ export function SituationLocative({
                                 {fmtMoney(reste)}
                               </TableCell>
                               <TableCell><Badge className={st.className}>{st.emoji} {st.label}</Badge></TableCell>
+                              {canWrite && (
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditEch(e as unknown as EcheanceRow)}
+                                  >
+                                    Modifier
+                                  </Button>
+                                </TableCell>
+                              )}
                             </TableRow>
                           );
                         })}
@@ -331,6 +344,14 @@ export function SituationLocative({
           </>
         )}
       </CardContent>
+
+      <EcheanceDialog
+        open={!!editEch}
+        onOpenChange={(o) => !o && setEditEch(null)}
+        echeance={editEch}
+        canDelete={isAdmin}
+        onSaved={load}
+      />
 
       <EcheanceDialog
         open={echOpen}

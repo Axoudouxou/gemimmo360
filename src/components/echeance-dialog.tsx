@@ -19,19 +19,36 @@ import { ETAPE_LABELS } from "@/lib/echeance-statut";
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
+export type EcheanceRow = {
+  id: string;
+  contrat_id: string;
+  periode: string;
+  date_echeance: string;
+  montant_du: number | string;
+  montant_affecte?: number | string | null;
+  etape_traitement?: string | null;
+  service_en_charge?: string | null;
+  notes?: string | null;
+};
+
 export function EcheanceDialog({
   open,
   onOpenChange,
   contratId,
   contratOptions,
+  echeance,
+  canDelete = false,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   contratId?: string;
   contratOptions?: { value: string; label: string }[];
+  echeance?: EcheanceRow | null;
+  canDelete?: boolean;
   onSaved?: () => void;
 }) {
+  const isEdit = !!echeance;
   const [contrat, setContrat] = useState(contratId ?? "");
   const [mois, setMois] = useState(monthNow());
   const [dateEcheance, setDateEcheance] = useState(`${monthNow()}-01`);
@@ -43,6 +60,16 @@ export function EcheanceDialog({
 
   useEffect(() => {
     if (!open) return;
+    if (echeance) {
+      setContrat(echeance.contrat_id);
+      setMois(String(echeance.periode).slice(0, 7));
+      setDateEcheance(String(echeance.date_echeance).slice(0, 10));
+      setMontant(String(echeance.montant_du));
+      setEtape(echeance.etape_traitement ?? "recouvrement");
+      setService(echeance.service_en_charge ?? "recouvrement");
+      setNotes(echeance.notes ?? "");
+      return;
+    }
     setContrat(contratId ?? "");
     setMois(monthNow());
     setDateEcheance(`${monthNow()}-01`);
@@ -50,11 +77,11 @@ export function EcheanceDialog({
     setEtape("recouvrement");
     setService("recouvrement");
     setNotes("");
-  }, [open, contratId]);
+  }, [open, contratId, echeance]);
 
   // Pré-remplit le montant avec le loyer du contrat sélectionné
   useEffect(() => {
-    if (!open || !contrat) return;
+    if (!open || !contrat || isEdit) return;
     (async () => {
       const { data } = await supabase
         .from("contrats")
@@ -70,6 +97,36 @@ export function EcheanceDialog({
     if (!mois) return toast.error("La période (mois) est obligatoire");
     const m = Number(montant);
     if (!m || m <= 0) return toast.error("Le montant dû doit être supérieur à 0");
+
+    if (isEdit) {
+      const dejaPaye = Number(echeance?.montant_affecte ?? 0);
+      if (m < dejaPaye)
+        return toast.error(
+          `Le montant dû ne peut pas être inférieur au montant déjà affecté (${dejaPaye})`,
+        );
+      setSaving(true);
+      const { error: upErr } = await supabase
+        .from("echeances")
+        .update({
+          periode: `${mois}-01`,
+          date_echeance: dateEcheance || `${mois}-01`,
+          montant_du: m,
+          etape_traitement: etape,
+          service_en_charge: service,
+          notes: notes.trim() || null,
+        })
+        .eq("id", echeance!.id);
+      setSaving(false);
+      if (upErr) {
+        if (upErr.code === "23505")
+          return toast.error("Un impayé existe déjà pour ce contrat et ce mois");
+        return toast.error(upErr.message);
+      }
+      toast.success("Impayé modifié");
+      onOpenChange(false);
+      onSaved?.();
+      return;
+    }
 
     setSaving(true);
     const { data: userRes } = await supabase.auth.getUser();
@@ -96,19 +153,34 @@ export function EcheanceDialog({
     onSaved?.();
   };
 
+  const handleDelete = async () => {
+    if (!echeance) return;
+    if (Number(echeance.montant_affecte ?? 0) > 0)
+      return toast.error("Impossible de supprimer : des paiements y sont affectés. Retirez d'abord l'affectation.");
+    if (!window.confirm("Supprimer définitivement cet impayé ?")) return;
+    setSaving(true);
+    const { error } = await supabase.from("echeances").delete().eq("id", echeance.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Impayé supprimé");
+    onOpenChange(false);
+    onSaved?.();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Saisir un impayé</DialogTitle>
+          <DialogTitle>{isEdit ? "Modifier l'impayé" : "Saisir un impayé"}</DialogTitle>
           <DialogDescription>
-            Un impayé est toujours rattaché à un mois précis. Aucune échéance n'est créée
-            automatiquement.
+            {isEdit
+              ? "Corrigez la période, la date d'échéance, le montant dû ou le suivi. Les paiements déjà affectés sont conservés."
+              : "Un impayé est toujours rattaché à un mois précis. Aucune échéance n'est créée automatiquement."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          {!contratId && (
+          {!contratId && !isEdit && (
             <div className="grid gap-2">
               <Label>Contrat *</Label>
               <SearchableSelect
@@ -179,11 +251,20 @@ export function EcheanceDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Enregistrement..." : "Enregistrer l'impayé"}
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          <div>
+            {isEdit && canDelete && (
+              <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+                Supprimer
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Enregistrement..." : isEdit ? "Enregistrer les modifications" : "Enregistrer l'impayé"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
