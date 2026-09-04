@@ -156,7 +156,7 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
       {
         key: "admin.matrice",
         action: "Matrice des accès (consulter et modifier)",
-        access: perms(["admin", "direction"]),
+        access: perms(["admin"]),
       },
     ],
   },

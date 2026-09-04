@@ -43,9 +43,7 @@ export const Route = createFileRoute("/_authenticated/permissions")({
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
-    if (profile?.role !== "admin" && profile?.role !== "direction") {
-      throw redirect({ to: "/dashboard" });
-    }
+    if (profile?.role !== "admin") throw redirect({ to: "/dashboard" });
     return { role: profile.role as string };
   },
   component: PermissionsPage,
