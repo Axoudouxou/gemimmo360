@@ -24,6 +24,7 @@ import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
 import { Route as AuthenticatedFiscaliteRouteImport } from './routes/_authenticated/fiscalite'
 import { Route as AuthenticatedEtatsDesLieuxRouteImport } from './routes/_authenticated/etats-des-lieux'
+import { Route as AuthenticatedEcheancesRouteImport } from './routes/_authenticated/echeances'
 import { Route as AuthenticatedDoublonsRouteImport } from './routes/_authenticated/doublons'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
@@ -118,6 +119,11 @@ const AuthenticatedEtatsDesLieuxRoute =
     path: '/etats-des-lieux',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedEcheancesRoute = AuthenticatedEcheancesRouteImport.update({
+  id: '/echeances',
+  path: '/echeances',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDoublonsRoute = AuthenticatedDoublonsRouteImport.update({
   id: '/doublons',
   path: '/doublons',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/charges': typeof AuthenticatedChargesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doublons': typeof AuthenticatedDoublonsRoute
+  '/echeances': typeof AuthenticatedEcheancesRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/charges': typeof AuthenticatedChargesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/doublons': typeof AuthenticatedDoublonsRoute
+  '/echeances': typeof AuthenticatedEcheancesRoute
   '/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/doublons': typeof AuthenticatedDoublonsRoute
+  '/_authenticated/echeances': typeof AuthenticatedEcheancesRoute
   '/_authenticated/etats-des-lieux': typeof AuthenticatedEtatsDesLieuxRoute
   '/_authenticated/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/charges'
     | '/dashboard'
     | '/doublons'
+    | '/echeances'
     | '/etats-des-lieux'
     | '/fiscalite'
     | '/impayes'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/charges'
     | '/dashboard'
     | '/doublons'
+    | '/echeances'
     | '/etats-des-lieux'
     | '/fiscalite'
     | '/impayes'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/_authenticated/charges'
     | '/_authenticated/dashboard'
     | '/_authenticated/doublons'
+    | '/_authenticated/echeances'
     | '/_authenticated/etats-des-lieux'
     | '/_authenticated/fiscalite'
     | '/_authenticated/impayes'
@@ -525,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEtatsDesLieuxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/echeances': {
+      id: '/_authenticated/echeances'
+      path: '/echeances'
+      fullPath: '/echeances'
+      preLoaderRoute: typeof AuthenticatedEcheancesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/doublons': {
       id: '/_authenticated/doublons'
       path: '/doublons'
@@ -646,6 +665,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDoublonsRoute: typeof AuthenticatedDoublonsRoute
+  AuthenticatedEcheancesRoute: typeof AuthenticatedEcheancesRoute
   AuthenticatedEtatsDesLieuxRoute: typeof AuthenticatedEtatsDesLieuxRoute
   AuthenticatedFiscaliteRoute: typeof AuthenticatedFiscaliteRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
@@ -670,6 +690,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDoublonsRoute: AuthenticatedDoublonsRoute,
+  AuthenticatedEcheancesRoute: AuthenticatedEcheancesRoute,
   AuthenticatedEtatsDesLieuxRoute: AuthenticatedEtatsDesLieuxRoute,
   AuthenticatedFiscaliteRoute: AuthenticatedFiscaliteRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,

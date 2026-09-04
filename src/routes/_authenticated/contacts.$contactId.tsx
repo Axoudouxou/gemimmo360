@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Pencil, UserCog } from "lucide-react";
 import { DeleteZone } from "@/components/delete-zone";
+import { SituationLocative } from "@/components/situation-locative";
+
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 
@@ -415,6 +417,18 @@ function ContactDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {contact.type_contact === "locataire" &&
+              contrats.map((c) => (
+                <SituationLocative
+                  key={c.id}
+                  contratId={c.id}
+                  canWrite={!!myRole}
+                  isAdmin={myRole === "admin"}
+                  title={`Situation locative — ${c.bien?.titre ?? "—"} — ${c.lot?.label ?? "—"}`}
+                />
+              ))}
+
             {myRole === "admin" && contact && (
               <DeleteZone
                 entityLabel="ce contact"

@@ -19,6 +19,8 @@ import {
   LogOut,
   HelpCircle,
   Landmark,
+  Archive,
+
 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -64,8 +66,10 @@ const GESTION: NavItem[] = [
 ];
 
 const FINANCE: NavItem[] = [
-  { title: "Impayés", url: "/impayes", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] },
+  { title: "Impayés", url: "/echeances", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] },
+  { title: "Impayés (archive)", url: "/impayes", icon: Archive, roles: ["admin", "direction", "recouvrement", "juridique"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative", "commercial", "technico_commercial", "technique", "juridique"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+
   { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial", "technico_commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
   { title: "Fiscalité", url: "/fiscalite", icon: Landmark, roles: ["admin", "direction", "juridique"] },
 ];
