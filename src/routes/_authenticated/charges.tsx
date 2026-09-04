@@ -68,7 +68,7 @@ function ChargesPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [biens, setBiens] = useState<Bien[]>([]);
   const [contrats, setContrats] = useState<ContratRow[]>([]);
-  const [impayes, setImpayes] = useState<ImpayeRow[]>([]);
+  const [impayes, setImpayes] = useState<EcheanceRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [travaux, setTravaux] = useState<TravauxRow[]>([]);
   const [honoFiscaux, setHonoFiscaux] = useState<HonoraireFiscalRow[]>([]);
@@ -124,7 +124,7 @@ function ChargesPage() {
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, lot:lots(bien_id)"),
-      supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance, statut, etape_traitement"),
+      supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
@@ -133,7 +133,7 @@ function ChargesPage() {
     else setCharges((cData ?? []) as unknown as Charge[]);
     setBiens((bData ?? []) as Bien[]);
     setContrats((ctData ?? []) as unknown as ContratRow[]);
-    setImpayes((imData ?? []) as ImpayeRow[]);
+    setImpayes((imData ?? []) as unknown as EcheanceRow[]);
     setContacts((coData ?? []) as ContactRow[]);
     setTravaux((trData ?? []) as unknown as TravauxRow[]);
     setHonoFiscaux((hfData ?? []) as unknown as HonoraireFiscalRow[]);
@@ -250,18 +250,18 @@ function ChargesPage() {
     const contratsBien = contrats.filter((c) => c.lot?.bien_id === dBien);
     const ids = new Set(contratsBien.map((c) => c.id));
     // Seuls les impayés réellement non soldés réduisent les loyers encaissés
-    const nonSolde = (i: ImpayeRow) =>
-      !["a_jour", "solde", "resolu", "cloture"].includes(i.statut) &&
+    const nonSolde = (i: EcheanceRow) =>
+      !["solde", "resolu", "cloture"].includes(i.statut) &&
       i.etape_traitement !== "resolu" &&
-      Number(i.montant_paye) < Number(i.montant_du);
+      Number(i.montant_affecte) < Number(i.montant_du);
     const impayesMois = impayes.filter(
-      (i) => ids.has(i.contrat_id) && monthKey(i.date_echeance) === dMois && nonSolde(i),
+      (i) => ids.has(i.contrat_id) && monthKey(i.periode ?? i.date_echeance ?? "") === dMois && nonSolde(i),
     );
     const actifs = contratsBien.filter(
       (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
     );
     const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
-    const resteDu = impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
+    const resteDu = impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
     const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
 
     const lignes = chargesDuMois(dBien, dMois);
@@ -293,7 +293,7 @@ function ChargesPage() {
     const detailLoyers = actifs.map((c) => {
       const du = impayesMois
         .filter((i) => i.contrat_id === c.id)
-        .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_paye)), 0);
+        .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
       return {
         locataire: nomLocataire(c.locataire_id),
         echeance: monthLabel(dMois),
@@ -308,7 +308,7 @@ function ChargesPage() {
         return {
           locataire: nomLocataire(contrat?.locataire_id),
           echeance: monthLabel(dMois),
-          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_paye)),
+          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)),
         };
       })
       .filter((i) => i.montant > 0);
