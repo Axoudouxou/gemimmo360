@@ -1545,6 +1545,38 @@ export type Database = {
           },
         ]
       }
+      permissions_overrides: {
+        Row: {
+          action_key: string
+          level: string
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_key: string
+          level: string
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_key?: string
+          level?: string
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_overrides_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

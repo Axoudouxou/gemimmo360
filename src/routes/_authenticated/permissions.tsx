@@ -1,9 +1,20 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Minus, Eye } from "lucide-react";
+import { ArrowLeft, Check, Minus, Eye, Loader2, RotateCcw, Save } from "lucide-react";
+import { toast } from "sonner";
+import {
+  ALL_ROLES,
+  DEFAULT_SECTIONS,
+  ROLES,
+  fetchOverrides,
+  type Level,
+  type Overrides,
+  type RoleKey,
+} from "@/lib/permissions-matrix";
 
 export const Route = createFileRoute("/_authenticated/permissions")({
   head: () => ({
@@ -12,12 +23,12 @@ export const Route = createFileRoute("/_authenticated/permissions")({
       {
         name: "description",
         content:
-          "Vue de synthèse des actions autorisées pour chaque rôle interne : impayés, paiements, documents, travaux, réclamations et administration.",
+          "Configurez les actions autorisées pour chaque rôle interne : impayés, paiements, documents, travaux, réclamations et administration.",
       },
       { property: "og:title", content: "Matrice des accès par profil" },
       {
         property: "og:description",
-        content: "Confirmez en un coup d'œil ce que chaque rôle peut consulter, créer ou modifier.",
+        content: "Ajustez en un coup d'œil ce que chaque rôle peut consulter, créer ou modifier.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -32,147 +43,18 @@ export const Route = createFileRoute("/_authenticated/permissions")({
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
-    if (profile?.role !== "admin") throw redirect({ to: "/dashboard" });
+    if (profile?.role !== "admin" && profile?.role !== "direction") {
+      throw redirect({ to: "/dashboard" });
+    }
+    return { role: profile.role as string };
   },
   component: PermissionsPage,
 });
 
-const ROLES = [
-  { key: "admin", label: "Admin" },
-  { key: "direction", label: "Direction" },
-  { key: "recouvrement", label: "Recouvrement" },
-  { key: "gestion_locative", label: "Gestion loc." },
-  { key: "commercial", label: "Commercial" },
-  { key: "technico_commercial", label: "Technico-com." },
-  { key: "technique", label: "Technique" },
-  { key: "juridique", label: "Juridique" },
-] as const;
-
-type RoleKey = (typeof ROLES)[number]["key"];
-type Level = "full" | "read" | "none";
-
-const ALL: RoleKey[] = ROLES.map((r) => r.key);
-
-function perms(full: RoleKey[], read: RoleKey[] = []): Record<RoleKey, Level> {
-  return Object.fromEntries(
-    ALL.map((r) => [r, full.includes(r) ? "full" : read.includes(r) ? "read" : "none"]),
-  ) as Record<RoleKey, Level>;
-}
-
-const FINANCE_WRITE: RoleKey[] = ["admin", "direction", "recouvrement", "gestion_locative"];
-const NON_RECOUVREMENT: RoleKey[] = [
-  "admin",
-  "direction",
-  "juridique",
-  "gestion_locative",
-  "technique",
-  "commercial",
-  "technico_commercial",
-];
-
-type Section = {
-  title: string;
-  rows: { action: string; note?: string; access: Record<RoleKey, Level> }[];
-};
-
-const SECTIONS: Section[] = [
-  {
-    title: "Impayés & paiements",
-    rows: [
-      {
-        action: "Consulter les impayés et la situation locative",
-        access: perms([], ALL),
-      },
-      {
-        action: "Saisir / modifier un impayé",
-        note: "Période obligatoire, doublon contrat + mois refusé",
-        access: perms(FINANCE_WRITE),
-      },
-      {
-        action: "Enregistrer un paiement et l'affecter",
-        note: "Affectation manuelle ligne par ligne",
-        access: perms(FINANCE_WRITE),
-      },
-      {
-        action: "Réaffecter un paiement déjà enregistré",
-        note: "Tracé dans l'historique des affectations",
-        access: perms(["admin", "direction"]),
-      },
-      {
-        action: "Supprimer un impayé",
-        note: "Interdit si des paiements y sont affectés",
-        access: perms(["admin", "direction"]),
-      },
-      {
-        action: "Impayés (archive, ancien module)",
-        access: perms([], ["admin", "direction", "recouvrement", "juridique"]),
-      },
-    ],
-  },
-  {
-    title: "Gestion locative",
-    rows: [
-      { action: "Biens, lots, contacts, contrats", access: perms(ALL) },
-      {
-        action: "États des lieux (+ documents PDF)",
-        access: perms(NON_RECOUVREMENT),
-      },
-      {
-        action: "Charges et décomptes",
-        access: perms([
-          "admin",
-          "direction",
-          "gestion_locative",
-          "commercial",
-          "technico_commercial",
-          "technique",
-          "juridique",
-        ]),
-      },
-      {
-        action: "Transactions commerciales",
-        access: perms(["admin", "direction", "commercial", "technico_commercial"]),
-      },
-      { action: "Fiscalité (impôt foncier, honoraires)", access: perms(["admin", "direction", "juridique"]) },
-    ],
-  },
-  {
-    title: "Travaux & réclamations",
-    rows: [
-      { action: "Consulter travaux et réclamations", access: perms([], ALL) },
-      {
-        action: "Créer / modifier des travaux",
-        note: "Technique : statut, assignation, dates, budget, commentaires uniquement",
-        access: perms(["admin", "direction", "juridique", "gestion_locative"], ["technique", "technico_commercial", "commercial"]),
-      },
-      {
-        action: "Créer / modifier une réclamation",
-        note: "Technique : statut, priorité, assignation, solution, documents",
-        access: perms(["admin", "direction", "gestion_locative"], ["technique", "technico_commercial", "commercial", "juridique"]),
-      },
-      {
-        action: "Joindre / supprimer des documents (travaux, réclamations, contrats)",
-        access: perms([
-          "admin",
-          "direction",
-          "juridique",
-          "gestion_locative",
-          "technique",
-          "technico_commercial",
-          "commercial",
-        ]),
-      },
-    ],
-  },
-  {
-    title: "Activités & administration",
-    rows: [
-      { action: "Calendrier, tâches, commentaires, mentions", access: perms(ALL) },
-      { action: "Import CSV", access: perms(["admin"]) },
-      { action: "Fusion de doublons", access: perms(["admin"]) },
-      { action: "Gestion des utilisateurs et des rôles", access: perms(["admin"]) },
-    ],
-  },
+const LEVELS: { value: Level; label: string }[] = [
+  { value: "full", label: "Création et modification" },
+  { value: "read", label: "Consultation seule" },
+  { value: "none", label: "Aucun accès" },
 ];
 
 function Cell({ level }: { level: Level }) {
@@ -195,21 +77,114 @@ function Cell({ level }: { level: Level }) {
   );
 }
 
+function defaultLevel(actionKey: string, role: RoleKey): Level {
+  const row = DEFAULT_SECTIONS.flatMap((s) => s.rows).find((r) => r.key === actionKey);
+  return row?.access[role] ?? "none";
+}
+
 function PermissionsPage() {
+  const [overrides, setOverrides] = useState<Overrides>({});
+  const [draft, setDraft] = useState<Overrides>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    fetchOverrides()
+      .then((o) => {
+        setOverrides(o);
+        setDraft(o);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const effective = (actionKey: string, role: RoleKey): Level =>
+    draft[actionKey]?.[role] ?? defaultLevel(actionKey, role);
+
+  const setLevel = (actionKey: string, role: RoleKey, level: Level) => {
+    setDraft((prev) => ({ ...prev, [actionKey]: { ...(prev[actionKey] ?? {}), [role]: level } }));
+  };
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(overrides);
+
+  const save = async () => {
+    setSaving(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    const rows: { action_key: string; role: string; level: Level; updated_by: string | null }[] = [];
+    for (const [actionKey, byRole] of Object.entries(draft)) {
+      for (const [role, level] of Object.entries(byRole ?? {})) {
+        if (!level) continue;
+        rows.push({ action_key: actionKey, role, level, updated_by: userRes.user?.id ?? null });
+      }
+    }
+    const { error } = await supabase
+      .from("permissions_overrides")
+      .upsert(rows, { onConflict: "action_key,role" });
+    setSaving(false);
+    if (error) {
+      toast.error("Enregistrement impossible : " + error.message);
+      return;
+    }
+    setOverrides(draft);
+    setEditing(false);
+    toast.success("Matrice des accès enregistrée");
+  };
+
+  const resetAll = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("permissions_overrides").delete().neq("action_key", "");
+    setSaving(false);
+    if (error) {
+      toast.error("Réinitialisation impossible : " + error.message);
+      return;
+    }
+    setOverrides({});
+    setDraft({});
+    toast.success("Matrice revenue aux valeurs par défaut");
+  };
+
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" /> Retour
           </Link>
         </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {editing ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDraft(overrides);
+                  setEditing(false);
+                }}
+                disabled={saving}
+              >
+                Annuler
+              </Button>
+              <Button size="sm" onClick={save} disabled={saving || !dirty}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Enregistrer
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={resetAll} disabled={saving || !Object.keys(overrides).length}>
+                <RotateCcw className="mr-2 h-4 w-4" /> Valeurs par défaut
+              </Button>
+              <Button size="sm" onClick={() => setEditing(true)}>Modifier la matrice</Button>
+            </>
+          )}
+        </div>
       </div>
 
       <h1 className="text-2xl font-semibold tracking-tight">Matrice des accès par profil</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Synthèse des actions autorisées pour chaque rôle interne, telles qu'appliquées côté écrans et
-        côté base de données.
+        Actions autorisées pour chaque rôle interne. Vos ajustements sont enregistrés et appliqués aux
+        écrans qui s'appuient sur la matrice.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
@@ -224,47 +199,66 @@ function PermissionsPage() {
         </span>
       </div>
 
-      <div className="mt-6 space-y-6">
-        {SECTIONS.map((section) => (
-          <Card key={section.title}>
-            <CardHeader>
-              <CardTitle>{section.title}</CardTitle>
-              <CardDescription>{section.rows.length} actions</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[280px]">Action</TableHead>
-                    {ROLES.map((r) => (
-                      <TableHead key={r.key} className="text-center whitespace-nowrap">
-                        {r.label}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {section.rows.map((row) => (
-                    <TableRow key={row.action}>
-                      <TableCell>
-                        <div className="font-medium">{row.action}</div>
-                        {row.note && (
-                          <div className="text-xs text-muted-foreground">{row.note}</div>
-                        )}
-                      </TableCell>
+      {loading ? (
+        <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
+        </div>
+      ) : (
+        <div className="mt-6 space-y-6">
+          {DEFAULT_SECTIONS.map((section) => (
+            <Card key={section.title}>
+              <CardHeader>
+                <CardTitle>{section.title}</CardTitle>
+                <CardDescription>{section.rows.length} actions</CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[280px]">Action</TableHead>
                       {ROLES.map((r) => (
-                        <TableCell key={r.key} className="text-center">
-                          <Cell level={row.access[r.key]} />
-                        </TableCell>
+                        <TableHead key={r.key} className="text-center whitespace-nowrap">
+                          {r.label}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </TableHeader>
+                  <TableBody>
+                    {section.rows.map((row) => (
+                      <TableRow key={row.key}>
+                        <TableCell>
+                          <div className="font-medium">{row.action}</div>
+                          {row.note && <div className="text-xs text-muted-foreground">{row.note}</div>}
+                        </TableCell>
+                        {ALL_ROLES.map((role) => (
+                          <TableCell key={role} className="text-center">
+                            {editing ? (
+                              <select
+                                className="h-8 rounded-md border border-input bg-background px-1 text-xs"
+                                value={effective(row.key, role)}
+                                onChange={(e) => setLevel(row.key, role, e.target.value as Level)}
+                                aria-label={`${row.action} — ${role}`}
+                              >
+                                {LEVELS.map((l) => (
+                                  <option key={l.value} value={l.value}>
+                                    {l.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Cell level={effective(row.key, role)} />
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <p className="mt-6 text-xs text-muted-foreground">
         Le profil « Inactif » n'a aucun accès. Le profil « En attente » ne voit rien tant qu'un rôle ne

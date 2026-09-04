@@ -84,7 +84,7 @@ const ADMIN: NavItem[] = [
   { title: "Import CSV", url: "/imports", icon: Upload, roles: ["admin"] },
   { title: "Doublons", url: "/doublons", icon: Users2, roles: ["admin"] },
   { title: "Utilisateurs", url: "/users", icon: Users, roles: ["admin"] },
-  { title: "Matrice des accès", url: "/permissions", icon: ShieldCheck, roles: ["admin"] },
+  { title: "Matrice des accès", url: "/permissions", icon: ShieldCheck, roles: ["admin", "direction"] },
 ];
 
 export function AppSidebar() {
