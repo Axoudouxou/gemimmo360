@@ -44,9 +44,15 @@ const INFOS: Record<EcheanceStatutKey, EcheanceStatutInfo> = {
   },
   impaye: {
     key: "impaye",
-    label: "Impayé",
+    label: "En retard",
     emoji: "🔴",
     className: "bg-destructive hover:bg-destructive text-destructive-foreground",
+  },
+  a_venir: {
+    key: "a_venir",
+    label: "À échoir",
+    emoji: "⚪",
+    className: "bg-muted text-muted-foreground hover:bg-muted",
   },
 };
 
@@ -55,6 +61,8 @@ export function computeEcheanceStatut(e: {
   etape_traitement?: string | null;
   montant_du: number | string;
   montant_affecte: number | string;
+  date_echeance?: string | null;
+  periode?: string | null;
 }): EcheanceStatutInfo {
   const du = Number(e.montant_du ?? 0);
   const aff = Number(e.montant_affecte ?? 0);
@@ -62,6 +70,14 @@ export function computeEcheanceStatut(e: {
 
   if (e.statut === "solde" || (du > 0 && aff >= du) || etape === "resolu") return INFOS.solde;
   if ((ETAPES_JURIDIQUE as readonly string[]).includes(etape)) return INFOS.juridique;
+
+  const limite = e.periode
+    ? dateEcheanceForPeriode(e.periode)
+    : e.date_echeance
+      ? dateEcheanceForPeriode(e.date_echeance)
+      : null;
+  if (!isEnRetard(limite)) return aff > 0 ? INFOS.partiel : INFOS.a_venir;
+
   if (aff > 0) return INFOS.partiel;
   return INFOS.impaye;
 }
