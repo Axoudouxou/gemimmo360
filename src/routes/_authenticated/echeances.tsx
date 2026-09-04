@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Building2, ArrowLeft, Plus } from "lucide-react";
+import { Building2, ArrowLeft, Plus, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
+import { QuittanceDialog } from "@/components/quittance-dialog";
 import {
   computeEcheanceStatut,
   echeanceProgress,
@@ -76,6 +77,7 @@ function EcheancesPage() {
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [echOpen, setEchOpen] = useState(false);
+  const [quittanceOpen, setQuittanceOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("non_solde");
@@ -289,6 +291,9 @@ function EcheancesPage() {
                 <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" /> Générer quittance
+                </Button>
               </div>
             )}
           </CardHeader>
@@ -420,6 +425,13 @@ function EcheancesPage() {
         <PaiementDialog
           open={payOpen}
           onOpenChange={setPayOpen}
+          contratOptions={contratOptions}
+          onSaved={load}
+        />
+
+        <QuittanceDialog
+          open={quittanceOpen}
+          onOpenChange={setQuittanceOpen}
           contratOptions={contratOptions}
           onSaved={load}
         />

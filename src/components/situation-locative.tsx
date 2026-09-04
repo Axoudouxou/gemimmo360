@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
+import { QuittanceDialog } from "@/components/quittance-dialog";
 import { generateQuittanceDocx } from "@/lib/quittance-docx";
 import {
   computeEcheanceStatut,
@@ -84,6 +85,7 @@ export function SituationLocative({
   const [deleting, setDeleting] = useState(false);
   const [quittances, setQuittances] = useState<Quittance[]>([]);
   const [quittanceBusy, setQuittanceBusy] = useState<string | null>(null);
+  const [quittanceOpen, setQuittanceOpen] = useState(false);
   const [infos, setInfos] = useState<{ locataire: string; bien: string; lot: string | null }>({
     locataire: "—",
     bien: "—",
@@ -292,6 +294,9 @@ export function SituationLocative({
             </Button>
             <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Paiement
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+              <FileText className="mr-2 h-4 w-4" /> Générer quittance
             </Button>
           </div>
         )}
@@ -519,6 +524,13 @@ export function SituationLocative({
       <PaiementDialog
         open={payOpen}
         onOpenChange={setPayOpen}
+        contratId={contratId}
+        onSaved={load}
+      />
+
+      <QuittanceDialog
+        open={quittanceOpen}
+        onOpenChange={setQuittanceOpen}
         contratId={contratId}
         onSaved={load}
       />
