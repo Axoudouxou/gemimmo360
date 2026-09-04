@@ -20,6 +20,7 @@ import { Route as AuthenticatedTravauxRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
 import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authenticated/reclamations'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenticated/permissions'
 import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticated/imports'
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
 import { Route as AuthenticatedFiscaliteRouteImport } from './routes/_authenticated/fiscalite'
@@ -98,6 +99,12 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPermissionsRoute =
+  AuthenticatedPermissionsRouteImport.update({
+    id: '/permissions',
+    path: '/permissions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedImportsRoute = AuthenticatedImportsRouteImport.update({
   id: '/imports',
   path: '/imports',
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
@@ -296,6 +305,7 @@ export interface FileRoutesById {
   '/_authenticated/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
   '/_authenticated/imports': typeof AuthenticatedImportsRoute
+  '/_authenticated/permissions': typeof AuthenticatedPermissionsRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/reclamations': typeof AuthenticatedReclamationsRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/fiscalite'
     | '/impayes'
     | '/imports'
+    | '/permissions'
     | '/profil'
     | '/reclamations'
     | '/transactions'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/fiscalite'
     | '/impayes'
     | '/imports'
+    | '/permissions'
     | '/profil'
     | '/reclamations'
     | '/transactions'
@@ -398,6 +410,7 @@ export interface FileRouteTypes {
     | '/_authenticated/fiscalite'
     | '/_authenticated/impayes'
     | '/_authenticated/imports'
+    | '/_authenticated/permissions'
     | '/_authenticated/profil'
     | '/_authenticated/reclamations'
     | '/_authenticated/transactions'
@@ -507,6 +520,13 @@ declare module '@tanstack/react-router' {
       path: '/profil'
       fullPath: '/profil'
       preLoaderRoute: typeof AuthenticatedProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/permissions': {
+      id: '/_authenticated/permissions'
+      path: '/permissions'
+      fullPath: '/permissions'
+      preLoaderRoute: typeof AuthenticatedPermissionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/imports': {
@@ -670,6 +690,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFiscaliteRoute: typeof AuthenticatedFiscaliteRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
   AuthenticatedImportsRoute: typeof AuthenticatedImportsRoute
+  AuthenticatedPermissionsRoute: typeof AuthenticatedPermissionsRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedReclamationsRoute: typeof AuthenticatedReclamationsRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
@@ -695,6 +716,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFiscaliteRoute: AuthenticatedFiscaliteRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
   AuthenticatedImportsRoute: AuthenticatedImportsRoute,
+  AuthenticatedPermissionsRoute: AuthenticatedPermissionsRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedReclamationsRoute: AuthenticatedReclamationsRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
