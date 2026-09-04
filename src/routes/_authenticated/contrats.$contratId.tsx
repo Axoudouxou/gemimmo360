@@ -17,6 +17,8 @@ import { ActivitesLiees } from "@/components/activites-widgets";
 import { ContratPropositions } from "@/components/contrat-propositions";
 import { DocumentsSection } from "@/components/documents-section";
 import { ImpayeDetailDialog } from "@/components/impaye-detail-dialog";
+import { SituationLocative } from "@/components/situation-locative";
+
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
