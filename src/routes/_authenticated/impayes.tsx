@@ -191,7 +191,7 @@ function ImpayesPage() {
   };
 
   useEffect(() => {
-    if (role && !(READ_BLOCKED as readonly string[]).includes(role)) load();
+    if (role === "admin") load();
   }, [role]);
 
   // Auto-open detail from ?open=<id>
