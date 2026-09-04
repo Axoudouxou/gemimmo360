@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
+import { QuittanceDialog } from "@/components/quittance-dialog";
 import { generateQuittanceDocx } from "@/lib/quittance-docx";
 import {
   computeEcheanceStatut,
@@ -84,6 +85,7 @@ export function SituationLocative({
   const [deleting, setDeleting] = useState(false);
   const [quittances, setQuittances] = useState<Quittance[]>([]);
   const [quittanceBusy, setQuittanceBusy] = useState<string | null>(null);
+  const [quittanceOpen, setQuittanceOpen] = useState(false);
   const [infos, setInfos] = useState<{ locataire: string; bien: string; lot: string | null }>({
     locataire: "—",
     bien: "—",
