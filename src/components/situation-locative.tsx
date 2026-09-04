@@ -528,6 +528,13 @@ export function SituationLocative({
         onSaved={load}
       />
 
+      <QuittanceDialog
+        open={quittanceOpen}
+        onOpenChange={setQuittanceOpen}
+        contratId={contratId}
+        onSaved={load}
+      />
+
       <ReaffectationDialog
         open={!!reaff}
         onOpenChange={(o) => !o && setReaff(null)}
