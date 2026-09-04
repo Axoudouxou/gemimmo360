@@ -5,7 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Download, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
@@ -15,6 +26,7 @@ import {
   fmtMoney,
   fmtPeriode,
 } from "@/lib/echeance-statut";
+
 
 type Echeance = {
   id: string;
@@ -61,6 +73,10 @@ export function SituationLocative({
   const [echOpen, setEchOpen] = useState(false);
   const [reaff, setReaff] = useState<Paiement | null>(null);
   const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
+  const [delPay, setDelPay] = useState<Paiement | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,7 +166,19 @@ export function SituationLocative({
     URL.revokeObjectURL(url);
   };
 
+  const handleDeletePaiement = async () => {
+    if (!delPay) return;
+    setDeleting(true);
+    const { error } = await supabase.from("paiements").delete().eq("id", delPay.id);
+    setDeleting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Paiement supprimé");
+    setDelPay(null);
+    load();
+  };
+
   let running = 0;
+
 
   return (
     <Card>
@@ -284,11 +312,22 @@ export function SituationLocative({
                               <TableCell>{fmtMoney(aff)}</TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  <Button variant="outline" size="sm" onClick={() => setReaff(p)}>
-                                    Réaffecter
-                                  </Button>
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => setReaff(p)}>
+                                      Réaffecter
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => setDelPay(p)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               )}
+
                             </TableRow>
                           );
                         })}
@@ -375,6 +414,33 @@ export function SituationLocative({
         contratId={contratId}
         onSaved={load}
       />
+
+      <AlertDialog open={!!delPay} onOpenChange={(o) => !o && setDelPay(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce paiement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {delPay && (
+                <>
+                  Paiement du {fmtDate(delPay.date_paiement)} de {fmtMoney(delPay.montant)}.
+                  Ses affectations seront annulées et les impayés concernés redeviendront dus.
+                  Cette action est irréversible.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeletePaiement(); }}
+              disabled={deleting}
+            >
+              {deleting ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
+
   );
 }
