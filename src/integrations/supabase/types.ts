@@ -1604,6 +1604,103 @@ export type Database = {
         }
         Relationships: []
       }
+      quittance_sequence: {
+        Row: {
+          annee: number
+          dernier_numero: number
+          updated_at: string
+        }
+        Insert: {
+          annee: number
+          dernier_numero?: number
+          updated_at?: string
+        }
+        Update: {
+          annee?: number
+          dernier_numero?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quittances: {
+        Row: {
+          annee: number
+          bien: string | null
+          contrat_id: string
+          created_at: string
+          date_reglement: string
+          echeance_id: string
+          emise_par: string | null
+          id: string
+          locataire: string | null
+          lot: string | null
+          mode_reglement: string | null
+          montant: number
+          numero: number
+          numero_affiche: string
+          periode: string
+          updated_at: string
+        }
+        Insert: {
+          annee: number
+          bien?: string | null
+          contrat_id: string
+          created_at?: string
+          date_reglement: string
+          echeance_id: string
+          emise_par?: string | null
+          id?: string
+          locataire?: string | null
+          lot?: string | null
+          mode_reglement?: string | null
+          montant: number
+          numero: number
+          numero_affiche: string
+          periode: string
+          updated_at?: string
+        }
+        Update: {
+          annee?: number
+          bien?: string | null
+          contrat_id?: string
+          created_at?: string
+          date_reglement?: string
+          echeance_id?: string
+          emise_par?: string | null
+          id?: string
+          locataire?: string | null
+          lot?: string | null
+          mode_reglement?: string | null
+          montant?: number
+          numero?: number
+          numero_affiche?: string
+          periode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quittances_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quittances_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: true
+            referencedRelation: "echeances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quittances_emise_par_fkey"
+            columns: ["emise_par"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reclamations: {
         Row: {
           assigne_a: string | null
@@ -2097,6 +2194,40 @@ export type Database = {
         Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      emettre_quittance: {
+        Args: {
+          _bien: string
+          _date_reglement: string
+          _echeance_id: string
+          _locataire: string
+          _lot: string
+          _mode_reglement: string
+        }
+        Returns: {
+          annee: number
+          bien: string | null
+          contrat_id: string
+          created_at: string
+          date_reglement: string
+          echeance_id: string
+          emise_par: string | null
+          id: string
+          locataire: string | null
+          lot: string | null
+          mode_reglement: string | null
+          montant: number
+          numero: number
+          numero_affiche: string
+          periode: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quittances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
