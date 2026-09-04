@@ -414,6 +414,33 @@ export function SituationLocative({
         contratId={contratId}
         onSaved={load}
       />
+
+      <AlertDialog open={!!delPay} onOpenChange={(o) => !o && setDelPay(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce paiement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {delPay && (
+                <>
+                  Paiement du {fmtDate(delPay.date_paiement)} de {fmtMoney(delPay.montant)}.
+                  Ses affectations seront annulées et les impayés concernés redeviendront dus.
+                  Cette action est irréversible.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeletePaiement(); }}
+              disabled={deleting}
+            >
+              {deleting ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
+
   );
 }
