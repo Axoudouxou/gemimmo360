@@ -415,6 +415,18 @@ function ContactDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {contact.type_contact === "locataire" &&
+              contrats.map((c) => (
+                <SituationLocative
+                  key={c.id}
+                  contratId={c.id}
+                  canWrite={!!myRole}
+                  isAdmin={myRole === "admin"}
+                  title={`Situation locative — ${c.bien?.titre ?? "—"} — ${c.lot?.label ?? "—"}`}
+                />
+              ))}
+
             {myRole === "admin" && contact && (
               <DeleteZone
                 entityLabel="ce contact"
