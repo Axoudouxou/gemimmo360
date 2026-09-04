@@ -281,6 +281,97 @@ export type Database = {
           },
         ]
       }
+      affectations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          echeance_id: string
+          id: string
+          mode: string
+          montant: number
+          paiement_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          echeance_id: string
+          id?: string
+          mode?: string
+          montant: number
+          paiement_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          echeance_id?: string
+          id?: string
+          mode?: string
+          montant?: number
+          paiement_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affectations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: false
+            referencedRelation: "echeances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affectations_paiement_id_fkey"
+            columns: ["paiement_id"]
+            isOneToOne: false
+            referencedRelation: "paiements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affectations_historique: {
+        Row: {
+          action: string
+          affectation_id: string | null
+          ancienne_valeur: string | null
+          auteur: string | null
+          created_at: string
+          echeance_id: string | null
+          id: string
+          nouvelle_valeur: string | null
+          paiement_id: string | null
+        }
+        Insert: {
+          action: string
+          affectation_id?: string | null
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          created_at?: string
+          echeance_id?: string | null
+          id?: string
+          nouvelle_valeur?: string | null
+          paiement_id?: string | null
+        }
+        Update: {
+          action?: string
+          affectation_id?: string | null
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          created_at?: string
+          echeance_id?: string | null
+          id?: string
+          nouvelle_valeur?: string | null
+          paiement_id?: string | null
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string
@@ -659,6 +750,91 @@ export type Database = {
             columns: ["transaction_origine_id"]
             isOneToOne: false
             referencedRelation: "transactions_commerciales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      echeances: {
+        Row: {
+          contrat_id: string
+          created_at: string
+          created_by: string | null
+          date_acte_commissaire: string | null
+          date_assignation: string | null
+          date_derniere_relance: string | null
+          date_echeance: string
+          date_mise_en_demeure: string | null
+          etape_traitement: string
+          id: string
+          impaye_origine_id: string | null
+          montant_affecte: number
+          montant_du: number
+          notes: string | null
+          periode: string
+          service_en_charge: string
+          statut: string
+          updated_at: string
+        }
+        Insert: {
+          contrat_id: string
+          created_at?: string
+          created_by?: string | null
+          date_acte_commissaire?: string | null
+          date_assignation?: string | null
+          date_derniere_relance?: string | null
+          date_echeance: string
+          date_mise_en_demeure?: string | null
+          etape_traitement?: string
+          id?: string
+          impaye_origine_id?: string | null
+          montant_affecte?: number
+          montant_du?: number
+          notes?: string | null
+          periode: string
+          service_en_charge?: string
+          statut?: string
+          updated_at?: string
+        }
+        Update: {
+          contrat_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_acte_commissaire?: string | null
+          date_assignation?: string | null
+          date_derniere_relance?: string | null
+          date_echeance?: string
+          date_mise_en_demeure?: string | null
+          etape_traitement?: string
+          id?: string
+          impaye_origine_id?: string | null
+          montant_affecte?: number
+          montant_du?: number
+          notes?: string | null
+          periode?: string
+          service_en_charge?: string
+          statut?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "echeances_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeances_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeances_impaye_origine_id_fkey"
+            columns: ["impaye_origine_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
             referencedColumns: ["id"]
           },
         ]
@@ -1315,6 +1491,60 @@ export type Database = {
         }
         Relationships: []
       }
+      paiements: {
+        Row: {
+          contrat_id: string
+          created_at: string
+          created_by: string | null
+          date_paiement: string
+          id: string
+          montant: number
+          moyen_paiement: string
+          notes: string | null
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          contrat_id: string
+          created_at?: string
+          created_by?: string | null
+          date_paiement?: string
+          id?: string
+          montant: number
+          moyen_paiement?: string
+          notes?: string | null
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contrat_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_paiement?: string
+          id?: string
+          montant?: number
+          moyen_paiement?: string
+          notes?: string | null
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paiements_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1809,6 +2039,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      affecter_paiement_fifo: {
+        Args: { _paiement_id: string }
+        Returns: number
+      }
       can_access_activite: {
         Args: { _activite_id: string; _user_id: string }
         Returns: boolean
@@ -1873,6 +2107,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recompute_echeance: { Args: { _echeance_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
