@@ -42,6 +42,7 @@ type Charge = {
 type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
 type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; lot: { bien_id: string } | null };
 type ImpayeRow = { id: string; contrat_id: string; montant_du: number; montant_paye: number; date_echeance: string; statut: string; etape_traitement: string | null };
+type EcheanceRow = { id: string; contrat_id: string; periode: string; date_echeance: string | null; montant_du: number; montant_affecte: number; statut: string; etape_traitement: string | null };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
   id: string; bien_id: string; titre: string; budget_depense: number | null; budget_prevu: number | null; statut: string;
