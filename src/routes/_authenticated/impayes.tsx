@@ -395,9 +395,12 @@ function ImpayesPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle>Impayés</CardTitle>
-              <CardDescription>Suivi des échéances et relances.</CardDescription>
+              <CardTitle>Impayés — archive (ancien modèle)</CardTitle>
+              <CardDescription>
+                Consultation seule. La saisie et le suivi se font désormais dans « Impayés » (échéances mensuelles).
+              </CardDescription>
             </div>
+
             {canWrite && (
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
