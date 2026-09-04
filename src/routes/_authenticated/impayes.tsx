@@ -143,9 +143,9 @@ function ImpayesPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || (READ_BLOCKED as readonly string[]).includes(r)) {
+      if (r !== "admin") {
         toast.error("Accès refusé");
-        navigate({ to: "/dashboard", replace: true });
+        navigate({ to: "/echeances", replace: true });
       }
     })();
   }, [navigate]);
