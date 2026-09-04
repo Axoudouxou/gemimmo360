@@ -68,7 +68,7 @@ const GESTION: NavItem[] = [
 
 const FINANCE: NavItem[] = [
   { title: "Impayés", url: "/echeances", icon: AlertTriangle, roles: ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] },
-  { title: "Impayés (archive)", url: "/impayes", icon: Archive, roles: ["admin", "direction", "recouvrement", "juridique"] },
+  { title: "Impayés (archive)", url: "/impayes", icon: Archive, roles: ["admin"] },
   { title: "Charges", url: "/charges", icon: Receipt, roles: ["admin", "direction", "gestion_locative", "commercial", "technico_commercial", "technique", "juridique"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
 
   { title: "Transactions", url: "/transactions", icon: Handshake, roles: ["admin", "direction", "commercial", "technico_commercial"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },

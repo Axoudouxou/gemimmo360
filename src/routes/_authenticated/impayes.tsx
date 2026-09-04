@@ -52,8 +52,6 @@ const STATUT_LABEL: Record<string, string> = {
   relance_envoyee: "Relance envoyée",
 };
 
-const READ_BLOCKED = ["en_attente"] as const;
-const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] as const;
 
 type Impaye = {
   id: string;
@@ -143,9 +141,9 @@ function ImpayesPage() {
       const r = profile?.role ?? null;
       setRole(r);
       setChecked(true);
-      if (!r || (READ_BLOCKED as readonly string[]).includes(r)) {
+      if (r !== "admin") {
         toast.error("Accès refusé");
-        navigate({ to: "/dashboard", replace: true });
+        navigate({ to: "/echeances", replace: true });
       }
     })();
   }, [navigate]);
@@ -191,7 +189,7 @@ function ImpayesPage() {
   };
 
   useEffect(() => {
-    if (role && !(READ_BLOCKED as readonly string[]).includes(role)) load();
+    if (role === "admin") load();
   }, [role]);
 
   // Auto-open detail from ?open=<id>
