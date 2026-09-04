@@ -300,11 +300,22 @@ export function SituationLocative({
                               <TableCell>{fmtMoney(aff)}</TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  <Button variant="outline" size="sm" onClick={() => setReaff(p)}>
-                                    Réaffecter
-                                  </Button>
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => setReaff(p)}>
+                                      Réaffecter
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => setDelPay(p)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               )}
+
                             </TableRow>
                           );
                         })}
