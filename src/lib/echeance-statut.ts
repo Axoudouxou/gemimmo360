@@ -1,6 +1,20 @@
-export type EcheanceStatutKey = "solde" | "juridique" | "partiel" | "impaye";
+export type EcheanceStatutKey = "solde" | "juridique" | "partiel" | "impaye" | "a_venir";
 
 export const ETAPES_JURIDIQUE = ["mise_en_demeure", "contentieux", "transfere_juridique"] as const;
+
+/** Jour limite de paiement du loyer, identique pour tous les contrats. */
+export const JOUR_ECHEANCE = 10;
+
+/** Date limite de paiement (le 10) pour une période "YYYY-MM" ou "YYYY-MM-DD". */
+export const dateEcheanceForPeriode = (periode: string) =>
+  `${String(periode).slice(0, 7)}-${String(JOUR_ECHEANCE).padStart(2, "0")}`;
+
+/** Vrai si la date limite (le 10) est dépassée : le retard commence le 11. */
+export function isEnRetard(dateEcheance: string | null | undefined, today = new Date()) {
+  if (!dateEcheance) return true;
+  const iso = today.toISOString().slice(0, 10);
+  return iso > String(dateEcheance).slice(0, 10);
+}
 
 export type EcheanceStatutInfo = {
   key: EcheanceStatutKey;
