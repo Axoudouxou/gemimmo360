@@ -158,7 +158,7 @@ function EcheancesPage() {
   };
 
   const stats = useMemo(() => {
-    let totalRestant = 0, nbImpaye = 0, nbPartiel = 0, nbJuridique = 0;
+    let totalRestant = 0, nbImpaye = 0, nbPartiel = 0, nbJuridique = 0, nbAVenir = 0;
     const contratsTouches = new Set<string>();
     for (const e of echeances) {
       const reste = Math.max(0, Number(e.montant_du) - Number(e.montant_affecte));
@@ -168,8 +168,9 @@ function EcheancesPage() {
       if (k === "impaye") nbImpaye++;
       else if (k === "partiel") nbPartiel++;
       else if (k === "juridique") nbJuridique++;
+      else if (k === "a_venir") nbAVenir++;
     }
-    return { totalRestant, nbImpaye, nbPartiel, nbJuridique, nbContrats: contratsTouches.size };
+    return { totalRestant, nbImpaye, nbPartiel, nbJuridique, nbAVenir, nbContrats: contratsTouches.size };
   }, [echeances]);
 
   const toggleSort = (k: SortKey) => {
@@ -237,7 +238,8 @@ function EcheancesPage() {
 
   const kpis = [
     { label: "Total restant à recouvrer", value: fmtMoney(stats.totalRestant) },
-    { label: "🔴 Échéances impayées", value: stats.nbImpaye },
+    { label: "🔴 Échéances en retard", value: stats.nbImpaye },
+    { label: "⚪ Échéances à échoir", value: stats.nbAVenir },
     { label: "🟡 Échéances partielles", value: stats.nbPartiel },
     { label: "⚖️ Échéances au juridique", value: stats.nbJuridique },
     { label: "Contrats concernés", value: stats.nbContrats },
@@ -302,7 +304,8 @@ function EcheancesPage() {
                   onChange: setFStatut,
                   options: [
                     { value: "non_solde", label: "Non soldées" },
-                    { value: "impaye", label: "Impayé" },
+                    { value: "impaye", label: "En retard" },
+                    { value: "a_venir", label: "À échoir (avant le 10)" },
                     { value: "partiel", label: "Partiel" },
                     { value: "juridique", label: "Transféré au juridique" },
                     { value: "solde", label: "Soldé" },
@@ -334,7 +337,7 @@ function EcheancesPage() {
                       <SortHead k="periode">Période</SortHead>
                       <SortHead k="bien">Bien</SortHead>
                       <SortHead k="locataire">Locataire</SortHead>
-                      <TableHead>Échéance</TableHead>
+                      <TableHead>Date limite</TableHead>
                       <SortHead k="montant_du">Dû</SortHead>
                       <SortHead k="montant_affecte">Payé</SortHead>
                       <SortHead k="reste">Reste</SortHead>

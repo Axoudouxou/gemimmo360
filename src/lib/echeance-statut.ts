@@ -1,6 +1,20 @@
-export type EcheanceStatutKey = "solde" | "juridique" | "partiel" | "impaye";
+export type EcheanceStatutKey = "solde" | "juridique" | "partiel" | "impaye" | "a_venir";
 
 export const ETAPES_JURIDIQUE = ["mise_en_demeure", "contentieux", "transfere_juridique"] as const;
+
+/** Jour limite de paiement du loyer, identique pour tous les contrats. */
+export const JOUR_ECHEANCE = 10;
+
+/** Date limite de paiement (le 10) pour une période "YYYY-MM" ou "YYYY-MM-DD". */
+export const dateEcheanceForPeriode = (periode: string) =>
+  `${String(periode).slice(0, 7)}-${String(JOUR_ECHEANCE).padStart(2, "0")}`;
+
+/** Vrai si la date limite (le 10) est dépassée : le retard commence le 11. */
+export function isEnRetard(dateEcheance: string | null | undefined, today = new Date()) {
+  if (!dateEcheance) return true;
+  const iso = today.toISOString().slice(0, 10);
+  return iso > String(dateEcheance).slice(0, 10);
+}
 
 export type EcheanceStatutInfo = {
   key: EcheanceStatutKey;
@@ -30,9 +44,15 @@ const INFOS: Record<EcheanceStatutKey, EcheanceStatutInfo> = {
   },
   impaye: {
     key: "impaye",
-    label: "Impayé",
+    label: "En retard",
     emoji: "🔴",
     className: "bg-destructive hover:bg-destructive text-destructive-foreground",
+  },
+  a_venir: {
+    key: "a_venir",
+    label: "À échoir",
+    emoji: "⚪",
+    className: "bg-muted text-muted-foreground hover:bg-muted",
   },
 };
 
@@ -41,6 +61,8 @@ export function computeEcheanceStatut(e: {
   etape_traitement?: string | null;
   montant_du: number | string;
   montant_affecte: number | string;
+  date_echeance?: string | null;
+  periode?: string | null;
 }): EcheanceStatutInfo {
   const du = Number(e.montant_du ?? 0);
   const aff = Number(e.montant_affecte ?? 0);
@@ -48,6 +70,14 @@ export function computeEcheanceStatut(e: {
 
   if (e.statut === "solde" || (du > 0 && aff >= du) || etape === "resolu") return INFOS.solde;
   if ((ETAPES_JURIDIQUE as readonly string[]).includes(etape)) return INFOS.juridique;
+
+  const limite = e.periode
+    ? dateEcheanceForPeriode(e.periode)
+    : e.date_echeance
+      ? dateEcheanceForPeriode(e.date_echeance)
+      : null;
+  if (!isEnRetard(limite)) return aff > 0 ? INFOS.partiel : INFOS.a_venir;
+
   if (aff > 0) return INFOS.partiel;
   return INFOS.impaye;
 }
