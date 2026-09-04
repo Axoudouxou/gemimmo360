@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
-import { EcheanceDialog } from "@/components/echeance-dialog";
+import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import {
   computeEcheanceStatut,
   echeanceProgress,
@@ -101,6 +101,7 @@ function EcheancesPage() {
     })();
   }, [navigate]);
 
+  const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
   const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
 
   const load = async () => {
@@ -341,6 +342,7 @@ function EcheancesPage() {
                       <SortHead k="statut">Statut</SortHead>
                       <TableHead>Étape</TableHead>
                       <TableHead>Dernière relance</TableHead>
+                      {canWrite && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -375,6 +377,17 @@ function EcheancesPage() {
                             {ETAPE_LABELS[e.etape_traitement ?? "recouvrement"] ?? e.etape_traitement}
                           </TableCell>
                           <TableCell>{fmtDate(e.date_derniere_relance)}</TableCell>
+                          {canWrite && (
+                            <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditEch(e as unknown as EcheanceRow)}
+                              >
+                                Modifier
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -384,6 +397,14 @@ function EcheancesPage() {
             )}
           </CardContent>
         </Card>
+
+        <EcheanceDialog
+          open={!!editEch}
+          onOpenChange={(o) => !o && setEditEch(null)}
+          echeance={editEch}
+          canDelete={role === "admin" || role === "direction"}
+          onSaved={load}
+        />
 
         <EcheanceDialog
           open={echOpen}
