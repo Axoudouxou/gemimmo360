@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Plus } from "lucide-react";
 import { PaiementDialog } from "@/components/paiement-dialog";
+import { EcheanceDialog } from "@/components/echeance-dialog";
+import { ReaffectationDialog } from "@/components/reaffectation-dialog";
 import {
   computeEcheanceStatut,
   fmtDate,
@@ -56,6 +58,8 @@ export function SituationLocative({
   const [affectations, setAffectations] = useState<Affectation[]>([]);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
+  const [echOpen, setEchOpen] = useState(false);
+  const [reaff, setReaff] = useState<Paiement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,9 +159,14 @@ export function SituationLocative({
           <CardDescription>Échéances, paiements et grand livre du contrat.</CardDescription>
         </div>
         {canWrite && (
-          <Button size="sm" onClick={() => setPayOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Paiement
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setEchOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Impayé
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Paiement
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -245,6 +254,7 @@ export function SituationLocative({
                           <TableHead>Moyen</TableHead>
                           <TableHead>Référence</TableHead>
                           <TableHead>Affecté</TableHead>
+                          {isAdmin && <TableHead />}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -259,6 +269,13 @@ export function SituationLocative({
                               <TableCell>{p.moyen_paiement}</TableCell>
                               <TableCell>{p.reference ?? "—"}</TableCell>
                               <TableCell>{fmtMoney(aff)}</TableCell>
+                              {isAdmin && (
+                                <TableCell className="text-right">
+                                  <Button variant="outline" size="sm" onClick={() => setReaff(p)}>
+                                    Réaffecter
+                                  </Button>
+                                </TableCell>
+                              )}
                             </TableRow>
                           );
                         })}
@@ -315,11 +332,25 @@ export function SituationLocative({
         )}
       </CardContent>
 
+      <EcheanceDialog
+        open={echOpen}
+        onOpenChange={setEchOpen}
+        contratId={contratId}
+        onSaved={load}
+      />
+
       <PaiementDialog
         open={payOpen}
         onOpenChange={setPayOpen}
         contratId={contratId}
-        isAdmin={isAdmin}
+        onSaved={load}
+      />
+
+      <ReaffectationDialog
+        open={!!reaff}
+        onOpenChange={(o) => !o && setReaff(null)}
+        paiement={reaff}
+        contratId={contratId}
         onSaved={load}
       />
     </Card>

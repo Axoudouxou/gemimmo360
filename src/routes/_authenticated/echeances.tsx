@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
+import { EcheanceDialog } from "@/components/echeance-dialog";
 import {
   computeEcheanceStatut,
   echeanceProgress,
@@ -82,6 +83,7 @@ function EcheancesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
+  const [echOpen, setEchOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [fStatut, setFStatut] = useState("non_solde");
@@ -108,7 +110,6 @@ function EcheancesPage() {
   }, [navigate]);
 
   const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
-  const isAdmin = role === "admin";
 
   const load = async () => {
     setLoading(true);
@@ -285,9 +286,14 @@ function EcheancesPage() {
               <CardDescription>Une ligne = un mois de loyer pour un contrat.</CardDescription>
             </div>
             {canWrite && (
-              <Button size="sm" onClick={() => setPayOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setEchOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Saisir un impayé
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
+                </Button>
+              </div>
             )}
           </CardHeader>
           <CardContent>
@@ -387,11 +393,17 @@ function EcheancesPage() {
           </CardContent>
         </Card>
 
+        <EcheanceDialog
+          open={echOpen}
+          onOpenChange={setEchOpen}
+          contratOptions={contratOptions}
+          onSaved={load}
+        />
+
         <PaiementDialog
           open={payOpen}
           onOpenChange={setPayOpen}
           contratOptions={contratOptions}
-          isAdmin={isAdmin}
           onSaved={load}
         />
       </main>
