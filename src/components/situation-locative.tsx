@@ -67,7 +67,7 @@ export function SituationLocative({
     const [{ data: eData }, { data: pData }] = await Promise.all([
       supabase
         .from("echeances")
-        .select("id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement")
+        .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement, service_en_charge, notes")
         .eq("contrat_id", contratId)
         .order("periode", { ascending: false }),
       supabase
@@ -348,7 +348,8 @@ export function SituationLocative({
       <EcheanceDialog
         open={!!editEch}
         onOpenChange={(o) => !o && setEditEch(null)}
-        echeance={editEch}
+        contratId={contratId}
+        echeance={editEch ? { ...editEch, contrat_id: editEch.contrat_id || contratId } : null}
         canDelete={isAdmin}
         onSaved={load}
       />
