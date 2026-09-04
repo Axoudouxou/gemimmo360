@@ -376,7 +376,7 @@ function ContratDetailPage() {
 
             <SituationLocative
               contratId={contratId}
-              canWrite={canEdit}
+              canWrite={canWriteFinance(myRole)}
               isAdmin={myRole === "admin"}
             />
 
