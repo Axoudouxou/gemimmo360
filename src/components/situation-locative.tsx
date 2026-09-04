@@ -247,7 +247,7 @@ export function SituationLocative({
       _mode_reglement: MOYEN_LABELS[dernier.moyen_paiement] ?? dernier.moyen_paiement,
       _locataire: infos.locataire,
       _bien: infos.bien,
-      _lot: infos.lot,
+      _lot: infos.lot ?? "",
     });
     if (error || !data) {
       setQuittanceBusy(null);
