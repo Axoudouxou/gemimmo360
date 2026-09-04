@@ -15,13 +15,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, Plus, Trash2 } from "lucide-react";
+import { Download, FileText, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
+import { generateQuittanceDocx } from "@/lib/quittance-docx";
 import {
   computeEcheanceStatut,
+  MOYENS_PAIEMENT,
   fmtDate,
   fmtMoney,
   fmtPeriode,
@@ -45,6 +47,11 @@ type Paiement = {
   reference: string | null;
 };
 type Affectation = { paiement_id: string; echeance_id: string; montant: number };
+const MOYEN_LABELS: Record<string, string> = Object.fromEntries(
+  MOYENS_PAIEMENT.map((m) => [m.value, m.label]),
+);
+
+type Quittance = { echeance_id: string; numero_affiche: string; date_reglement: string };
 
 type LedgerLine = {
   date: string;
@@ -75,6 +82,13 @@ export function SituationLocative({
   const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
   const [delPay, setDelPay] = useState<Paiement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [quittances, setQuittances] = useState<Quittance[]>([]);
+  const [quittanceBusy, setQuittanceBusy] = useState<string | null>(null);
+  const [infos, setInfos] = useState<{ locataire: string; bien: string; lot: string | null }>({
+    locataire: "—",
+    bien: "—",
+    lot: null,
+  });
 
 
 
@@ -105,6 +119,32 @@ export function SituationLocative({
     } else {
       setAffectations([]);
     }
+    const { data: qData } = await supabase
+      .from("quittances")
+      .select("echeance_id, numero_affiche, date_reglement")
+      .eq("contrat_id", contratId);
+    setQuittances((qData ?? []) as Quittance[]);
+
+    const { data: cData } = await supabase
+      .from("contrats")
+      .select("locataire_id, lots(label, biens(titre, adresse))")
+      .eq("id", contratId)
+      .maybeSingle();
+    const lot = (cData as { lots?: { label?: string; biens?: { titre?: string; adresse?: string | null } } } | null)?.lots;
+    let locataire = "—";
+    if (cData?.locataire_id) {
+      const { data: ct } = await supabase
+        .from("contacts")
+        .select("nom, prenom")
+        .eq("id", cData.locataire_id)
+        .maybeSingle();
+      if (ct) locataire = `${ct.nom}${ct.prenom ? ` ${ct.prenom}` : ""}`;
+    }
+    setInfos({
+      locataire,
+      bien: [lot?.biens?.titre, lot?.biens?.adresse].filter(Boolean).join(", ") || "—",
+      lot: lot?.label ?? null,
+    });
     setLoading(false);
   }, [contratId]);
 
@@ -177,6 +217,64 @@ export function SituationLocative({
     load();
   };
 
+  const quittanceById = useMemo(() => new Map(quittances.map((q) => [q.echeance_id, q])), [quittances]);
+
+  const paiementById = useMemo(() => new Map(paiements.map((p) => [p.id, p])), [paiements]);
+
+  /** Date réelle de règlement de la période = date du dernier paiement affecté à cette échéance. */
+  const reglementDe = useCallback(
+    (echeanceId: string) => {
+      const liees = affectations
+        .filter((a) => a.echeance_id === echeanceId)
+        .map((a) => paiementById.get(a.paiement_id))
+        .filter(Boolean) as Paiement[];
+      if (!liees.length) return null;
+      const dernier = [...liees].sort((a, b) => a.date_paiement.localeCompare(b.date_paiement)).at(-1)!;
+      return dernier;
+    },
+    [affectations, paiementById],
+  );
+
+  const handleQuittance = async (e: Echeance) => {
+    const reste = Number(e.montant_du) - Number(e.montant_affecte);
+    if (reste > 0) return toast.error("La période n'est pas intégralement soldée.");
+    const dernier = reglementDe(e.id);
+    if (!dernier) return toast.error("Aucun paiement affecté à cette période.");
+    setQuittanceBusy(e.id);
+    const { data, error } = await supabase.rpc("emettre_quittance", {
+      _echeance_id: e.id,
+      _date_reglement: dernier.date_paiement,
+      _mode_reglement: MOYEN_LABELS[dernier.moyen_paiement] ?? dernier.moyen_paiement,
+      _locataire: infos.locataire,
+      _bien: infos.bien,
+      _lot: infos.lot,
+    });
+    if (error || !data) {
+      setQuittanceBusy(null);
+      return toast.error(error?.message ?? "Émission impossible");
+    }
+    const q = data as unknown as {
+      numero_affiche: string;
+      montant: number;
+      date_reglement: string;
+      mode_reglement: string | null;
+    };
+    await generateQuittanceDocx({
+      numero: q.numero_affiche,
+      dateEmission: q.date_reglement,
+      locataire: infos.locataire,
+      bien: infos.bien,
+      lot: infos.lot,
+      periodeLabel: fmtPeriode(e.periode),
+      montant: Number(q.montant),
+      modeReglement: q.mode_reglement ?? "—",
+      resteAPayer: 0,
+    });
+    setQuittanceBusy(null);
+    toast.success(`Quittance N° ${q.numero_affiche} générée`);
+    load();
+  };
+
   let running = 0;
 
 
@@ -245,6 +343,7 @@ export function SituationLocative({
                           <TableHead>Payé</TableHead>
                           <TableHead>Reste</TableHead>
                           <TableHead>Statut</TableHead>
+                          <TableHead>Quittance</TableHead>
                           {canWrite && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                       </TableHeader>
@@ -262,6 +361,23 @@ export function SituationLocative({
                                 {fmtMoney(reste)}
                               </TableCell>
                               <TableCell><Badge className={st.className}>{st.emoji} {st.label}</Badge></TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {reste === 0 && Number(e.montant_du) > 0 ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={quittanceBusy === e.id}
+                                    onClick={() => handleQuittance(e)}
+                                  >
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    {quittanceById.get(e.id)
+                                      ? `N° ${quittanceById.get(e.id)!.numero_affiche}`
+                                      : "Quittance"}
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
                               {canWrite && (
                                 <TableCell className="text-right">
                                   <Button
