@@ -5,7 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Download, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { ReaffectationDialog } from "@/components/reaffectation-dialog";
@@ -15,6 +26,7 @@ import {
   fmtMoney,
   fmtPeriode,
 } from "@/lib/echeance-statut";
+
 
 type Echeance = {
   id: string;
