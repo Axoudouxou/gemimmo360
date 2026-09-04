@@ -52,8 +52,6 @@ const STATUT_LABEL: Record<string, string> = {
   relance_envoyee: "Relance envoyée",
 };
 
-const READ_BLOCKED = ["en_attente"] as const;
-const WRITE_ROLES = ["admin", "direction", "recouvrement", "commercial", "technico_commercial", "gestion_locative", "juridique"] as const;
 
 type Impaye = {
   id: string;
