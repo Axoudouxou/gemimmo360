@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { FilterBar } from "@/components/filter-bar";
 import { supabase } from "@/integrations/supabase/client";
+import { useAccessLevel } from "@/lib/permissions-matrix";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -102,7 +103,8 @@ function EcheancesPage() {
   }, [navigate]);
 
   const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
-  const canWrite = !!role && (WRITE_ROLES as readonly string[]).includes(role);
+  const { canWrite: matrixWrite } = useAccessLevel("finance.echeance_write", role);
+  const canWrite = matrixWrite;
 
   const load = async () => {
     setLoading(true);
