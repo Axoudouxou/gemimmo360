@@ -372,11 +372,18 @@ function ContratDetailPage() {
               </CardContent>
             </Card>
 
+            <SituationLocative
+              contratId={contratId}
+              canWrite={canEdit}
+              isAdmin={myRole === "admin"}
+            />
+
             <Card>
               <CardHeader>
-                <CardTitle>Impayés</CardTitle>
-                <CardDescription>Historique des impayés liés à ce contrat.</CardDescription>
+                <CardTitle>Impayés (ancien modèle)</CardTitle>
+                <CardDescription>Historique conservé en lecture seule, repris dans la situation locative.</CardDescription>
               </CardHeader>
+
               <CardContent>
                 {impayes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Aucun impayé.</p>
