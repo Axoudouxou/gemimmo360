@@ -166,7 +166,19 @@ export function SituationLocative({
     URL.revokeObjectURL(url);
   };
 
+  const handleDeletePaiement = async () => {
+    if (!delPay) return;
+    setDeleting(true);
+    const { error } = await supabase.from("paiements").delete().eq("id", delPay.id);
+    setDeleting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Paiement supprimé");
+    setDelPay(null);
+    load();
+  };
+
   let running = 0;
+
 
   return (
     <Card>
