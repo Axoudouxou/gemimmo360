@@ -58,6 +58,13 @@ const monthStart = (mk: string) => `${mk}-01`;
 const monthLabel = (mk: string) =>
   new Date(`${mk}-01T00:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 const currentMonth = monthKey(new Date());
+/** Les 3 mois du trimestre civil contenant le mois donné */
+const quarterMonths = (mk: string) => {
+  const [y, m] = mk.split("-").map(Number);
+  const start = Math.floor(((m ?? 1) - 1) / 3) * 3 + 1;
+  return [0, 1, 2].map((i) => `${y}-${String(start + i).padStart(2, "0")}`);
+};
+
 
 function ChargesPage() {
   const navigate = useNavigate();
@@ -91,6 +98,8 @@ function ChargesPage() {
   // Décompte
   const [dBien, setDBien] = useState<string>("");
   const [dMois, setDMois] = useState<string>(currentMonth);
+  const [dPeriodicite, setDPeriodicite] = useState<"mois" | "trimestre">("mois");
+
   const [tauxHono, setTauxHono] = useState<string>("10");
 
   const canWrite = useMemo(
@@ -244,6 +253,18 @@ function ChargesPage() {
     return [...directes.map((c) => ({ ...c, virtuelle: false })), ...recurrentes];
   };
 
+  const moisPeriode = useMemo(
+    () => (dPeriodicite === "trimestre" ? quarterMonths(dMois) : [dMois]),
+    [dPeriodicite, dMois],
+  );
+
+  const periodeLabel = useMemo(() => {
+    if (dPeriodicite !== "trimestre") return monthLabel(dMois);
+    const [first, , last] = moisPeriode as [string, string, string];
+    const q = Math.floor(Number(first.split("-")[1]) / 3) + 1;
+    return `T${q} ${first.split("-")[0]} (${monthLabel(first)} – ${monthLabel(last)})`;
+  }, [dPeriodicite, dMois, moisPeriode]);
+
   const decompte = useMemo(() => {
     if (!dBien) return null;
     const contratsBien = contrats.filter((c) => c.lot?.bien_id === dBien);
@@ -253,64 +274,73 @@ function ChargesPage() {
       !["solde", "resolu", "cloture"].includes(i.statut) &&
       i.etape_traitement !== "resolu" &&
       Number(i.montant_affecte) < Number(i.montant_du);
-    const impayesMois = impayes.filter(
-      (i) => ids.has(i.contrat_id) && monthKey(i.periode ?? i.date_echeance ?? "") === dMois && nonSolde(i),
-    );
-    const actifs = contratsBien.filter(
-      (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
-    );
-    const loyersAttendus = actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
-    const resteDu = impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
-    const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
 
-    const lignes = chargesDuMois(dBien, dMois);
-    const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
-    const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
-
-    // Dépenses réelles de travaux du mois (montant réellement dépensé)
-    const travauxMois = travaux.filter((t) => {
-      if (t.bien_id !== dBien) return false;
-      if (t.charge_financiere !== "bailleur") return false;
-      if (!(Number(t.budget_depense) > 0)) return false;
-      const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
-      return !!ref && monthKey(ref) === dMois;
-    });
-    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_prevu ?? t.budget_depense ?? 0), 0);
-
-    // Honoraires de fiscalité du bailleur du bien sur le mois
-    const bailleurId = biens.find((b) => b.id === dBien)?.bailleur_id ?? null;
-    const honoFiscauxMois = bailleurId
-      ? honoFiscaux.filter((h) => h.bailleur_id === bailleurId && h.periode && monthKey(h.periode) === dMois)
-      : [];
-    const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
-
-    // Loyers du mois par locataire (contrats actifs + ceux ayant un impayé sur le mois)
     const nomLocataire = (id: string | null | undefined) => {
       const contact = contacts.find((ct) => ct.id === id);
       return contact ? `${contact.nom} ${contact.prenom ?? ""}`.trim() : "Locataire";
     };
-    const detailLoyers = actifs.map((c) => {
-      const du = impayesMois
-        .filter((i) => i.contrat_id === c.id)
-        .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
-      return {
-        locataire: nomLocataire(c.locataire_id),
-        echeance: monthLabel(dMois),
-        montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
-      };
-    });
+    const bailleurId = biens.find((b) => b.id === dBien)?.bailleur_id ?? null;
 
-    // Impayés du mois (montant restant dû par locataire)
-    const detailImpayes = impayesMois
-      .map((i) => {
+    let loyersAttendus = 0;
+    let resteDu = 0;
+    const lignes: ReturnType<typeof chargesDuMois> = [];
+    const travauxMois: TravauxRow[] = [];
+    const honoFiscauxMois: HonoraireFiscalRow[] = [];
+    const detailLoyers: { locataire: string; echeance: string; montant: number }[] = [];
+    const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
+
+    for (const mk of moisPeriode) {
+      const impayesMois = impayes.filter(
+        (i) => ids.has(i.contrat_id) && monthKey(i.periode ?? i.date_echeance ?? "") === mk && nonSolde(i),
+      );
+      const actifs = contratsBien.filter(
+        (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
+      );
+      loyersAttendus += actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
+      resteDu += impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
+
+      lignes.push(...chargesDuMois(dBien, mk));
+
+      travauxMois.push(
+        ...travaux.filter((t) => {
+          if (t.bien_id !== dBien) return false;
+          if (t.charge_financiere !== "bailleur") return false;
+          if (!(Number(t.budget_depense) > 0)) return false;
+          const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
+          return !!ref && monthKey(ref) === mk;
+        }),
+      );
+
+      if (bailleurId) {
+        honoFiscauxMois.push(
+          ...honoFiscaux.filter((h) => h.bailleur_id === bailleurId && h.periode && monthKey(h.periode) === mk),
+        );
+      }
+
+      actifs.forEach((c) => {
+        const du = impayesMois
+          .filter((i) => i.contrat_id === c.id)
+          .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
+        detailLoyers.push({
+          locataire: nomLocataire(c.locataire_id),
+          echeance: monthLabel(mk),
+          montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
+        });
+      });
+
+      impayesMois.forEach((i) => {
         const contrat = contratsBien.find((c) => c.id === i.contrat_id);
-        return {
-          locataire: nomLocataire(contrat?.locataire_id),
-          echeance: monthLabel(dMois),
-          montant: Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)),
-        };
-      })
-      .filter((i) => i.montant > 0);
+        const montant = Math.max(0, Number(i.montant_du) - Number(i.montant_affecte));
+        if (montant > 0)
+          detailImpayes.push({ locataire: nomLocataire(contrat?.locataire_id), echeance: monthLabel(mk), montant });
+      });
+    }
+
+    const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
+    const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
+    const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
+    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_prevu ?? t.budget_depense ?? 0), 0);
+    const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
 
     return {
       loyersAttendus, resteDu, loyersEncaisses, lignes, totalCharges, honoraires,
@@ -319,7 +349,8 @@ function ChargesPage() {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dBien, dMois, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
+  }, [dBien, moisPeriode, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
+
 
   const handleExportDocx = async () => {
     if (!decompte || !dBien) return;
@@ -332,7 +363,7 @@ function ChargesPage() {
         bienTitre: bien?.titre ?? "Bien",
         bienAdresse: bien?.adresse ?? null,
         proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
-        moisLabel: monthLabel(dMois),
+        moisLabel: periodeLabel,
         loyers: decompte.detailLoyers,
         totalLoyers: decompte.loyersEncaisses,
         loyersFactures: decompte.loyersAttendus,
@@ -455,20 +486,34 @@ function ChargesPage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="grid gap-2"><Label>Bien</Label>
                     <Select value={dBien} onValueChange={setDBien}>
                       <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
                       <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2"><Label htmlFor="dmois">Mois</Label>
+                  <div className="grid gap-2"><Label>Périodicité</Label>
+                    <Select value={dPeriodicite} onValueChange={(v) => setDPeriodicite(v as "mois" | "trimestre")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mois">Mois</SelectItem>
+                        <SelectItem value="trimestre">Trimestre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dmois">{dPeriodicite === "trimestre" ? "Trimestre (choisir un mois)" : "Mois"}</Label>
                     <Input id="dmois" type="month" value={dMois} onChange={(e) => setDMois(e.target.value)} />
+                    {dPeriodicite === "trimestre" && (
+                      <p className="text-xs text-muted-foreground capitalize">{periodeLabel}</p>
+                    )}
                   </div>
                   <div className="grid gap-2"><Label htmlFor="taux">Honoraires de gestion (%)</Label>
                     <Input id="taux" type="number" min="0" max="100" step="0.5" value={tauxHono} onChange={(e) => setTauxHono(e.target.value)} />
                   </div>
                 </div>
+
 
                 {!decompte ? <p className="text-sm text-muted-foreground">Sélectionnez un bien pour générer le décompte.</p> : (
                   <div className="space-y-6">
@@ -476,7 +521,7 @@ function ChargesPage() {
                       {[
                         { l: "Loyers attendus", v: decompte.loyersAttendus },
                         { l: "Loyers encaissés", v: decompte.loyersEncaisses },
-                        { l: "Charges du mois", v: -decompte.totalCharges },
+                        { l: "Charges de la période", v: -decompte.totalCharges },
                       ].map((k) => (
                         <div key={k.l} className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">{k.l}</p>
@@ -487,7 +532,7 @@ function ChargesPage() {
 
                     <div className="rounded-lg border bg-background p-4">
                       <div className="flex justify-between py-1 text-sm"><span>Loyers encaissés</span><span>{fmtMoney(decompte.loyersEncaisses)}</span></div>
-                      <div className="flex justify-between py-1 text-sm"><span>Charges du mois</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Charges de la période</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Travaux (dépense réelle)</span><span>− {fmtMoney(decompte.totalTravaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de fiscalité</span><span>− {fmtMoney(decompte.totalHonoFiscaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de gestion ({tauxHono || 0} %)</span><span>− {fmtMoney(decompte.honoraires)}</span></div>
@@ -499,7 +544,7 @@ function ChargesPage() {
                       <div className="grid gap-6 md:grid-cols-2">
                         {decompte.travauxMois.length > 0 && (
                           <div>
-                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{periodeLabel}</span></h3>
                             <Table>
                               <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
                               <TableBody>{decompte.travauxMois.map((t) => (
@@ -523,7 +568,7 @@ function ChargesPage() {
                     )}
 
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                      <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{periodeLabel}</span></h3>
                       {decompte.lignes.length === 0 ? <p className="text-sm text-muted-foreground">Aucune charge sur ce mois.</p> : (
                         <Table>
                           <TableHeader><TableRow><TableHead>Libellé</TableHead><TableHead>Montant</TableHead><TableHead>Origine</TableHead><TableHead>Imputation</TableHead></TableRow></TableHeader>
