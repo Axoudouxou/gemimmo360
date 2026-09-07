@@ -26,6 +26,7 @@ export type QuittanceData = {
   montant: number;
   modeReglement: string;
   resteAPayer?: number;
+  penalite?: number;
 };
 
 const money = (n: number) =>
