@@ -42,6 +42,24 @@ import {
   MesActivites7j,
   FilActualiteEquipe,
 } from "@/components/dashboard-widgets";
+import {
+  PilotageFinancierMois,
+  ImpayesATraiter,
+  RelancesStats,
+  ContentieuxJuridiqueList,
+  BiensVacantsAPlacer,
+  VisitesWidget,
+  AlertesFoncieres,
+  ContratsAEcheance,
+  TravauxPrioritaires,
+  ReclamationsAssignees,
+  EtatsDesLieuxSuivi,
+  DecomptesEtQuittances,
+} from "@/components/dashboard-metier";
+
+function Section({ title }: { title: string }) {
+  return <h2 className="pt-2 text-lg font-semibold text-foreground">{title}</h2>;
+}
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -276,6 +294,11 @@ function Dashboard() {
   const canCreateContrat = ["admin", "direction", "juridique", "gestion_locative"].includes(role);
 
   const isAdminLike = role === "admin" || role === "direction";
+  const isRecouvrement = role === "recouvrement";
+  const isCommercial = role === "commercial" || role === "technico_commercial";
+  const isTechnique = role === "technique" || role === "technico_commercial";
+  const isJuridique = role === "juridique";
+  const isGestion = role === "gestion_locative";
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 space-y-6">
@@ -295,128 +318,121 @@ function Dashboard() {
         </div>
       )}
 
-      <FilActualiteEquipe userId={userId} role={role} />
-
-
       {/* ADMIN & DIRECTION */}
       {isAdminLike && (
         <>
+          <Section title="Suivi d'équipe" />
+          <SuiviEquipe />
+
+          <Section title="Pilotage financier du mois" />
+          <PilotageFinancierMois />
+
+          <Section title="État du parc" />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <StatCardGrid cards={[
+                { key: "biens", label: "Biens", value: common.biens, icon: Home, to: "/biens" },
+                { key: "contrats", label: "Contrats actifs", value: common.contratsActifs, icon: FileText, to: "/contrats" },
+                { key: "vacants", label: "Lots vacants", value: common.lotsVacants, icon: DoorOpen, to: "/biens" },
+                { key: "taux", label: "Taux d'occupation", value: `${tauxOccupation}%`, icon: Percent },
+              ]} />
+            </div>
+            <OccupationGauge />
+          </div>
+
+          <Section title="Alertes" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ListeARelancer />
+            <ContratsAEcheance jours={60} />
+          </div>
+
+          <Section title="Travaux, réclamations et activité" />
           <StatCardGrid cards={[
-            { key: "biens", label: "Biens", value: common.biens, icon: Home, to: "/biens" },
-            { key: "contrats", label: "Contrats actifs", value: common.contratsActifs, icon: FileText, to: "/contrats" },
+            { key: "reclamations", label: "Réclamations ouvertes", value: common.reclamationsOuvertes, icon: MessageSquareWarning, to: "/reclamations", emphasis: common.reclamationsOuvertes > 0 ? "warning" : "normal" },
+            { key: "travaux", label: "Travaux en cours", value: common.travauxEnCours, icon: Hammer, to: "/travaux" },
             { key: "impayes", label: "Impayés en retard", value: common.impayesRetard, icon: AlertTriangle, to: "/echeances", emphasis: common.impayesRetard > 0 ? "danger" : "normal" },
             { key: "contacts", label: "Contacts", value: common.contacts, icon: ContactIcon, to: "/contacts" },
-            { key: "taux", label: "Taux d'occupation", value: `${tauxOccupation}%`, icon: Percent },
-            { key: "vacants", label: "Lots vacants", value: common.lotsVacants, icon: DoorOpen, to: "/biens" },
-            { key: "ech", label: "Contrats à échéance (60j)", value: common.contratsEcheance, icon: CalendarClock, to: "/contrats", emphasis: common.contratsEcheance > 0 ? "warning" : "normal" },
-            { key: "travaux", label: "Travaux en cours", value: common.travauxEnCours, icon: Hammer, to: "/travaux" },
-            { key: "reclamations", label: "Réclamations ouvertes", value: common.reclamationsOuvertes, icon: MessageSquareWarning, to: "/reclamations" },
-            ...(role === "admin" ? [
-              { key: "doublons", label: "Doublons détectés", value: admin.doublons, icon: Users2 as StatCard["icon"], to: "/doublons" },
-              { key: "averifier", label: "Fiches à vérifier", value: admin.aVerifier, icon: ClipboardCheck as StatCard["icon"] },
-            ] : []),
           ]} />
+          <FilActualiteEquipe userId={userId} role={role} />
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <OccupationGauge />
-            <PipelineFunnel />
-            <LotsParStatut />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <OccupationParImmeuble />
-            <NouveauxContrats12Mois />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ListeEcheances />
-            <ListeARelancer />
-          </div>
-          <SuiviEquipe />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ActiviteEntreprise30j />
-            <TachesEntrepriseDonut />
-          </div>
-        </>
-      )}
-
-      {/* GESTION LOCATIVE & COMMERCIAL */}
-      {(role === "gestion_locative" || role === "commercial" || role === "technico_commercial") && (
-        <>
-          <StatCardGrid cards={[
-            { key: "mb", label: "Mes biens", value: porto.mesBiens, icon: Home, to: "/biens" },
-            { key: "mc", label: "Mes contrats actifs", value: porto.mesContrats, icon: FileText, to: "/contrats" },
-            { key: "mv", label: "Mes lots vacants", value: porto.mesLotsVacants, icon: DoorOpen, to: "/biens" },
-            { key: "mt", label: "Taux d'occupation portefeuille", value: `${tauxPorto}%`, icon: Percent },
-          ]} />
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <OccupationParImmeuble scope={{ gestionnaire_id: userId ?? undefined }} />
-            <ListeEcheances scope={{ gestionnaire_id: userId ?? undefined }} />
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <MesActivites7j userId={userId} />
-            {(role === "commercial" || role === "technico_commercial") && <PipelineFunnel />}
-          </div>
+          {role === "admin" && (
+            <>
+              <Section title="Qualité des données" />
+              <StatCardGrid cards={[
+                { key: "doublons", label: "Doublons détectés", value: admin.doublons, icon: Users2, to: "/doublons" },
+                { key: "averifier", label: "Fiches à vérifier", value: admin.aVerifier, icon: ClipboardCheck },
+              ]} />
+            </>
+          )}
         </>
       )}
 
       {/* RECOUVREMENT */}
-      {role === "recouvrement" && (
+      {isRecouvrement && (
         <>
-          <StatCardGrid cards={[
-            { key: "mr", label: "Montant total en retard", value: fmtMoney(rec.montantRetard), icon: Wallet, emphasis: rec.montantRetard > 0 ? "danger" : "normal", large: true },
-            { key: "cs", label: "Contrats suivis", value: rec.contratsSuivis, icon: FileText },
-            { key: "rm", label: "Relances ce mois", value: rec.relancesMois, icon: MessageSquareWarning },
-            { key: "tr", label: "Taux de recouvrement", value: `${rec.tauxRecouvrement}%`, icon: TrendingUp },
-          ]} />
-
+          <Section title="Recouvrement" />
+          <RelancesStats />
+          <ImpayesATraiter limit={10} />
           <div className="grid gap-4 lg:grid-cols-2">
+            <ContentieuxJuridiqueList />
             <EncaissementsChart />
-            <ListeARelancer />
           </div>
         </>
       )}
 
-      {/* TECHNIQUE */}
-      {(role === "technique" || role === "technico_commercial") && (
+      {/* COMMERCIAL (inclus dans technico-commercial) */}
+      {isCommercial && (
         <>
-          <StatCardGrid cards={[
-            { key: "tec", label: "Travaux en cours", value: common.travauxEnCours, icon: Hammer, to: "/travaux" },
-            { key: "rec", label: "Réclamations ouvertes", value: common.reclamationsOuvertes, icon: MessageSquareWarning, to: "/reclamations", emphasis: "danger" },
-            { key: "dm", label: "Délai moyen (j)", value: tech.delaiMoyenJ, icon: Timer },
-            { key: "bm", label: "Budget travaux du mois", value: fmtMoney(tech.budgetMois), icon: Wallet },
-          ]} />
+          <Section title="Commercial" />
+          <VisitesWidget />
+          <BiensVacantsAPlacer />
+        </>
+      )}
 
+      {/* TECHNIQUE (inclus dans technico-commercial) */}
+      {isTechnique && (
+        <>
+          <Section title="Technique" />
           <div className="grid gap-4 lg:grid-cols-2">
-            <TravauxDonut />
-            <ReclamationsBars />
+            <TravauxPrioritaires />
+            <ReclamationsAssignees userId={userId} />
           </div>
-          <ListeATraiter />
+          <EtatsDesLieuxSuivi />
         </>
       )}
 
       {/* JURIDIQUE */}
-      {role === "juridique" && (
+      {isJuridique && (
         <>
-          <StatCardGrid cards={[
-            { key: "ca", label: "Contrats actifs", value: common.contratsActifs, icon: FileText, to: "/contrats" },
-            { key: "ec", label: "Échéances (60j)", value: common.contratsEcheance, icon: CalendarClock, to: "/contrats", emphasis: "warning" },
-            { key: "mo", label: "Modifications en attente", value: jur.modifs, icon: ClipboardCheck, emphasis: "info" },
-            { key: "ba", label: "Bailleurs actifs", value: jur.bailleurs, icon: ContactIcon, to: "/contacts" },
-          ]} />
-
-          <ModificationsEnAttente />
+          <Section title="Juridique" />
+          <AlertesFoncieres />
           <div className="grid gap-4 lg:grid-cols-2">
-            <ContratsParStatut />
-            <ListeEcheances limit={8} />
+            <ContratsAEcheance jours={60} titre="Contrats à traiter (avenant / résiliation)" />
+            <ModificationsEnAttente />
+          </div>
+          <ContentieuxJuridiqueList />
+        </>
+      )}
+
+      {/* GESTION LOCATIVE */}
+      {isGestion && (
+        <>
+          <Section title="Gestion locative" />
+          <DecomptesEtQuittances />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ContratsAEcheance jours={90} titre="Contrats à renouveler" />
+            <ListeARelancer />
           </div>
         </>
       )}
 
       {/* WIDGETS COMMUNS À TOUS LES RÔLES */}
+      <Section title="Mes activités" />
       <div className="grid gap-4 lg:grid-cols-2">
         <MesTachesSemaine userId={userId} />
         <MesActivitesEnCours userId={userId} />
       </div>
+
     </div>
   );
 }
