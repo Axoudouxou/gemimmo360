@@ -58,6 +58,13 @@ const monthStart = (mk: string) => `${mk}-01`;
 const monthLabel = (mk: string) =>
   new Date(`${mk}-01T00:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 const currentMonth = monthKey(new Date());
+/** Les 3 mois du trimestre civil contenant le mois donné */
+const quarterMonths = (mk: string) => {
+  const [y, m] = mk.split("-").map(Number);
+  const start = Math.floor(((m ?? 1) - 1) / 3) * 3 + 1;
+  return [0, 1, 2].map((i) => `${y}-${String(start + i).padStart(2, "0")}`);
+};
+
 
 function ChargesPage() {
   const navigate = useNavigate();
