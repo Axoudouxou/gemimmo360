@@ -26,6 +26,7 @@ export type QuittanceData = {
   montant: number;
   modeReglement: string;
   resteAPayer?: number;
+  penalite?: number;
 };
 
 const money = (n: number) =>
@@ -231,6 +232,9 @@ export async function generateQuittanceDocx(d: QuittanceData) {
         infoRow("Appt / Studio N°", d.lot || "—"),
         infoRow("Période", d.periodeLabel),
         infoRow("Mode de règlement", d.modeReglement),
+        ...(d.penalite && d.penalite > 0
+          ? [infoRow("Dont pénalité de retard (10%)", money(d.penalite))]
+          : []),
         infoRow("Reste à payer", money(d.resteAPayer ?? 0)),
       ],
     }),

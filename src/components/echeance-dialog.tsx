@@ -15,7 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ETAPE_LABELS, JOUR_ECHEANCE, dateEcheanceForPeriode } from "@/lib/echeance-statut";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ETAPE_LABELS,
+  JOUR_ECHEANCE,
+  dateEcheanceForPeriode,
+  calcPenalite,
+  paiementEnRetard,
+  fmtMoney,
+} from "@/lib/echeance-statut";
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
@@ -57,6 +65,12 @@ export function EcheanceDialog({
   const [service, setService] = useState("recouvrement");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [appliquerPenalite, setAppliquerPenalite] = useState(false);
+
+  const base = Number(montant) || 0;
+  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
+  const totalDu = base + penalite;
+  const retard = paiementEnRetard(mois || monthNow(), new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +81,7 @@ export function EcheanceDialog({
       setEtape(echeance.etape_traitement ?? "recouvrement");
       setService(echeance.service_en_charge ?? "recouvrement");
       setNotes(echeance.notes ?? "");
+      setAppliquerPenalite(false);
       return;
     }
     setContrat(contratId ?? "");
@@ -75,6 +90,7 @@ export function EcheanceDialog({
     setEtape("recouvrement");
     setService("recouvrement");
     setNotes("");
+    setAppliquerPenalite(false);
   }, [open, contratId, echeance]);
 
   // Pré-remplit le montant avec le loyer du contrat sélectionné
@@ -93,8 +109,14 @@ export function EcheanceDialog({
   const handleSave = async () => {
     if (!contrat) return toast.error("Le contrat est obligatoire");
     if (!mois) return toast.error("La période (mois) est obligatoire");
-    const m = Number(montant);
-    if (!m || m <= 0) return toast.error("Le montant dû doit être supérieur à 0");
+    if (!base || base <= 0) return toast.error("Le montant dû doit être supérieur à 0");
+    const m = totalDu;
+    const noteFinale = [
+      notes.trim(),
+      penalite > 0 ? `Pénalité de retard 10% appliquée : ${fmtMoney(penalite)}` : "",
+    ]
+      .filter(Boolean)
+      .join(" — ");
 
     if (isEdit) {
       const dejaPaye = Number(echeance?.montant_affecte ?? 0);
@@ -111,7 +133,7 @@ export function EcheanceDialog({
           montant_du: m,
           etape_traitement: etape,
           service_en_charge: service,
-          notes: notes.trim() || null,
+          notes: noteFinale || null,
         })
         .eq("id", echeance!.id);
       setSaving(false);
@@ -136,7 +158,7 @@ export function EcheanceDialog({
       statut: "impaye",
       etape_traitement: etape,
       service_en_charge: service,
-      notes: notes.trim() || null,
+      notes: noteFinale || null,
       created_by: userRes.user?.id ?? null,
     });
     setSaving(false);
@@ -217,6 +239,30 @@ export function EcheanceDialog({
               value={montant}
               onChange={(e) => setMontant(e.target.value)}
             />
+          </div>
+
+          <div className="rounded-md border p-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox
+                checked={appliquerPenalite}
+                onCheckedChange={(v) => setAppliquerPenalite(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-sm">
+                Appliquer la pénalité de retard de 10 %
+                <span className="block text-xs text-muted-foreground">
+                  {retard
+                    ? `Paiement au-delà du ${JOUR_ECHEANCE} du mois — pénalité applicable, facultative.`
+                    : `Le ${JOUR_ECHEANCE} du mois n'est pas encore dépassé.`}
+                </span>
+              </span>
+            </label>
+            {penalite > 0 && (
+              <p className="mt-2 text-sm">
+                Pénalité : <strong>{fmtMoney(penalite)}</strong> — Total dû :{" "}
+                <strong>{fmtMoney(totalDu)}</strong>
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

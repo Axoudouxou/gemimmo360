@@ -25,12 +25,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { generateQuittanceDocx } from "@/lib/quittance-docx";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   MOYENS_PAIEMENT,
   dateEcheanceForPeriode,
   fmtMoney,
   fmtPeriode,
   JOUR_ECHEANCE,
+  calcPenalite,
+  paiementEnRetard,
 } from "@/lib/echeance-statut";
 
 const MOYEN_LABELS: Record<string, string> = Object.fromEntries(
@@ -67,6 +70,7 @@ export function QuittanceDialog({
   const [moyen, setMoyen] = useState("especes");
   const [reference, setReference] = useState("");
   const [saving, setSaving] = useState(false);
+  const [appliquerPenalite, setAppliquerPenalite] = useState(false);
   const [antérieurs, setAnterieurs] = useState<EchRow[]>([]);
   const [warnOpen, setWarnOpen] = useState(false);
   const [infos, setInfos] = useState<{ locataire: string; bien: string; lot: string | null }>({
@@ -84,7 +88,19 @@ export function QuittanceDialog({
     setMoyen("especes");
     setReference("");
     setAnterieurs([]);
+    setAppliquerPenalite(false);
   }, [open, contratId]);
+
+  const base = Number(montant) || 0;
+  const retard = paiementEnRetard(mois, datePaiement);
+  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
+  const totalPaye = base + penalite;
+
+  // Coche automatiquement la pénalité si le règlement est après le 10 (décochable)
+  useEffect(() => {
+    if (!open) return;
+    setAppliquerPenalite(retard);
+  }, [open, retard]);
 
   // Loyer + infos locataire/bien/lot
   useEffect(() => {
@@ -135,7 +151,7 @@ export function QuittanceDialog({
   }, [open, contrat, mois]);
 
   const submit = useCallback(async () => {
-    const m = Number(montant);
+    const m = totalPaye;
     setSaving(true);
     try {
       const periode = `${mois}-01`;
@@ -196,7 +212,9 @@ export function QuittanceDialog({
           date_paiement: datePaiement,
           moyen_paiement: moyen,
           reference: reference.trim() || null,
-          notes: `Quittance ${fmtPeriode(periode)}`,
+          notes: penalite > 0
+            ? `Quittance ${fmtPeriode(periode)} — dont pénalité de retard 10% : ${fmtMoney(penalite)}`
+            : `Quittance ${fmtPeriode(periode)}`,
           created_by: uid,
         })
         .select("id")
@@ -239,6 +257,7 @@ export function QuittanceDialog({
         montant: Number(quittance.montant),
         modeReglement: quittance.mode_reglement ?? "—",
         resteAPayer: 0,
+        penalite,
       });
       toast.success(`Quittance N° ${quittance.numero_affiche} générée`);
       onOpenChange(false);
@@ -248,13 +267,12 @@ export function QuittanceDialog({
     } finally {
       setSaving(false);
     }
-  }, [contrat, mois, montant, datePaiement, moyen, reference, infos, onOpenChange, onSaved]);
+  }, [contrat, mois, totalPaye, penalite, datePaiement, moyen, reference, infos, onOpenChange, onSaved]);
 
   const handleValidate = () => {
     if (!contrat) return toast.error("Le contrat est obligatoire");
     if (!mois) return toast.error("La période (mois) est obligatoire");
-    const m = Number(montant);
-    if (!m || m <= 0) return toast.error("Le montant doit être supérieur à 0");
+    if (!base || base <= 0) return toast.error("Le montant doit être supérieur à 0");
     if (!datePaiement) return toast.error("La date de paiement est obligatoire");
     if (antérieurs.length > 0) return setWarnOpen(true);
     submit();
@@ -338,6 +356,30 @@ export function QuittanceDialog({
                 onChange={(e) => setReference(e.target.value)}
                 placeholder="N° de chèque, transaction..."
               />
+            </div>
+
+            <div className="rounded-md border p-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  checked={appliquerPenalite}
+                  onCheckedChange={(v) => setAppliquerPenalite(v === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  Appliquer la pénalité de retard de 10 %
+                  <span className="block text-xs text-muted-foreground">
+                    {retard
+                      ? `Règlement après le ${JOUR_ECHEANCE} du mois — pénalité proposée, décochez si vous ne l'appliquez pas.`
+                      : `Règlement dans les délais (avant le ${JOUR_ECHEANCE}).`}
+                  </span>
+                </span>
+              </label>
+              {penalite > 0 && (
+                <p className="mt-2 text-sm">
+                  Pénalité : <strong>{fmtMoney(penalite)}</strong> — Total quittancé :{" "}
+                  <strong>{fmtMoney(totalPaye)}</strong>
+                </p>
+              )}
             </div>
 
             {antérieurs.length > 0 && (
