@@ -42,6 +42,20 @@ const MOYEN_LABELS: Record<string, string> = Object.fromEntries(
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
+/** Ajoute n mois à une période "YYYY-MM". */
+const addMonths = (mois: string, n: number) => {
+  const [y, m] = mois.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, (m! - 1) + n, 1));
+  return d.toISOString().slice(0, 7);
+};
+
+const DUREES = [
+  { value: "1", label: "1 mois" },
+  { value: "3", label: "Trimestre (3 mois)" },
+  { value: "6", label: "Semestre (6 mois)" },
+  { value: "12", label: "Année (12 mois)" },
+] as const;
+
 type EchRow = {
   id: string;
   periode: string;
@@ -64,6 +78,7 @@ export function QuittanceDialog({
 }) {
   const [contrat, setContrat] = useState(contratId ?? "");
   const [mois, setMois] = useState(monthNow());
+  const [nbMois, setNbMois] = useState("1");
   const [montant, setMontant] = useState("");
   const [loyer, setLoyer] = useState<number | null>(null);
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().slice(0, 10));
@@ -83,6 +98,7 @@ export function QuittanceDialog({
     if (!open) return;
     setContrat(contratId ?? "");
     setMois(monthNow());
+    setNbMois("1");
     setMontant("");
     setDatePaiement(new Date().toISOString().slice(0, 10));
     setMoyen("especes");
@@ -91,10 +107,18 @@ export function QuittanceDialog({
     setAppliquerPenalite(false);
   }, [open, contratId]);
 
+  const nb = Math.max(1, Number(nbMois) || 1);
+  const periodes = Array.from({ length: nb }, (_, i) => addMonths(mois, i));
   const base = Number(montant) || 0;
   const retard = paiementEnRetard(mois, datePaiement);
-  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
-  const totalPaye = base + penalite;
+  const penaliteMois = appliquerPenalite ? calcPenalite(base) : 0;
+  const totalMois = base + penaliteMois;
+  const penalite = penaliteMois * nb;
+  const totalPaye = totalMois * nb;
+  const periodeLabel =
+    nb === 1
+      ? fmtPeriode(`${mois}-01`)
+      : `${fmtPeriode(`${mois}-01`)} à ${fmtPeriode(`${periodes[nb - 1]}-01`)}`;
 
   // Coche automatiquement la pénalité si le règlement est après le 10 (décochable)
   useEffect(() => {
@@ -151,114 +175,119 @@ export function QuittanceDialog({
   }, [open, contrat, mois]);
 
   const submit = useCallback(async () => {
-    const m = totalPaye;
+    const m = totalMois;
     setSaving(true);
     try {
-      const periode = `${mois}-01`;
       const { data: userRes } = await supabase.auth.getUser();
       const uid = userRes.user?.id ?? null;
 
-      // 1. Échéance du mois (créée si absente)
-      const { data: existing } = await supabase
-        .from("echeances")
-        .select("id, periode, montant_du, montant_affecte")
-        .eq("contrat_id", contrat)
-        .eq("periode", periode)
-        .maybeSingle();
-
-      let echeanceId: string;
-      let reste: number;
-      let dejaSolde = false;
-      if (existing) {
-        echeanceId = existing.id;
-        reste = Number(existing.montant_du) - Number(existing.montant_affecte);
-        if (reste <= 0) {
-          dejaSolde = true;
-        } else if (m < reste) {
-          toast.error(
-            `Le montant saisi (${fmtMoney(m)}) ne solde pas la période : il reste ${fmtMoney(reste)} dû.`,
-          );
-          setSaving(false);
-          return;
-        }
-      } else {
-        const { data: created, error: cErr } = await supabase
+      // 1. Une échéance par mois de la période quittancée (créée si absente)
+      const lignes: { echeanceId: string; reste: number; dejaSolde: boolean; periode: string }[] = [];
+      for (const p of periodes) {
+        const periode = `${p}-01`;
+        const { data: existing } = await supabase
           .from("echeances")
-          .insert({
-            contrat_id: contrat,
-            periode,
-            date_echeance: dateEcheanceForPeriode(mois),
-            montant_du: m,
-            statut: "impaye",
-            etape_traitement: "recouvrement",
-            service_en_charge: "recouvrement",
-            created_by: uid,
-          })
-          .select("id")
-          .single();
-        if (cErr || !created) throw new Error(cErr?.message ?? "Création de l'échéance impossible");
-        echeanceId = created.id;
-        reste = m;
+          .select("id, periode, montant_du, montant_affecte")
+          .eq("contrat_id", contrat)
+          .eq("periode", periode)
+          .maybeSingle();
+
+        if (existing) {
+          const reste = Number(existing.montant_du) - Number(existing.montant_affecte);
+          if (reste > 0 && m < reste) {
+            toast.error(
+              `${fmtPeriode(periode)} : le montant saisi (${fmtMoney(m)}) ne solde pas la période, il reste ${fmtMoney(reste)} dû.`,
+            );
+            setSaving(false);
+            return;
+          }
+          lignes.push({ echeanceId: existing.id, reste, dejaSolde: reste <= 0, periode });
+        } else {
+          const { data: created, error: cErr } = await supabase
+            .from("echeances")
+            .insert({
+              contrat_id: contrat,
+              periode,
+              date_echeance: dateEcheanceForPeriode(p),
+              montant_du: m,
+              statut: "impaye",
+              etape_traitement: "recouvrement",
+              service_en_charge: "recouvrement",
+              created_by: uid,
+            })
+            .select("id")
+            .single();
+          if (cErr || !created) throw new Error(cErr?.message ?? "Création de l'échéance impossible");
+          lignes.push({ echeanceId: created.id, reste: m, dejaSolde: false, periode });
+        }
       }
 
-      // 2 & 3. Paiement + affectation (uniquement si la période n'est pas déjà soldée)
-      if (!dejaSolde) {
+      // 2 & 3. Un paiement unique + affectation sur chaque mois non soldé
+      const aAffecter = lignes.filter((l) => !l.dejaSolde);
+      if (aAffecter.length > 0) {
+        const montantPaiement = m * aAffecter.length;
         const { data: paiement, error: pErr } = await supabase
           .from("paiements")
           .insert({
             contrat_id: contrat,
-            montant: m,
+            montant: montantPaiement,
             date_paiement: datePaiement,
             moyen_paiement: moyen,
             reference: reference.trim() || null,
-            notes: penalite > 0
-              ? `Quittance ${fmtPeriode(periode)} — dont pénalité de retard 10% : ${fmtMoney(penalite)}`
-              : `Quittance ${fmtPeriode(periode)}`,
+            notes: penaliteMois > 0
+              ? `Quittance ${periodeLabel} — dont pénalité de retard 10% : ${fmtMoney(penaliteMois * aAffecter.length)}`
+              : `Quittance ${periodeLabel}`,
             created_by: uid,
           })
           .select("id")
           .single();
         if (pErr || !paiement) throw new Error(pErr?.message ?? "Enregistrement du paiement impossible");
 
-        const { error: aErr } = await supabase.from("affectations").insert({
-          paiement_id: paiement.id,
-          echeance_id: echeanceId,
-          montant: Math.min(m, reste),
-          mode: "manuel",
-          created_by: uid,
-        });
-        if (aErr) throw new Error(aErr.message);
+        for (const l of aAffecter) {
+          const { error: aErr } = await supabase.from("affectations").insert({
+            paiement_id: paiement.id,
+            echeance_id: l.echeanceId,
+            montant: Math.min(m, l.reste > 0 ? l.reste : m),
+            mode: "manuel",
+            created_by: uid,
+          });
+          if (aErr) throw new Error(aErr.message);
+        }
       }
 
-      // 4. Quittance
-      const { data: q, error: qErr } = await supabase.rpc("emettre_quittance", {
-        _echeance_id: echeanceId,
-        _date_reglement: datePaiement,
-        _mode_reglement: MOYEN_LABELS[moyen] ?? moyen,
-        _locataire: infos.locataire,
-        _bien: infos.bien,
-        _lot: infos.lot ?? "",
-      });
-      if (qErr || !q) throw new Error(qErr?.message ?? "Émission de la quittance impossible");
-      const quittance = q as unknown as {
-        numero_affiche: string;
-        montant: number;
-        date_reglement: string;
-        mode_reglement: string | null;
-      };
+      // 4. Quittance (une par mois en base, un seul document pour la période)
+      const numeros: string[] = [];
+      let montantTotal = 0;
+      for (const l of lignes) {
+        const { data: q, error: qErr } = await supabase.rpc("emettre_quittance", {
+          _echeance_id: l.echeanceId,
+          _date_reglement: datePaiement,
+          _mode_reglement: MOYEN_LABELS[moyen] ?? moyen,
+          _locataire: infos.locataire,
+          _bien: infos.bien,
+          _lot: infos.lot ?? "",
+        });
+        if (qErr || !q) throw new Error(qErr?.message ?? "Émission de la quittance impossible");
+        const quittance = q as unknown as { numero_affiche: string; montant: number };
+        numeros.push(quittance.numero_affiche);
+        montantTotal += Number(quittance.montant);
+      }
+
+      const numeroDoc =
+        numeros.length > 1 ? `${numeros[0]} à ${numeros[numeros.length - 1]}` : numeros[0]!;
       await generateQuittanceDocx({
-        numero: quittance.numero_affiche,
-        dateEmission: quittance.date_reglement,
+        numero: numeroDoc,
+        dateEmission: datePaiement,
         locataire: infos.locataire,
         bien: infos.bien,
         lot: infos.lot,
-        periodeLabel: fmtPeriode(periode),
-        montant: Number(quittance.montant),
-        modeReglement: quittance.mode_reglement ?? "—",
+        periodeLabel,
+        montant: montantTotal,
+        modeReglement: MOYEN_LABELS[moyen] ?? moyen,
         resteAPayer: 0,
         penalite,
       });
-      toast.success(`Quittance N° ${quittance.numero_affiche} générée`);
+      toast.success(`Quittance N° ${numeroDoc} générée`);
       onOpenChange(false);
       onSaved?.();
     } catch (e) {
@@ -266,7 +295,7 @@ export function QuittanceDialog({
     } finally {
       setSaving(false);
     }
-  }, [contrat, mois, totalPaye, penalite, datePaiement, moyen, reference, infos, onOpenChange, onSaved]);
+  }, [contrat, periodes, periodeLabel, totalMois, penalite, penaliteMois, datePaiement, moyen, reference, infos, onOpenChange, onSaved]);
 
   const handleValidate = () => {
     if (!contrat) return toast.error("Le contrat est obligatoire");
@@ -303,28 +332,43 @@ export function QuittanceDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Mois quittancé *</Label>
+                <Label>Premier mois quittancé *</Label>
                 <Input type="month" value={mois} onChange={(e) => setMois(e.target.value)} />
                 <p className="text-xs text-muted-foreground">
                   Échéance fixée au {JOUR_ECHEANCE} du mois.
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Montant payé *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={montant}
-                  onChange={(e) => setMontant(e.target.value)}
-                />
-                {loyer != null && (
-                  <p className="text-xs text-muted-foreground">
-                    Loyer du contrat : {fmtMoney(loyer)}
-                  </p>
-                )}
+                <Label>Périodicité réglée *</Label>
+                <Select value={nbMois} onValueChange={setNbMois}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DUREES.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground capitalize">{periodeLabel}</p>
               </div>
             </div>
+
+            <div className="grid gap-2">
+              <Label>Montant payé par mois *</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={montant}
+                onChange={(e) => setMontant(e.target.value)}
+              />
+              {loyer != null && (
+                <p className="text-xs text-muted-foreground">
+                  Loyer du contrat : {fmtMoney(loyer)}
+                  {nb > 1 && <> — Total {nb} mois : <strong>{fmtMoney(totalPaye)}</strong></>}
+                </p>
+              )}
+            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
