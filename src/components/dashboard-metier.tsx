@@ -79,34 +79,45 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 /* ------------------ PILOTAGE FINANCIER DU MOIS ------------------ */
 export function PilotageFinancierMois() {
-  const [s, setS] = useState({ du: 0, encaisse: 0, taux: 0, impayes: 0 });
+  const [s, setS] = useState({ du: 0, encaisse: 0, taux: 0, impayes: 0, impayesMois: 0 });
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("echeances")
-        .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement");
-      const rows = (data ?? []) as Ech[];
+      const [{ data: ech }, { data: ctr }] = await Promise.all([
+        supabase
+          .from("echeances")
+          .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement"),
+        supabase.from("contrats").select("id, loyer_mensuel").eq("statut", "actif"),
+      ]);
+      const rows = (ech ?? []) as Ech[];
       const start = monthStart();
       const end = monthEnd();
-      const mois = rows.filter((e) => {
-        const p = (e.periode ?? e.date_echeance ?? "").slice(0, 10);
-        return p >= start && p <= end;
-      });
-      const du = mois.reduce((t, e) => t + Number(e.montant_du ?? 0), 0);
-      const encaisse = mois.reduce((t, e) => t + Number(e.montant_affecte ?? 0), 0);
+      // Loyers dus = somme des loyers des contrats actifs
+      const du = ((ctr ?? []) as Array<{ loyer_mensuel: number | null }>).reduce(
+        (t, c) => t + Number(c.loyer_mensuel ?? 0),
+        0,
+      );
+      const impayesMois = rows
+        .filter((e) => {
+          const p = (e.periode ?? e.date_echeance ?? "").slice(0, 10);
+          return p >= start && p <= end && nonSolde(e);
+        })
+        .reduce((t, e) => t + reste(e), 0);
+      const encaisse = Math.max(0, du - impayesMois);
       const impayes = rows.filter(nonSolde).reduce((t, e) => t + reste(e), 0);
-      setS({ du, encaisse, taux: du > 0 ? Math.round((encaisse / du) * 100) : 0, impayes });
+      setS({ du, encaisse, taux: du > 0 ? Math.round((encaisse / du) * 100) : 0, impayes, impayesMois });
     })();
   }, []);
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <Mini label="Loyers dus ce mois" value={fmtMoney(s.du)} />
-      <Mini label="Loyers encaissés ce mois" value={fmtMoney(s.encaisse)} tone="success" />
+      <Mini label="Impayés du mois" value={fmtMoney(s.impayesMois)} tone="warning" to="/echeances" />
+      <Mini label="Loyers encaissés ce mois (estimé)" value={fmtMoney(s.encaisse)} tone="success" />
       <Mini label="Taux de recouvrement" value={`${s.taux}%`} tone={s.taux < 70 ? "warning" : "success"} />
       <Mini label="Total des impayés" value={fmtMoney(s.impayes)} tone="danger" to="/echeances" />
     </div>
   );
 }
+
 
 /* ------------------ RECOUVREMENT ------------------ */
 export function ImpayesATraiter({ limit = 10 }: { limit?: number }) {
