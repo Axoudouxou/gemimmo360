@@ -473,19 +473,24 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
   const [rows, setRows] = useState<Array<{ id: string; contrat_id: string; locataire: string; montant: number; date_echeance: string }>>([]);
   useEffect(() => {
     (async () => {
+      const todayIso = new Date().toISOString().slice(0, 10);
       const { data } = await supabase
-        .from("impayes")
-        .select("id, contrat_id, montant_du, montant_paye, date_echeance, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
-        .eq("statut", "en_retard")
+        .from("echeances")
+        .select("id, contrat_id, montant_du, montant_affecte, date_echeance, etape_traitement, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
+        .lt("date_echeance", todayIso)
         .order("date_echeance", { ascending: true })
-        .limit(limit);
-      setRows((data ?? []).map((r: any) => ({
-        id: r.id,
-        contrat_id: r.contrat_id,
-        locataire: r.contrats?.locataire ? `${r.contrats.locataire.nom ?? ""} ${r.contrats.locataire.prenom ?? ""}`.trim() : "—",
-        montant: Number(r.montant_du ?? 0) - Number(r.montant_paye ?? 0),
-        date_echeance: r.date_echeance,
-      })));
+        .limit(200);
+      setRows(((data ?? []) as any[])
+        .filter((r) => Number(r.montant_du ?? 0) - Number(r.montant_affecte ?? 0) > 0
+          && !["solde", "resolu", "cloture"].includes(r.etape_traitement ?? ""))
+        .slice(0, limit)
+        .map((r: any) => ({
+          id: r.id,
+          contrat_id: r.contrat_id,
+          locataire: r.contrats?.locataire ? `${r.contrats.locataire.nom ?? ""} ${r.contrats.locataire.prenom ?? ""}`.trim() : "—",
+          montant: Number(r.montant_du ?? 0) - Number(r.montant_affecte ?? 0),
+          date_echeance: r.date_echeance,
+        })));
     })();
   }, [limit]);
   return (
