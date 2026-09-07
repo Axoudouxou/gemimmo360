@@ -332,28 +332,43 @@ export function QuittanceDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Mois quittancé *</Label>
+                <Label>Premier mois quittancé *</Label>
                 <Input type="month" value={mois} onChange={(e) => setMois(e.target.value)} />
                 <p className="text-xs text-muted-foreground">
                   Échéance fixée au {JOUR_ECHEANCE} du mois.
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Montant payé *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={montant}
-                  onChange={(e) => setMontant(e.target.value)}
-                />
-                {loyer != null && (
-                  <p className="text-xs text-muted-foreground">
-                    Loyer du contrat : {fmtMoney(loyer)}
-                  </p>
-                )}
+                <Label>Périodicité réglée *</Label>
+                <Select value={nbMois} onValueChange={setNbMois}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DUREES.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground capitalize">{periodeLabel}</p>
               </div>
             </div>
+
+            <div className="grid gap-2">
+              <Label>Montant payé par mois *</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={montant}
+                onChange={(e) => setMontant(e.target.value)}
+              />
+              {loyer != null && (
+                <p className="text-xs text-muted-foreground">
+                  Loyer du contrat : {fmtMoney(loyer)}
+                  {nb > 1 && <> — Total {nb} mois : <strong>{fmtMoney(totalPaye)}</strong></>}
+                </p>
+              )}
+            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
