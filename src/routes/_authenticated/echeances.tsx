@@ -284,19 +284,24 @@ function EcheancesPage() {
               <CardTitle>Impayés par échéance</CardTitle>
               <CardDescription>Une ligne = un mois de loyer pour un contrat.</CardDescription>
             </div>
-            {canWrite && (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => setEchOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Saisir un impayé
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
-                  <FileText className="mr-2 h-4 w-4" /> Générer quittance
-                </Button>
-              </div>
-            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              {canWrite && (
+                <>
+                  <Button size="sm" onClick={() => setEchOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Saisir un impayé
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+                    <FileText className="mr-2 h-4 w-4" /> Générer quittance
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
+                <Download className="mr-2 h-4 w-4" /> Exporter Excel
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <FilterBar
