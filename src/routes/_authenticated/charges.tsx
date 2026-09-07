@@ -294,12 +294,23 @@ function ChargesPage() {
     const detailLoyers: { locataire: string; echeance: string; montant: number }[] = [];
     const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
 
+    // Un contrat compte pour un mois s'il couvrait ce mois (même s'il est résilié depuis)
+    const occupeMois = (c: ContratRow, mk: string) => {
+      const debut = c.date_debut ? monthKey(c.date_debut) : null;
+      const fin = c.date_fin ? monthKey(c.date_fin) : null;
+      if (debut && mk < debut) return false;
+      if (fin && mk > fin) return false;
+      if (!debut && !fin) return c.statut === "actif";
+      return true;
+    };
+
     for (const mk of moisPeriode) {
-      const impayesMois = impayes.filter(
-        (i) => ids.has(i.contrat_id) && monthKey(i.periode ?? i.date_echeance ?? "") === mk && nonSolde(i),
+      const echeancesMois = impayes.filter(
+        (i) => ids.has(i.contrat_id) && monthKey(i.periode ?? i.date_echeance ?? "") === mk,
       );
+      const impayesMois = echeancesMois.filter(nonSolde);
       const actifs = contratsBien.filter(
-        (c) => c.statut === "actif" || impayesMois.some((i) => i.contrat_id === c.id),
+        (c) => occupeMois(c, mk) || echeancesMois.some((i) => i.contrat_id === c.id),
       );
       loyersAttendus += actifs.reduce((s, c) => s + (Number(c.loyer_mensuel) || 0), 0);
       resteDu += impayesMois.reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
