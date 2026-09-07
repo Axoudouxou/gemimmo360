@@ -107,10 +107,18 @@ export function QuittanceDialog({
     setAppliquerPenalite(false);
   }, [open, contratId]);
 
+  const nb = Math.max(1, Number(nbMois) || 1);
+  const periodes = Array.from({ length: nb }, (_, i) => addMonths(mois, i));
   const base = Number(montant) || 0;
   const retard = paiementEnRetard(mois, datePaiement);
-  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
-  const totalPaye = base + penalite;
+  const penaliteMois = appliquerPenalite ? calcPenalite(base) : 0;
+  const totalMois = base + penaliteMois;
+  const penalite = penaliteMois * nb;
+  const totalPaye = totalMois * nb;
+  const periodeLabel =
+    nb === 1
+      ? fmtPeriode(`${mois}-01`)
+      : `${fmtPeriode(`${mois}-01`)} à ${fmtPeriode(`${periodes[nb - 1]}-01`)}`;
 
   // Coche automatiquement la pénalité si le règlement est après le 10 (décochable)
   useEffect(() => {
