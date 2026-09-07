@@ -78,6 +78,7 @@ export function QuittanceDialog({
 }) {
   const [contrat, setContrat] = useState(contratId ?? "");
   const [mois, setMois] = useState(monthNow());
+  const [nbMois, setNbMois] = useState("1");
   const [montant, setMontant] = useState("");
   const [loyer, setLoyer] = useState<number | null>(null);
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().slice(0, 10));
