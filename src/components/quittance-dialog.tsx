@@ -168,15 +168,13 @@ export function QuittanceDialog({
 
       let echeanceId: string;
       let reste: number;
+      let dejaSolde = false;
       if (existing) {
         echeanceId = existing.id;
         reste = Number(existing.montant_du) - Number(existing.montant_affecte);
         if (reste <= 0) {
-          toast.error("Cette période est déjà entièrement soldée. Utilisez le bouton Quittance de la fiche.");
-          setSaving(false);
-          return;
-        }
-        if (m < reste) {
+          dejaSolde = true;
+        } else if (m < reste) {
           toast.error(
             `Le montant saisi (${fmtMoney(m)}) ne solde pas la période : il reste ${fmtMoney(reste)} dû.`,
           );
@@ -203,33 +201,34 @@ export function QuittanceDialog({
         reste = m;
       }
 
-      // 2. Paiement
-      const { data: paiement, error: pErr } = await supabase
-        .from("paiements")
-        .insert({
-          contrat_id: contrat,
-          montant: m,
-          date_paiement: datePaiement,
-          moyen_paiement: moyen,
-          reference: reference.trim() || null,
-          notes: penalite > 0
-            ? `Quittance ${fmtPeriode(periode)} — dont pénalité de retard 10% : ${fmtMoney(penalite)}`
-            : `Quittance ${fmtPeriode(periode)}`,
-          created_by: uid,
-        })
-        .select("id")
-        .single();
-      if (pErr || !paiement) throw new Error(pErr?.message ?? "Enregistrement du paiement impossible");
+      // 2 & 3. Paiement + affectation (uniquement si la période n'est pas déjà soldée)
+      if (!dejaSolde) {
+        const { data: paiement, error: pErr } = await supabase
+          .from("paiements")
+          .insert({
+            contrat_id: contrat,
+            montant: m,
+            date_paiement: datePaiement,
+            moyen_paiement: moyen,
+            reference: reference.trim() || null,
+            notes: penalite > 0
+              ? `Quittance ${fmtPeriode(periode)} — dont pénalité de retard 10% : ${fmtMoney(penalite)}`
+              : `Quittance ${fmtPeriode(periode)}`,
+            created_by: uid,
+          })
+          .select("id")
+          .single();
+        if (pErr || !paiement) throw new Error(pErr?.message ?? "Enregistrement du paiement impossible");
 
-      // 3. Affectation manuelle à cette échéance
-      const { error: aErr } = await supabase.from("affectations").insert({
-        paiement_id: paiement.id,
-        echeance_id: echeanceId,
-        montant: Math.min(m, reste),
-        mode: "manuel",
-        created_by: uid,
-      });
-      if (aErr) throw new Error(aErr.message);
+        const { error: aErr } = await supabase.from("affectations").insert({
+          paiement_id: paiement.id,
+          echeance_id: echeanceId,
+          montant: Math.min(m, reste),
+          mode: "manuel",
+          created_by: uid,
+        });
+        if (aErr) throw new Error(aErr.message);
+      }
 
       // 4. Quittance
       const { data: q, error: qErr } = await supabase.rpc("emettre_quittance", {
