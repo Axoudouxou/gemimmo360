@@ -21,6 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 import { MesTachesSemaine, MesActivitesEnCours } from "@/components/activites-widgets";
+import { isEnRetard } from "@/lib/echeance-statut";
 import {
   OccupationGauge,
   PipelineFunnel,
