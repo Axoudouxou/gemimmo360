@@ -42,6 +42,20 @@ const MOYEN_LABELS: Record<string, string> = Object.fromEntries(
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
+/** Ajoute n mois à une période "YYYY-MM". */
+const addMonths = (mois: string, n: number) => {
+  const [y, m] = mois.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, (m! - 1) + n, 1));
+  return d.toISOString().slice(0, 7);
+};
+
+const DUREES = [
+  { value: "1", label: "1 mois" },
+  { value: "3", label: "Trimestre (3 mois)" },
+  { value: "6", label: "Semestre (6 mois)" },
+  { value: "12", label: "Année (12 mois)" },
+] as const;
+
 type EchRow = {
   id: string;
   periode: string;
