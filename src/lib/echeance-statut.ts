@@ -121,3 +121,16 @@ export const FINANCE_WRITE_ROLES = ["admin", "direction", "recouvrement", "gesti
 
 export const canWriteFinance = (role: string | null | undefined) =>
   !!role && (FINANCE_WRITE_ROLES as readonly string[]).includes(role);
+
+/** Taux de pénalité de retard appliqué au loyer si le paiement intervient après le 10. */
+export const TAUX_PENALITE = 0.1;
+
+/** Vrai si une date de paiement dépasse la date limite (le 10) de la période "YYYY-MM". */
+export function paiementEnRetard(periode: string, datePaiement: string) {
+  if (!periode || !datePaiement) return false;
+  return String(datePaiement).slice(0, 10) > dateEcheanceForPeriode(periode);
+}
+
+/** Montant de la pénalité de 10% arrondi au franc. */
+export const calcPenalite = (montantBase: number | string) =>
+  Math.round((Number(montantBase) || 0) * TAUX_PENALITE);
