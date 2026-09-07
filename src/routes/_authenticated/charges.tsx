@@ -363,7 +363,7 @@ function ChargesPage() {
         bienTitre: bien?.titre ?? "Bien",
         bienAdresse: bien?.adresse ?? null,
         proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
-        moisLabel: monthLabel(dMois),
+        moisLabel: periodeLabel,
         loyers: decompte.detailLoyers,
         totalLoyers: decompte.loyersEncaisses,
         loyersFactures: decompte.loyersAttendus,
