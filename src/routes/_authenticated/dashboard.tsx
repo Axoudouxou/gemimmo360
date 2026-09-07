@@ -21,6 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 import { MesTachesSemaine, MesActivitesEnCours } from "@/components/activites-widgets";
+import { isEnRetard } from "@/lib/echeance-statut";
 import {
   OccupationGauge,
   PipelineFunnel,
@@ -147,13 +148,13 @@ function Dashboard() {
       const sixMonthsAgoStr = (() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString(); })();
 
       const [
-        biens, contacts, contratsActifs, impayes, lotsTotal, lotsLoues, lotsVacants,
+        biens, contacts, contratsActifs, echeancesRes, lotsTotal, lotsLoues, lotsVacants,
         contratsEch, travaux, reclamations,
       ] = await Promise.all([
         supabase.from("biens").select("id", { count: "exact", head: true }),
         supabase.from("contacts").select("id", { count: "exact", head: true }).eq("archive", false),
         supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif"),
-        supabase.from("impayes").select("id", { count: "exact", head: true }).eq("statut", "en_retard"),
+        supabase.from("echeances").select("id, montant_du, montant_affecte, date_echeance, statut, etape_traitement, date_derniere_relance"),
         supabase.from("lots").select("id", { count: "exact", head: true }),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "loue"),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "vacant"),
@@ -163,9 +164,18 @@ function Dashboard() {
         supabase.from("reclamations").select("id", { count: "exact", head: true }).in("statut", ["ouverte", "en_cours"]),
       ]);
 
+      type EchRow = {
+        montant_du: number | null; montant_affecte: number | null; date_echeance: string | null;
+        statut: string; etape_traitement: string | null; date_derniere_relance: string | null;
+      };
+      const echeances = (echeancesRes.data ?? []) as EchRow[];
+      const resteDu = (e: EchRow) => Number(e.montant_du ?? 0) - Number(e.montant_affecte ?? 0);
+      const nonSolde = (e: EchRow) => resteDu(e) > 0 && !["solde", "resolu", "cloture"].includes(e.etape_traitement ?? "");
+      const enRetard = echeances.filter((e) => nonSolde(e) && isEnRetard(e.date_echeance));
+
       setCommon({
         biens: biens.count ?? 0, contacts: contacts.count ?? 0,
-        contratsActifs: contratsActifs.count ?? 0, impayesRetard: impayes.count ?? 0,
+        contratsActifs: contratsActifs.count ?? 0, impayesRetard: enRetard.length,
         lotsTotal: lotsTotal.count ?? 0, lotsLoues: lotsLoues.count ?? 0, lotsVacants: lotsVacants.count ?? 0,
         contratsEcheance: contratsEch.count ?? 0,
         travauxEnCours: travaux.count ?? 0, reclamationsOuvertes: reclamations.count ?? 0,
@@ -206,17 +216,14 @@ function Dashboard() {
         setAdmin({ doublons: pairs.size, aVerifier: (b6.count ?? 0) + (l6.count ?? 0) + (c6.count ?? 0) });
       }
 
-      // Recouvrement stats
+      // Recouvrement stats (échéances)
       if (userRole === "recouvrement" || userRole === "admin" || userRole === "direction") {
-        const { data: retard } = await supabase.from("impayes").select("montant_du, montant_paye").eq("statut", "en_retard");
-        const total = (retard ?? []).reduce((s: number, r: { montant_du: number | null; montant_paye: number | null }) =>
-          s + (Number(r.montant_du ?? 0) - Number(r.montant_paye ?? 0)), 0);
+        const total = enRetard.reduce((s, e) => s + resteDu(e), 0);
         const { count: cs } = await supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif");
-        const { count: rm } = await supabase.from("impayes").select("id", { count: "exact", head: true }).gte("date_derniere_relance", startMonthStr);
-        const { data: all } = await supabase.from("impayes").select("statut");
-        const paid = (all ?? []).filter((r: { statut: string }) => r.statut === "regle").length;
-        const tot = (all ?? []).length;
-        setRec({ montantRetard: total, contratsSuivis: cs ?? 0, relancesMois: rm ?? 0, tauxRecouvrement: tot ? Math.round((paid / tot) * 100) : 0 });
+        const relancesMois = echeances.filter((e) => (e.date_derniere_relance ?? "") >= startMonthStr).length;
+        const tot = echeances.length;
+        const paid = echeances.filter((e) => resteDu(e) <= 0).length;
+        setRec({ montantRetard: total, contratsSuivis: cs ?? 0, relancesMois, tauxRecouvrement: tot ? Math.round((paid / tot) * 100) : 0 });
       }
 
       // Technique stats
@@ -297,7 +304,7 @@ function Dashboard() {
           <StatCardGrid cards={[
             { key: "biens", label: "Biens", value: common.biens, icon: Home, to: "/biens" },
             { key: "contrats", label: "Contrats actifs", value: common.contratsActifs, icon: FileText, to: "/contrats" },
-            { key: "impayes", label: "Impayés en retard", value: common.impayesRetard, icon: AlertTriangle, to: "/impayes", emphasis: common.impayesRetard > 0 ? "danger" : "normal" },
+            { key: "impayes", label: "Impayés en retard", value: common.impayesRetard, icon: AlertTriangle, to: "/echeances", emphasis: common.impayesRetard > 0 ? "danger" : "normal" },
             { key: "contacts", label: "Contacts", value: common.contacts, icon: ContactIcon, to: "/contacts" },
             { key: "taux", label: "Taux d'occupation", value: `${tauxOccupation}%`, icon: Percent },
             { key: "vacants", label: "Lots vacants", value: common.lotsVacants, icon: DoorOpen, to: "/biens" },

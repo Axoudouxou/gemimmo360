@@ -173,19 +173,18 @@ export function EncaissementsChart() {
     (async () => {
       const start = startOfMonth(subMonths(new Date(), 5));
       const { data: rows } = await supabase
-        .from("impayes")
-        .select("montant_paye, date_derniere_relance, date_echeance")
-        .gte("date_echeance", start.toISOString().slice(0, 10));
+        .from("paiements")
+        .select("montant, date_paiement")
+        .gte("date_paiement", start.toISOString().slice(0, 10));
       const map = new Map<string, number>();
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         map.set(format(d, "yyyy-MM"), 0);
       }
-      (rows ?? []).forEach((r: { montant_paye: number | null; date_derniere_relance: string | null; date_echeance: string | null }) => {
-        const dateRef = r.date_derniere_relance ?? r.date_echeance;
-        if (!dateRef) return;
-        const key = dateRef.slice(0, 7);
-        if (map.has(key)) map.set(key, (map.get(key) ?? 0) + Number(r.montant_paye ?? 0));
+      (rows ?? []).forEach((r: { montant: number | null; date_paiement: string | null }) => {
+        if (!r.date_paiement) return;
+        const key = r.date_paiement.slice(0, 7);
+        if (map.has(key)) map.set(key, (map.get(key) ?? 0) + Number(r.montant ?? 0));
       });
       setData(Array.from(map.entries()).map(([k, v]) => ({ mois: format(new Date(k + "-01"), "MMM", { locale: fr }), montant: v })));
     })();
@@ -474,26 +473,31 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
   const [rows, setRows] = useState<Array<{ id: string; contrat_id: string; locataire: string; montant: number; date_echeance: string }>>([]);
   useEffect(() => {
     (async () => {
+      const todayIso = new Date().toISOString().slice(0, 10);
       const { data } = await supabase
-        .from("impayes")
-        .select("id, contrat_id, montant_du, montant_paye, date_echeance, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
-        .eq("statut", "en_retard")
+        .from("echeances")
+        .select("id, contrat_id, montant_du, montant_affecte, date_echeance, etape_traitement, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
+        .lt("date_echeance", todayIso)
         .order("date_echeance", { ascending: true })
-        .limit(limit);
-      setRows((data ?? []).map((r: any) => ({
-        id: r.id,
-        contrat_id: r.contrat_id,
-        locataire: r.contrats?.locataire ? `${r.contrats.locataire.nom ?? ""} ${r.contrats.locataire.prenom ?? ""}`.trim() : "—",
-        montant: Number(r.montant_du ?? 0) - Number(r.montant_paye ?? 0),
-        date_echeance: r.date_echeance,
-      })));
+        .limit(200);
+      setRows(((data ?? []) as any[])
+        .filter((r) => Number(r.montant_du ?? 0) - Number(r.montant_affecte ?? 0) > 0
+          && !["solde", "resolu", "cloture"].includes(r.etape_traitement ?? ""))
+        .slice(0, limit)
+        .map((r: any) => ({
+          id: r.id,
+          contrat_id: r.contrat_id,
+          locataire: r.contrats?.locataire ? `${r.contrats.locataire.nom ?? ""} ${r.contrats.locataire.prenom ?? ""}`.trim() : "—",
+          montant: Number(r.montant_du ?? 0) - Number(r.montant_affecte ?? 0),
+          date_echeance: r.date_echeance,
+        })));
     })();
   }, [limit]);
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm">Locataires à relancer</CardTitle>
-        <Button asChild variant="ghost" size="sm"><Link to="/impayes">Tous</Link></Button>
+        <Button asChild variant="ghost" size="sm"><Link to="/echeances">Tous</Link></Button>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? <p className="text-sm text-muted-foreground py-3 text-center">Aucun impayé en retard.</p> : (
@@ -1121,7 +1125,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
 
       // 8) Impayés transférés au juridique (événement à forte valeur)
       const { data: imps } = await supabase
-        .from("impayes")
+        .from("echeances")
         .select("id, contrat_id, service_en_charge, created_at")
         .eq("service_en_charge", "juridique")
         .order("created_at", { ascending: false })
@@ -1134,7 +1138,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
           kind: "impaye_juridique",
           auteurId: null,
           auteur: null,
-          to: `/impayes?open=${i.id}`,
+          to: `/echeances?open=${i.id}`,
           label: <span className="font-medium">Impayé transféré au juridique</span>,
         });
       }
