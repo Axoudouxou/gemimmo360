@@ -41,7 +41,7 @@ type Charge = {
   frequence: string; statut_imputation: string; decompte_mois: string | null;
 };
 type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
-type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; lot: { bien_id: string } | null };
+type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; lot: { bien_id: string } | null };
 type EcheanceRow = { id: string; contrat_id: string; periode: string; date_echeance: string | null; montant_du: number; montant_affecte: number; statut: string; etape_traitement: string | null };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
