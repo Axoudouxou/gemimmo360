@@ -215,17 +215,14 @@ function Dashboard() {
         setAdmin({ doublons: pairs.size, aVerifier: (b6.count ?? 0) + (l6.count ?? 0) + (c6.count ?? 0) });
       }
 
-      // Recouvrement stats
+      // Recouvrement stats (échéances)
       if (userRole === "recouvrement" || userRole === "admin" || userRole === "direction") {
-        const { data: retard } = await supabase.from("impayes").select("montant_du, montant_paye").eq("statut", "en_retard");
-        const total = (retard ?? []).reduce((s: number, r: { montant_du: number | null; montant_paye: number | null }) =>
-          s + (Number(r.montant_du ?? 0) - Number(r.montant_paye ?? 0)), 0);
+        const total = enRetard.reduce((s, e) => s + resteDu(e), 0);
         const { count: cs } = await supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif");
-        const { count: rm } = await supabase.from("impayes").select("id", { count: "exact", head: true }).gte("date_derniere_relance", startMonthStr);
-        const { data: all } = await supabase.from("impayes").select("statut");
-        const paid = (all ?? []).filter((r: { statut: string }) => r.statut === "regle").length;
-        const tot = (all ?? []).length;
-        setRec({ montantRetard: total, contratsSuivis: cs ?? 0, relancesMois: rm ?? 0, tauxRecouvrement: tot ? Math.round((paid / tot) * 100) : 0 });
+        const relancesMois = echeances.filter((e) => (e.date_derniere_relance ?? "") >= startMonthStr).length;
+        const tot = echeances.length;
+        const paid = echeances.filter((e) => resteDu(e) <= 0).length;
+        setRec({ montantRetard: total, contratsSuivis: cs ?? 0, relancesMois, tauxRecouvrement: tot ? Math.round((paid / tot) * 100) : 0 });
       }
 
       // Technique stats
