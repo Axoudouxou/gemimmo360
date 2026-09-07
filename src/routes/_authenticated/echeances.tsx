@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Building2, ArrowLeft, Plus, FileText } from "lucide-react";
+import { Building2, ArrowLeft, Plus, FileText, Download } from "lucide-react";
+import { exportEcheancesXlsx } from "@/lib/echeances-xlsx";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
