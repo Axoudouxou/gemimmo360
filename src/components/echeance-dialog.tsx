@@ -81,6 +81,7 @@ export function EcheanceDialog({
       setEtape(echeance.etape_traitement ?? "recouvrement");
       setService(echeance.service_en_charge ?? "recouvrement");
       setNotes(echeance.notes ?? "");
+      setAppliquerPenalite(false);
       return;
     }
     setContrat(contratId ?? "");
@@ -89,6 +90,7 @@ export function EcheanceDialog({
     setEtape("recouvrement");
     setService("recouvrement");
     setNotes("");
+    setAppliquerPenalite(false);
   }, [open, contratId, echeance]);
 
   // Pré-remplit le montant avec le loyer du contrat sélectionné
