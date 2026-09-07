@@ -25,12 +25,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { generateQuittanceDocx } from "@/lib/quittance-docx";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   MOYENS_PAIEMENT,
   dateEcheanceForPeriode,
   fmtMoney,
   fmtPeriode,
   JOUR_ECHEANCE,
+  calcPenalite,
+  paiementEnRetard,
 } from "@/lib/echeance-statut";
 
 const MOYEN_LABELS: Record<string, string> = Object.fromEntries(
@@ -67,6 +70,7 @@ export function QuittanceDialog({
   const [moyen, setMoyen] = useState("especes");
   const [reference, setReference] = useState("");
   const [saving, setSaving] = useState(false);
+  const [appliquerPenalite, setAppliquerPenalite] = useState(false);
   const [antérieurs, setAnterieurs] = useState<EchRow[]>([]);
   const [warnOpen, setWarnOpen] = useState(false);
   const [infos, setInfos] = useState<{ locataire: string; bien: string; lot: string | null }>({
@@ -84,6 +88,7 @@ export function QuittanceDialog({
     setMoyen("especes");
     setReference("");
     setAnterieurs([]);
+    setAppliquerPenalite(false);
   }, [open, contratId]);
 
   // Loyer + infos locataire/bien/lot
