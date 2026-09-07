@@ -98,6 +98,8 @@ function ChargesPage() {
   // Décompte
   const [dBien, setDBien] = useState<string>("");
   const [dMois, setDMois] = useState<string>(currentMonth);
+  const [dPeriodicite, setDPeriodicite] = useState<"mois" | "trimestre">("mois");
+
   const [tauxHono, setTauxHono] = useState<string>("10");
 
   const canWrite = useMemo(
