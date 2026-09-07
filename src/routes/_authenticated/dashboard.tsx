@@ -147,13 +147,13 @@ function Dashboard() {
       const sixMonthsAgoStr = (() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString(); })();
 
       const [
-        biens, contacts, contratsActifs, impayes, lotsTotal, lotsLoues, lotsVacants,
+        biens, contacts, contratsActifs, echeancesRes, lotsTotal, lotsLoues, lotsVacants,
         contratsEch, travaux, reclamations,
       ] = await Promise.all([
         supabase.from("biens").select("id", { count: "exact", head: true }),
         supabase.from("contacts").select("id", { count: "exact", head: true }).eq("archive", false),
         supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif"),
-        supabase.from("impayes").select("id", { count: "exact", head: true }).eq("statut", "en_retard"),
+        supabase.from("echeances").select("id, montant_du, montant_affecte, date_echeance, statut, etape_traitement, date_derniere_relance"),
         supabase.from("lots").select("id", { count: "exact", head: true }),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "loue"),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "vacant"),
@@ -163,9 +163,18 @@ function Dashboard() {
         supabase.from("reclamations").select("id", { count: "exact", head: true }).in("statut", ["ouverte", "en_cours"]),
       ]);
 
+      type EchRow = {
+        montant_du: number | null; montant_affecte: number | null; date_echeance: string | null;
+        statut: string; etape_traitement: string | null; date_derniere_relance: string | null;
+      };
+      const echeances = (echeancesRes.data ?? []) as EchRow[];
+      const resteDu = (e: EchRow) => Number(e.montant_du ?? 0) - Number(e.montant_affecte ?? 0);
+      const nonSolde = (e: EchRow) => resteDu(e) > 0 && !["solde", "resolu", "cloture"].includes(e.etape_traitement ?? "");
+      const enRetard = echeances.filter((e) => nonSolde(e) && isEnRetard(e.date_echeance));
+
       setCommon({
         biens: biens.count ?? 0, contacts: contacts.count ?? 0,
-        contratsActifs: contratsActifs.count ?? 0, impayesRetard: impayes.count ?? 0,
+        contratsActifs: contratsActifs.count ?? 0, impayesRetard: enRetard.length,
         lotsTotal: lotsTotal.count ?? 0, lotsLoues: lotsLoues.count ?? 0, lotsVacants: lotsVacants.count ?? 0,
         contratsEcheance: contratsEch.count ?? 0,
         travauxEnCours: travaux.count ?? 0, reclamationsOuvertes: reclamations.count ?? 0,
