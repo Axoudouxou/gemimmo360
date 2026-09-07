@@ -1125,7 +1125,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
 
       // 8) Impayés transférés au juridique (événement à forte valeur)
       const { data: imps } = await supabase
-        .from("impayes")
+        .from("echeances")
         .select("id, contrat_id, service_en_charge, created_at")
         .eq("service_en_charge", "juridique")
         .order("created_at", { ascending: false })
@@ -1138,7 +1138,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
           kind: "impaye_juridique",
           auteurId: null,
           auteur: null,
-          to: `/impayes?open=${i.id}`,
+          to: `/echeances?open=${i.id}`,
           label: <span className="font-medium">Impayé transféré au juridique</span>,
         });
       }
