@@ -42,6 +42,24 @@ import {
   MesActivites7j,
   FilActualiteEquipe,
 } from "@/components/dashboard-widgets";
+import {
+  PilotageFinancierMois,
+  ImpayesATraiter,
+  RelancesStats,
+  ContentieuxJuridiqueList,
+  BiensVacantsAPlacer,
+  VisitesWidget,
+  AlertesFoncieres,
+  ContratsAEcheance,
+  TravauxPrioritaires,
+  ReclamationsAssignees,
+  EtatsDesLieuxSuivi,
+  DecomptesEtQuittances,
+} from "@/components/dashboard-metier";
+
+function Section({ title }: { title: string }) {
+  return <h2 className="pt-2 text-lg font-semibold text-foreground">{title}</h2>;
+}
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -276,6 +294,11 @@ function Dashboard() {
   const canCreateContrat = ["admin", "direction", "juridique", "gestion_locative"].includes(role);
 
   const isAdminLike = role === "admin" || role === "direction";
+  const isRecouvrement = role === "recouvrement";
+  const isCommercial = role === "commercial" || role === "technico_commercial";
+  const isTechnique = role === "technique" || role === "technico_commercial";
+  const isJuridique = role === "juridique";
+  const isGestion = role === "gestion_locative";
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10 space-y-6">
