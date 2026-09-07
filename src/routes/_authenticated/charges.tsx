@@ -486,20 +486,34 @@ function ChargesPage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="grid gap-2"><Label>Bien</Label>
                     <Select value={dBien} onValueChange={setDBien}>
                       <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
                       <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2"><Label htmlFor="dmois">Mois</Label>
+                  <div className="grid gap-2"><Label>Périodicité</Label>
+                    <Select value={dPeriodicite} onValueChange={(v) => setDPeriodicite(v as "mois" | "trimestre")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mois">Mois</SelectItem>
+                        <SelectItem value="trimestre">Trimestre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dmois">{dPeriodicite === "trimestre" ? "Trimestre (choisir un mois)" : "Mois"}</Label>
                     <Input id="dmois" type="month" value={dMois} onChange={(e) => setDMois(e.target.value)} />
+                    {dPeriodicite === "trimestre" && (
+                      <p className="text-xs text-muted-foreground capitalize">{periodeLabel}</p>
+                    )}
                   </div>
                   <div className="grid gap-2"><Label htmlFor="taux">Honoraires de gestion (%)</Label>
                     <Input id="taux" type="number" min="0" max="100" step="0.5" value={tauxHono} onChange={(e) => setTauxHono(e.target.value)} />
                   </div>
                 </div>
+
 
                 {!decompte ? <p className="text-sm text-muted-foreground">Sélectionnez un bien pour générer le décompte.</p> : (
                   <div className="space-y-6">
