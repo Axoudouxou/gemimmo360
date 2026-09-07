@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Building2, ArrowLeft, Plus, FileText } from "lucide-react";
+import { Building2, ArrowLeft, Plus, FileText, Download } from "lucide-react";
+import { exportEcheancesXlsx } from "@/lib/echeances-xlsx";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
@@ -232,6 +233,16 @@ function EcheancesPage() {
     [contrats, lots, biens, contacts],
   );
 
+  const handleExport = () => {
+    exportEcheancesXlsx(
+      filtered.map((e) => {
+        const { bien, locataire, gestionnaire } = contratLabel(e.contrat_id);
+        return { ...e, bien, locataire, gestionnaire };
+      }),
+    );
+    toast.success("Export Excel généré");
+  };
+
   const SortHead = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort(k)}>
       {children}
@@ -283,19 +294,24 @@ function EcheancesPage() {
               <CardTitle>Impayés par échéance</CardTitle>
               <CardDescription>Une ligne = un mois de loyer pour un contrat.</CardDescription>
             </div>
-            {canWrite && (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => setEchOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Saisir un impayé
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
-                  <FileText className="mr-2 h-4 w-4" /> Générer quittance
-                </Button>
-              </div>
-            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              {canWrite && (
+                <>
+                  <Button size="sm" onClick={() => setEchOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Saisir un impayé
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+                    <FileText className="mr-2 h-4 w-4" /> Générer quittance
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
+                <Download className="mr-2 h-4 w-4" /> Exporter Excel
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <FilterBar
