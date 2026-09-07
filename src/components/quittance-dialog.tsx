@@ -168,15 +168,13 @@ export function QuittanceDialog({
 
       let echeanceId: string;
       let reste: number;
+      let dejaSolde = false;
       if (existing) {
         echeanceId = existing.id;
         reste = Number(existing.montant_du) - Number(existing.montant_affecte);
         if (reste <= 0) {
-          toast.error("Cette période est déjà entièrement soldée. Utilisez le bouton Quittance de la fiche.");
-          setSaving(false);
-          return;
-        }
-        if (m < reste) {
+          dejaSolde = true;
+        } else if (m < reste) {
           toast.error(
             `Le montant saisi (${fmtMoney(m)}) ne solde pas la période : il reste ${fmtMoney(reste)} dû.`,
           );
