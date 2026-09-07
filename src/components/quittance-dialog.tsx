@@ -98,6 +98,7 @@ export function QuittanceDialog({
     if (!open) return;
     setContrat(contratId ?? "");
     setMois(monthNow());
+    setNbMois("1");
     setMontant("");
     setDatePaiement(new Date().toISOString().slice(0, 10));
     setMoyen("especes");
