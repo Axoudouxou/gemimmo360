@@ -304,7 +304,7 @@ function Dashboard() {
           <StatCardGrid cards={[
             { key: "biens", label: "Biens", value: common.biens, icon: Home, to: "/biens" },
             { key: "contrats", label: "Contrats actifs", value: common.contratsActifs, icon: FileText, to: "/contrats" },
-            { key: "impayes", label: "Impayés en retard", value: common.impayesRetard, icon: AlertTriangle, to: "/impayes", emphasis: common.impayesRetard > 0 ? "danger" : "normal" },
+            { key: "impayes", label: "Impayés en retard", value: common.impayesRetard, icon: AlertTriangle, to: "/echeances", emphasis: common.impayesRetard > 0 ? "danger" : "normal" },
             { key: "contacts", label: "Contacts", value: common.contacts, icon: ContactIcon, to: "/contacts" },
             { key: "taux", label: "Taux d'occupation", value: `${tauxOccupation}%`, icon: Percent },
             { key: "vacants", label: "Lots vacants", value: common.lotsVacants, icon: DoorOpen, to: "/biens" },
