@@ -65,6 +65,12 @@ export function EcheanceDialog({
   const [service, setService] = useState("recouvrement");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [appliquerPenalite, setAppliquerPenalite] = useState(false);
+
+  const base = Number(montant) || 0;
+  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
+  const totalDu = base + penalite;
+  const retard = paiementEnRetard(mois || monthNow(), new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     if (!open) return;
