@@ -497,7 +497,7 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm">Locataires à relancer</CardTitle>
-        <Button asChild variant="ghost" size="sm"><Link to="/impayes">Tous</Link></Button>
+        <Button asChild variant="ghost" size="sm"><Link to="/echeances">Tous</Link></Button>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? <p className="text-sm text-muted-foreground py-3 text-center">Aucun impayé en retard.</p> : (
