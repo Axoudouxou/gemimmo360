@@ -98,6 +98,10 @@ function ChargesPage() {
 
   // Décompte
   const [dBien, setDBien] = useState<string>("");
+  const bienOptions = useMemo(
+    () => biens.map((b) => ({ value: b.id, label: b.titre, keywords: b.adresse ?? "" })),
+    [biens],
+  );
   const [dMois, setDMois] = useState<string>(currentMonth);
   const [dPeriodicite, setDPeriodicite] = useState<"mois" | "trimestre">("mois");
 
