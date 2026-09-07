@@ -15,7 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ETAPE_LABELS, JOUR_ECHEANCE, dateEcheanceForPeriode } from "@/lib/echeance-statut";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ETAPE_LABELS,
+  JOUR_ECHEANCE,
+  dateEcheanceForPeriode,
+  calcPenalite,
+  paiementEnRetard,
+  fmtMoney,
+} from "@/lib/echeance-statut";
 
 const monthNow = () => new Date().toISOString().slice(0, 7);
 
