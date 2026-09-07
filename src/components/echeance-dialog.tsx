@@ -109,8 +109,14 @@ export function EcheanceDialog({
   const handleSave = async () => {
     if (!contrat) return toast.error("Le contrat est obligatoire");
     if (!mois) return toast.error("La période (mois) est obligatoire");
-    const m = Number(montant);
-    if (!m || m <= 0) return toast.error("Le montant dû doit être supérieur à 0");
+    if (!base || base <= 0) return toast.error("Le montant dû doit être supérieur à 0");
+    const m = totalDu;
+    const noteFinale = [
+      notes.trim(),
+      penalite > 0 ? `Pénalité de retard 10% appliquée : ${fmtMoney(penalite)}` : "",
+    ]
+      .filter(Boolean)
+      .join(" — ");
 
     if (isEdit) {
       const dejaPaye = Number(echeance?.montant_affecte ?? 0);
@@ -127,7 +133,7 @@ export function EcheanceDialog({
           montant_du: m,
           etape_traitement: etape,
           service_en_charge: service,
-          notes: notes.trim() || null,
+          notes: noteFinale || null,
         })
         .eq("id", echeance!.id);
       setSaving(false);
@@ -152,7 +158,7 @@ export function EcheanceDialog({
       statut: "impaye",
       etape_traitement: etape,
       service_en_charge: service,
-      notes: notes.trim() || null,
+      notes: noteFinale || null,
       created_by: userRes.user?.id ?? null,
     });
     setSaving(false);
