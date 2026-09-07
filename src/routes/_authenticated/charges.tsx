@@ -521,7 +521,7 @@ function ChargesPage() {
                       {[
                         { l: "Loyers attendus", v: decompte.loyersAttendus },
                         { l: "Loyers encaissés", v: decompte.loyersEncaisses },
-                        { l: "Charges du mois", v: -decompte.totalCharges },
+                        { l: "Charges de la période", v: -decompte.totalCharges },
                       ].map((k) => (
                         <div key={k.l} className="rounded-lg border bg-background p-4">
                           <p className="text-xs text-muted-foreground">{k.l}</p>
@@ -532,7 +532,7 @@ function ChargesPage() {
 
                     <div className="rounded-lg border bg-background p-4">
                       <div className="flex justify-between py-1 text-sm"><span>Loyers encaissés</span><span>{fmtMoney(decompte.loyersEncaisses)}</span></div>
-                      <div className="flex justify-between py-1 text-sm"><span>Charges du mois</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
+                      <div className="flex justify-between py-1 text-sm"><span>Charges de la période</span><span>− {fmtMoney(decompte.totalCharges)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Travaux (dépense réelle)</span><span>− {fmtMoney(decompte.totalTravaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de fiscalité</span><span>− {fmtMoney(decompte.totalHonoFiscaux)}</span></div>
                       <div className="flex justify-between py-1 text-sm"><span>Honoraires de gestion ({tauxHono || 0} %)</span><span>− {fmtMoney(decompte.honoraires)}</span></div>
@@ -544,7 +544,7 @@ function ChargesPage() {
                       <div className="grid gap-6 md:grid-cols-2">
                         {decompte.travauxMois.length > 0 && (
                           <div>
-                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                            <h3 className="mb-2 text-sm font-semibold">Travaux réglés — <span className="capitalize">{periodeLabel}</span></h3>
                             <Table>
                               <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
                               <TableBody>{decompte.travauxMois.map((t) => (
@@ -568,7 +568,7 @@ function ChargesPage() {
                     )}
 
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{monthLabel(dMois)}</span></h3>
+                      <h3 className="mb-2 text-sm font-semibold">Détail des charges — <span className="capitalize">{periodeLabel}</span></h3>
                       {decompte.lignes.length === 0 ? <p className="text-sm text-muted-foreground">Aucune charge sur ce mois.</p> : (
                         <Table>
                           <TableHeader><TableRow><TableHead>Libellé</TableHead><TableHead>Montant</TableHead><TableHead>Origine</TableHead><TableHead>Imputation</TableHead></TableRow></TableHeader>
