@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat, FileDown } from "lucide-react";
 import { toast } from "sonner";
@@ -97,6 +98,10 @@ function ChargesPage() {
 
   // Décompte
   const [dBien, setDBien] = useState<string>("");
+  const bienOptions = useMemo(
+    () => biens.map((b) => ({ value: b.id, label: b.titre, keywords: b.adresse ?? "" })),
+    [biens],
+  );
   const [dMois, setDMois] = useState<string>(currentMonth);
   const [dPeriodicite, setDPeriodicite] = useState<"mois" | "trimestre">("mois");
 
@@ -488,10 +493,12 @@ function ChargesPage() {
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="grid gap-2"><Label>Bien</Label>
-                    <Select value={dBien} onValueChange={setDBien}>
-                      <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
-                      <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={dBien}
+                      onChange={setDBien}
+                      options={bienOptions}
+                      placeholder="Rechercher un bien..."
+                    />
                   </div>
                   <div className="grid gap-2"><Label>Périodicité</Label>
                     <Select value={dPeriodicite} onValueChange={(v) => setDPeriodicite(v as "mois" | "trimestre")}>
@@ -600,10 +607,12 @@ function ChargesPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2"><Label>Bien *</Label>
-                <Select value={form.bien_id} onValueChange={(v) => setForm({ ...form, bien_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Sélectionner un bien..." /></SelectTrigger>
-                  <SelectContent>{biens.map((b) => <SelectItem key={b.id} value={b.id}>{b.titre}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.bien_id}
+                  onChange={(v) => setForm({ ...form, bien_id: v })}
+                  options={bienOptions}
+                  placeholder="Rechercher un bien..."
+                />
               </div>
               <div className="grid gap-2"><Label htmlFor="libelle">Libellé *</Label><Input id="libelle" value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required /></div>
               <div className="grid grid-cols-2 gap-4">
