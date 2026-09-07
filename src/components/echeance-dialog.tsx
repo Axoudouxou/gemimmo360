@@ -241,6 +241,30 @@ export function EcheanceDialog({
             />
           </div>
 
+          <div className="rounded-md border p-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <Checkbox
+                checked={appliquerPenalite}
+                onCheckedChange={(v) => setAppliquerPenalite(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-sm">
+                Appliquer la pénalité de retard de 10 %
+                <span className="block text-xs text-muted-foreground">
+                  {retard
+                    ? `Paiement au-delà du ${JOUR_ECHEANCE} du mois — pénalité applicable, facultative.`
+                    : `Le ${JOUR_ECHEANCE} du mois n'est pas encore dépassé.`}
+                </span>
+              </span>
+            </label>
+            {penalite > 0 && (
+              <p className="mt-2 text-sm">
+                Pénalité : <strong>{fmtMoney(penalite)}</strong> — Total dû :{" "}
+                <strong>{fmtMoney(totalDu)}</strong>
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Étape de traitement</Label>
