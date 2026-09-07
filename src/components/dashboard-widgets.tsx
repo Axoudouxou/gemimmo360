@@ -173,19 +173,18 @@ export function EncaissementsChart() {
     (async () => {
       const start = startOfMonth(subMonths(new Date(), 5));
       const { data: rows } = await supabase
-        .from("impayes")
-        .select("montant_paye, date_derniere_relance, date_echeance")
-        .gte("date_echeance", start.toISOString().slice(0, 10));
+        .from("paiements")
+        .select("montant, date_paiement")
+        .gte("date_paiement", start.toISOString().slice(0, 10));
       const map = new Map<string, number>();
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(new Date(), i);
         map.set(format(d, "yyyy-MM"), 0);
       }
-      (rows ?? []).forEach((r: { montant_paye: number | null; date_derniere_relance: string | null; date_echeance: string | null }) => {
-        const dateRef = r.date_derniere_relance ?? r.date_echeance;
-        if (!dateRef) return;
-        const key = dateRef.slice(0, 7);
-        if (map.has(key)) map.set(key, (map.get(key) ?? 0) + Number(r.montant_paye ?? 0));
+      (rows ?? []).forEach((r: { montant: number | null; date_paiement: string | null }) => {
+        if (!r.date_paiement) return;
+        const key = r.date_paiement.slice(0, 7);
+        if (map.has(key)) map.set(key, (map.get(key) ?? 0) + Number(r.montant ?? 0));
       });
       setData(Array.from(map.entries()).map(([k, v]) => ({ mois: format(new Date(k + "-01"), "MMM", { locale: fr }), montant: v })));
     })();
