@@ -87,15 +87,18 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
       {
         key: "locatif.charges",
         action: "Charges et décomptes",
-        access: perms([
-          "admin",
-          "direction",
-          "gestion_locative",
-          "commercial",
-          "technico_commercial",
-          "technique",
-          "juridique",
-        ]),
+        access: perms(
+          [
+            "admin",
+            "direction",
+            "gestion_locative",
+            "commercial",
+            "technico_commercial",
+            "technique",
+            "juridique",
+          ],
+          ["recouvrement"],
+        ),
       },
       {
         key: "locatif.transactions",
