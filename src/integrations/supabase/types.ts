@@ -2237,6 +2237,7 @@ export type Database = {
       get_juridique_assignee: { Args: never; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_christelle_kouassi: { Args: never; Returns: boolean }
+      is_staff_actif: { Args: never; Returns: boolean }
       log_impaye_cloture: {
         Args: { _from_etape: string; _impaye_id: string; _note: string }
         Returns: undefined
