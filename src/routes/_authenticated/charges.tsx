@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/charges")({
 
 // Lecture : tous les profils métiers (technique et juridique en consultation seule)
 const ALLOWED = ["admin", "direction", "gestion_locative", "commercial", "technico_commercial", "technique", "juridique", "recouvrement"] as const;
-const WRITE_ROLES = ["admin", "direction", "gestion_locative", "commercial", "technico_commercial", "administration"];
+const WRITE_ROLES = ["admin", "direction", "gestion_locative", "commercial", "technico_commercial", "administration", "recouvrement"];
 
 type Charge = {
   id: string; bien_id: string; libelle: string; montant: number; date: string; recurrente: boolean;
