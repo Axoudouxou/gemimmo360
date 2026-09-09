@@ -79,6 +79,7 @@ function TachesPage() {
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     (async () => {
