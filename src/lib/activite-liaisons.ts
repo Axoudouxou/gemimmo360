@@ -9,6 +9,20 @@ export async function fetchAssignesSupp(activiteId: string): Promise<string[]> {
   return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id);
 }
 
+/** Co-assignés de plusieurs activités, indexés par activité. */
+export async function fetchAssignesMap(activiteIds: string[]): Promise<Record<string, string[]>> {
+  const map: Record<string, string[]> = {};
+  if (activiteIds.length === 0) return map;
+  const { data } = await supabase
+    .from("activite_assignes")
+    .select("activite_id, user_id")
+    .in("activite_id", activiteIds);
+  for (const r of (data ?? []) as Array<{ activite_id: string; user_id: string }>) {
+    (map[r.activite_id] ??= []).push(r.user_id);
+  }
+  return map;
+}
+
 /** Biens liés (multi) à une activité. */
 export async function fetchBiensLies(activiteId: string): Promise<string[]> {
   const { data } = await supabase
