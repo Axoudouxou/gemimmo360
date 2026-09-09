@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.create_task_on_echeance_juridique() FROM PUBLIC, anon, authenticated;
