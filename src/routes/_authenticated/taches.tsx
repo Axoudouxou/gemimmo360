@@ -79,6 +79,7 @@ function TachesPage() {
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -119,7 +120,12 @@ function TachesPage() {
   const filtered = useMemo(() => {
     const today = startOfDay(new Date());
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+    const cutoff = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
     return items.filter((a) => {
+      if (!showHistory && (a.statut === "terminee" || a.statut === "annulee")) {
+        const raw = a.updated_at ?? a.created_at ?? echeanceOf(a);
+        if (!raw || isBefore(new Date(raw), cutoff)) return false;
+      }
       if (
         agentFilter !== "all" &&
         a.assigne_a !== agentFilter &&
@@ -142,7 +148,16 @@ function TachesPage() {
       }
       return true;
     });
-  }, [items, agentFilter, prioFilter, echFilter, moduleFilter, assignesMap]);
+  }, [items, agentFilter, prioFilter, echFilter, moduleFilter, assignesMap, showHistory]);
+
+  const hiddenCount = useMemo(() => {
+    const cutoff = new Date(startOfDay(new Date()).getTime() - 30 * 24 * 60 * 60 * 1000);
+    return items.filter((a) => {
+      if (a.statut !== "terminee" && a.statut !== "annulee") return false;
+      const raw = a.updated_at ?? a.created_at ?? echeanceOf(a);
+      return !raw || isBefore(new Date(raw), cutoff);
+    }).length;
+  }, [items]);
 
   const agentsOf = (a: Activite) => {
     const ids = Array.from(new Set([a.assigne_a, ...(assignesMap[a.id] ?? [])].filter(Boolean)));
@@ -219,7 +234,11 @@ function TachesPage() {
             <SelectItem value="aucun">Sans contexte</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" onClick={() => setShowHistory((v) => !v)}>
+          {showHistory ? "Masquer l'historique" : `Afficher l'historique${hiddenCount > 0 ? ` (${hiddenCount})` : ""}`}
+        </Button>
       </div>
+
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {

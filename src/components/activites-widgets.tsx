@@ -36,6 +36,8 @@ export type Activite = {
   contact_id: string | null;
   transaction_id?: string | null;
   recurrence?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export const RECURRENCE_LABELS: Record<string, string> = {
