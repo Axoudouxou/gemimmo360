@@ -234,7 +234,11 @@ function TachesPage() {
             <SelectItem value="aucun">Sans contexte</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" onClick={() => setShowHistory((v) => !v)}>
+          {showHistory ? "Masquer l'historique" : `Afficher l'historique${hiddenCount > 0 ? ` (${hiddenCount})` : ""}`}
+        </Button>
       </div>
+
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
