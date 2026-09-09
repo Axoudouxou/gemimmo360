@@ -54,6 +54,7 @@ const CHRISTELLE_KOUASSI_ID = "2f7ca4a8-1730-4d83-88fb-3faa423dcaf6";
 const OVERVIEW: NavItem[] = [
   { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Calendrier", url: "/calendrier", icon: CalendarDays },
+  { title: "Tâches", url: "/taches", icon: ListTodo },
   { title: "Aide", url: "/aide", icon: HelpCircle },
 ];
 
