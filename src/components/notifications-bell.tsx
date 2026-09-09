@@ -47,7 +47,7 @@ export function NotificationsBell() {
       .from("notifications")
       .select("id, type, title, message, link, entity_type, entity_id, read, created_at")
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(100);
     setItems((data ?? []) as Notification[]);
   }, []);
 
@@ -147,6 +147,16 @@ export function NotificationsBell() {
             </ul>
           )}
         </ScrollArea>
+        <div className="border-t p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => { setOpen(false); navigate({ to: "/notifications" }); }}
+          >
+            Voir toutes les notifications
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
