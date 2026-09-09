@@ -478,8 +478,9 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
         .from("echeances")
         .select("id, contrat_id, montant_du, montant_affecte, date_echeance, etape_traitement, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
         .lt("date_echeance", todayIso)
+        .neq("statut", "solde")
         .order("date_echeance", { ascending: true })
-        .limit(200);
+        .limit(2000);
       setRows(((data ?? []) as any[])
         .filter((r) => Number(r.montant_du ?? 0) - Number(r.montant_affecte ?? 0) > 0
           && !["solde", "resolu", "cloture"].includes(r.etape_traitement ?? ""))

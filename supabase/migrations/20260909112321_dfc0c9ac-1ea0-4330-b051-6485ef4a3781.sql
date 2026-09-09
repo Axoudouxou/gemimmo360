@@ -1,0 +1,15 @@
+ALTER POLICY "Admins can delete doublons ignores" ON public.contact_doublons_ignores TO authenticated;
+ALTER POLICY "Admins can view doublons ignores" ON public.contact_doublons_ignores TO authenticated;
+ALTER POLICY "Admins can insert doublons ignores" ON public.contact_doublons_ignores TO authenticated;
+ALTER POLICY "impayes_update_write_roles" ON public.impayes TO authenticated;
+ALTER POLICY "impayes_delete_admin" ON public.impayes TO authenticated;
+ALTER POLICY "impayes_select_all_but_attente" ON public.impayes TO authenticated;
+ALTER POLICY "impayes_insert_write_roles" ON public.impayes TO authenticated;
+ALTER POLICY "imp_comm_delete" ON public.impayes_commentaires TO authenticated;
+ALTER POLICY "imp_comm_read" ON public.impayes_commentaires TO authenticated;
+ALTER POLICY "imp_comm_insert" ON public.impayes_commentaires TO authenticated;
+ALTER POLICY "imp_hist_read" ON public.impayes_statut_historique TO authenticated;
+ALTER POLICY "transactions_juridique_full" ON public.transactions_commerciales TO authenticated;
+ALTER POLICY "christelle_travaux_access" ON public.travaux TO authenticated;
+ALTER POLICY "travaux_juridique_full" ON public.travaux TO authenticated;
+ALTER POLICY "christelle_travaux_comm_access" ON public.travaux_commentaires TO authenticated;

@@ -294,15 +294,22 @@ function ChargesPage() {
     const detailLoyers: { locataire: string; echeance: string; montant: number }[] = [];
     const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
 
-    // Un contrat compte pour un mois s'il couvrait ce mois (même s'il est résilié depuis)
+    // Un contrat compte pour un mois s'il couvrait réellement ce mois (même s'il est résilié depuis).
+    // Les contrats non engagés (brouillon, annulé…) ne génèrent jamais de loyer attendu.
+    const STATUTS_ENGAGES = ["actif", "resilie", "termine", "echu", "expire"];
     const occupeMois = (c: ContratRow, mk: string) => {
+      const statut = (c.statut ?? "").toLowerCase();
+      if (!STATUTS_ENGAGES.includes(statut)) return false;
       const debut = c.date_debut ? monthKey(c.date_debut) : null;
       const fin = c.date_fin ? monthKey(c.date_fin) : null;
       if (debut && mk < debut) return false;
       if (fin && mk > fin) return false;
-      if (!debut && !fin) return c.statut === "actif";
+      // Contrat terminé sans date de fin renseignée : on ne peut pas prouver l'occupation
+      if (!fin && statut !== "actif") return false;
+      if (!debut && !fin) return statut === "actif";
       return true;
     };
+
 
     for (const mk of moisPeriode) {
       const echeancesMois = impayes.filter(

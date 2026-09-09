@@ -130,8 +130,9 @@ export function ImpayesATraiter({ limit = 10 }: { limit?: number }) {
         .select(
           "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement, service_en_charge, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))",
         )
+        .neq("statut", "solde")
         .order("date_echeance", { ascending: true })
-        .limit(400);
+        .limit(2000);
       const items = ((data ?? []) as any[])
         .filter((r) => nonSolde(r))
         .map((r) => ({
@@ -233,7 +234,9 @@ export function ContentieuxJuridiqueList({ limit = 8 }: { limit?: number }) {
         .select(
           "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement, service_en_charge, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))",
         )
-        .limit(300);
+        .neq("statut", "solde")
+        .order("date_echeance", { ascending: true })
+        .limit(2000);
       const items = ((data ?? []) as any[])
         .filter(
           (r) =>
