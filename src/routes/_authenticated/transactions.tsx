@@ -261,7 +261,7 @@ function TransactionsPage() {
             <div><CardTitle>Transactions commerciales</CardTitle><CardDescription>Suivi des opportunités.</CardDescription></div>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleCreate}>
                   <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle><DialogDescription>Prospect, bailleur, acheteur ou vendeur.</DialogDescription></DialogHeader>
                   <div className="grid gap-4 py-4">
