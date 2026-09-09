@@ -1,140 +1,131 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, Circle } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Circle, ListTodo } from "lucide-react";
 import { toast } from "sonner";
 import {
   addDays,
+  addMinutes,
   addMonths,
   addWeeks,
+  differenceInMinutes,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
   format,
   isSameDay,
   isSameMonth,
-  startOfDay,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { TYPE_LABELS, TYPE_COLORS, TYPE_ICONS, TYPE_BADGE_CLASSES, ActiviteTypeBadge, STATUT_LABELS, RECURRENCE_LABELS, type Activite } from "@/components/activites-widgets";
-import { ActiviteDetailDialog, computeActivitePerms } from "@/components/activite-detail-dialog";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { fetchActiviteIdsForUser, fetchAssignesSupp, fetchBiensLies, syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
-
+import {
+  TYPE_COLORS,
+  TYPE_ICONS,
+  TYPE_BADGE_CLASSES,
+  TERRAIN_TYPES,
+  TERRAIN_TYPE_LABELS,
+  ActiviteTypeBadge,
+  type Activite,
+} from "@/components/activites-widgets";
+import { ActiviteDetailDialog } from "@/components/activite-detail-dialog";
+import { syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
     meta: [
-      { title: "Calendrier — GEM Immobilier" },
-      { name: "description", content: "Calendrier et tâches de l'équipe." },
+      { title: "Calendrier terrain — GEM Immobilier" },
+      { name: "description", content: "Planning des visites, états des lieux et recouvrements terrain de l'équipe." },
+      { property: "og:title", content: "Calendrier terrain — GEM Immobilier" },
+      { property: "og:description", content: "Qui est où et quand : planning semaine des activités terrain." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
     bien_id: typeof s.bien_id === "string" ? s.bien_id : undefined,
-    lot_id: typeof s.lot_id === "string" ? s.lot_id : undefined,
-    contrat_id: typeof s.contrat_id === "string" ? s.contrat_id : undefined,
-    contact_id: typeof s.contact_id === "string" ? s.contact_id : undefined,
-    transaction_id: typeof s.transaction_id === "string" ? s.transaction_id : undefined,
     open: typeof s.open === "string" ? s.open : undefined,
   }),
   component: CalendrierPage,
 });
 
 type Profile = { id: string; email: string | null; role: string };
-type Range = "today" | "week" | "month" | "custom";
+type Vue = "semaine" | "mois";
 
-const LIE_TYPES = [
-  { value: "none", label: "Aucun" },
-  { value: "bien", label: "Bien" },
-  { value: "lot", label: "Lot" },
-  { value: "contrat", label: "Contrat" },
-  { value: "contact", label: "Contact" },
-  { value: "transaction", label: "Transaction" },
-] as const;
+const HOUR_START = 7;
+const HOUR_END = 20;
+const PX_PER_HOUR = 56;
 
-type LinkOpt = { id: string; label: string };
+const DUREES = [
+  { value: "30", label: "30 min" },
+  { value: "60", label: "1 h" },
+  { value: "90", label: "1 h 30" },
+  { value: "120", label: "2 h" },
+  { value: "180", label: "3 h" },
+  { value: "240", label: "4 h" },
+];
 
-function nextRecurrenceDate(current: Date, recurrence: string): Date | null {
-  if (recurrence === "quotidienne") return addDays(current, 1);
-  if (recurrence === "hebdomadaire") return addWeeks(current, 1);
-  if (recurrence === "mensuelle") return addMonths(current, 1);
-  return null;
-}
+const shortName = (email: string | null | undefined) => (email ? email.split("@")[0] : "—");
 
 function CalendrierPage() {
   const search = Route.useSearch();
   const [me, setMe] = useState<Profile | null>(null);
-  const [viewingUserId, setViewingUserId] = useState<string>("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [items, setItems] = useState<Activite[]>([]);
-  const [monthCursor, setMonthCursor] = useState<Date>(startOfMonth(new Date()));
-  const [range, setRange] = useState<Range>("month");
-  const [customStart, setCustomStart] = useState<string>("");
-  const [customEnd, setCustomEnd] = useState<string>("");
+  const [biensMap, setBiensMap] = useState<Record<string, string>>({});
+  const [vue, setVue] = useState<Vue>("semaine");
+  const [cursor, setCursor] = useState<Date>(new Date());
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
-  const [editing, setEditing] = useState<Activite | null>(null);
   const [detail, setDetail] = useState<Activite | null>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
-  const [quickTitle, setQuickTitle] = useState("");
-  const [myCoIds, setMyCoIds] = useState<Set<string>>(new Set());
-
 
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
       const { data: prof } = await supabase.from("profiles").select("id, email, role").eq("id", u.user.id).maybeSingle();
-      if (prof) {
-        setMe(prof as Profile);
-        setViewingUserId(prof.id);
-      }
-      const { data: all } = await supabase.from("profiles").select("id, email, role").order("email");
+      if (prof) setMe(prof as Profile);
+      const [{ data: all }, { data: biens }] = await Promise.all([
+        supabase.from("profiles").select("id, email, role").order("email"),
+        supabase.from("biens").select("id, titre").order("titre").limit(1000),
+      ]);
       setProfiles((all ?? []) as Profile[]);
+      const map: Record<string, string> = {};
+      for (const b of (biens ?? []) as Array<{ id: string; titre: string | null }>) map[b.id] = b.titre ?? "";
+      setBiensMap(map);
     })();
   }, []);
 
   const [rangeStart, rangeEnd] = useMemo<[Date, Date]>(() => {
-    const today = startOfDay(new Date());
-    if (range === "today") return [today, endOfWeek(today, { weekStartsOn: 1 })];
-    if (range === "week")
-      return [startOfWeek(today, { weekStartsOn: 1 }), endOfWeek(today, { weekStartsOn: 1 })];
-    if (range === "custom" && customStart && customEnd) return [new Date(customStart), new Date(customEnd)];
-    return [startOfMonth(monthCursor), endOfMonth(monthCursor)];
-  }, [range, monthCursor, customStart, customEnd]);
+    if (vue === "semaine")
+      return [startOfWeek(cursor, { weekStartsOn: 1 }), endOfWeek(cursor, { weekStartsOn: 1 })];
+    return [
+      startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 }),
+      endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 }),
+    ];
+  }, [vue, cursor]);
 
   const load = useCallback(async () => {
-    if (!viewingUserId) return;
-    // Tâches dont l'utilisateur est le responsable principal OU un co-assigné
-    const coIds = await fetchActiviteIdsForUser(viewingUserId);
-    const filter = coIds.length > 0
-      ? `assigne_a.eq.${viewingUserId},id.in.(${coIds.join(",")})`
-      : `assigne_a.eq.${viewingUserId}`;
     const { data } = await supabase
       .from("activites")
       .select("*")
-      .or(filter)
-      .order("date_debut", { ascending: true, nullsFirst: false });
+      .in("type_activite", TERRAIN_TYPES as unknown as string[])
+      .neq("statut", "annulee")
+      .gte("date_debut", rangeStart.toISOString())
+      .lte("date_debut", addDays(rangeEnd, 1).toISOString())
+      .order("date_debut", { ascending: true });
     setItems((data ?? []) as Activite[]);
-    if (me?.id) {
-      setMyCoIds(me.id === viewingUserId ? new Set(coIds) : new Set(await fetchActiviteIdsForUser(me.id)));
-    }
-  }, [viewingUserId, me?.id]);
-
-
+  }, [rangeStart, rangeEnd]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -144,258 +135,223 @@ function CalendrierPage() {
     if (found) setDetail(found);
   }, [search.open, items]);
 
-  const filteredItems = useMemo(() => {
-    return items.filter((a) => {
-      if (typeFilter !== "all" && a.type_activite !== typeFilter) return false;
-      if (!a.date_debut) return range === "month" || range === "custom";
-      const d = new Date(a.date_debut);
-      return d >= rangeStart && d <= rangeEnd;
-    });
-  }, [items, rangeStart, rangeEnd, range, typeFilter]);
+  const filtered = useMemo(
+    () =>
+      items.filter((a) => {
+        if (typeFilter !== "all" && a.type_activite !== typeFilter) return false;
+        if (agentFilter !== "all" && a.assigne_a !== agentFilter) return false;
+        return !!a.date_debut;
+      }),
+    [items, typeFilter, agentFilter],
+  );
 
-  const days = useMemo(() => {
-    const gridStart = startOfWeek(startOfMonth(monthCursor), { weekStartsOn: 1 });
-    const gridEnd = endOfWeek(endOfMonth(monthCursor), { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: gridStart, end: gridEnd });
-  }, [monthCursor]);
+  const weekDays = useMemo(
+    () => eachDayOfInterval({ start: startOfWeek(cursor, { weekStartsOn: 1 }), end: endOfWeek(cursor, { weekStartsOn: 1 }) }),
+    [cursor],
+  );
+  const monthDays = useMemo(
+    () => eachDayOfInterval({ start: rangeStart, end: rangeEnd }),
+    [rangeStart, rangeEnd],
+  );
 
-  const eventsByDay = useMemo(() => {
+  const byDay = useMemo(() => {
     const map = new Map<string, Activite[]>();
-    const seen = new Set<string>();
-    for (const a of items) {
-      if (!a.date_debut) continue;
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      if (typeFilter !== "all" && a.type_activite !== typeFilter) continue;
-      const key = format(new Date(a.date_debut), "yyyy-MM-dd");
+    for (const a of filtered) {
+      const key = format(new Date(a.date_debut!), "yyyy-MM-dd");
       const arr = map.get(key) ?? [];
       arr.push(a);
       map.set(key, arr);
     }
     return map;
-  }, [items, typeFilter]);
+  }, [filtered]);
 
-  const tasksAFaire = filteredItems.filter((a) => a.statut === "a_faire");
-  const tasksPlanifiee = filteredItems.filter((a) => a.statut === "planifiee");
-  const tasksEnCours = filteredItems.filter((a) => a.statut === "en_cours");
-  const tasksFait = filteredItems.filter((a) => a.statut === "terminee");
-  const tasksAnnulee = filteredItems.filter((a) => a.statut === "annulee");
+  const hours = useMemo(
+    () => Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i),
+    [],
+  );
 
-  const setStatut = async (a: Activite, newStatut: string) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
-    if (!perms.canChangeStatut) {
-      toast.error("Vous ne pouvez pas modifier cette tâche.");
-      return;
-    }
-    const { error } = await supabase.from("activites").update({ statut: newStatut }).eq("id", a.id);
-    if (error) { toast.error(error.message); return; }
+  const lieuOf = (a: Activite) => (a.bien_id ? biensMap[a.bien_id] || "" : a.lieu || "");
+  const agentOf = (a: Activite) => shortName(profiles.find((p) => p.id === a.assigne_a)?.email);
 
-    // Recurrence: mark done → create next occurrence
-    const isDone = newStatut === "terminee";
-    const wasDone = a.statut === "terminee";
-    if (isDone && !wasDone && a.recurrence && a.recurrence !== "aucune" && a.date_debut) {
-      const next = nextRecurrenceDate(new Date(a.date_debut), a.recurrence);
-      if (next) {
-        const nextFin = a.date_fin ? nextRecurrenceDate(new Date(a.date_fin), a.recurrence) : null;
-        await supabase.from("activites").insert({
-          titre: a.titre,
-          type_activite: a.type_activite,
-          date_debut: next.toISOString(),
-          date_fin: nextFin ? nextFin.toISOString() : null,
-          assigne_a: a.assigne_a,
-          created_by: me?.id ?? null,
-          lieu: a.lieu,
-          priorite: a.priorite,
-          notes: a.notes,
-          bien_id: a.bien_id,
-          lot_id: a.lot_id,
-          contrat_id: a.contrat_id,
-          contact_id: a.contact_id,
-          transaction_id: a.transaction_id ?? null,
-          recurrence: a.recurrence,
-          statut: a.type_activite === "tache" ? "a_faire" : "planifiee",
-        });
-        toast.success("Prochaine occurrence créée");
-      }
-    }
-    load();
-  };
+  const step = (dir: 1 | -1) =>
+    setCursor((d) => (vue === "semaine" ? addWeeks(d, dir) : addMonths(d, dir)));
 
-  const handleToggle = async (a: Activite, done: boolean) => {
-    await setStatut(a, done ? "terminee" : "a_faire");
-  };
-
-  const handleDelete = async (a: Activite) => {
-    const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", myCoIds.has(a.id) && me ? [me.id] : []);
-    if (!perms.canDelete) return;
-    if (!confirm("Supprimer cette tâche ?")) return;
-    const { error } = await supabase.from("activites").delete().eq("id", a.id);
-    if (error) return toast.error(error.message);
-    toast.success("Tâche supprimée");
-    load();
-  };
-
-  const handleQuickAdd = async () => {
-    const t = quickTitle.trim();
-    if (!t || !me) return;
-    const { error } = await supabase.from("activites").insert({
-      titre: t,
-      type_activite: "tache",
-      assigne_a: me.id,
-      created_by: me.id,
-      priorite: "normale",
-      statut: "a_faire",
-    });
-    if (error) return toast.error(error.message);
-    setQuickTitle("");
-    load();
-  };
-
-  const handleDrop = async (a: Activite, target: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee") => {
-    if (a.statut === target) return;
-    await setStatut(a, target);
-  };
+  const periodLabel =
+    vue === "semaine"
+      ? `${format(weekDays[0], "d MMM", { locale: fr })} – ${format(weekDays[6], "d MMM yyyy", { locale: fr })}`
+      : format(cursor, "MMMM yyyy", { locale: fr });
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-[1400px] px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl">Calendrier</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Vos activités et tâches.</p>
+          <h1 className="text-3xl">Calendrier terrain</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Qui est où et quand : visites, états des lieux et recouvrements terrain.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={viewingUserId} onValueChange={setViewingUserId}>
-            <SelectTrigger className="w-[240px]"><SelectValue placeholder="Voir le calendrier de" /></SelectTrigger>
-            <SelectContent>
-              {profiles.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.email ?? p.id} {me?.id === p.id ? "(moi)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <NewActiviteDialog
-            open={openNew}
-            setOpen={setOpenNew}
-            defaultAssignee={me?.id ?? ""}
-            defaults={search}
-            profiles={profiles}
-            onSaved={load}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/taches"><ListTodo className="mr-2 h-4 w-4" /> Tâches</Link>
+          </Button>
+          <Button size="sm" onClick={() => setOpenNew(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Nouvelle activité terrain
+          </Button>
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Select value={range} onValueChange={(v) => setRange(v as Range)}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Aujourd'hui</SelectItem>
-            <SelectItem value="week">Cette semaine</SelectItem>
-            <SelectItem value="month">Ce mois</SelectItem>
-            <SelectItem value="custom">Personnalisé</SelectItem>
-          </SelectContent>
-        </Select>
-        {range === "custom" && (
-          <>
-            <Input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="w-[160px]" />
-            <Input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="w-[160px]" />
-          </>
-        )}
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les types</SelectItem>
-            {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" onClick={() => step(-1)} aria-label="Précédent"><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>Aujourd'hui</Button>
+          <Button variant="outline" size="icon" onClick={() => step(1)} aria-label="Suivant"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+        <span className="text-sm font-medium capitalize">{periodLabel}</span>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              {Object.entries(TERRAIN_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={agentFilter} onValueChange={setAgentFilter}>
+            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Agent" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les agents</SelectItem>
+              {me && <SelectItem value={me.id}>Moi ({shortName(me.email)})</SelectItem>}
+              {profiles.filter((p) => p.id !== me?.id).map((p) => (
+                <SelectItem key={p.id} value={p.id}>{shortName(p.email)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex rounded-md border p-0.5">
+            <Button size="sm" variant={vue === "semaine" ? "default" : "ghost"} onClick={() => setVue("semaine")}>Semaine</Button>
+            <Button size="sm" variant={vue === "mois" ? "default" : "ghost"} onClick={() => setVue("mois")}>Mois</Button>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="calendar">
-        <TabsList>
-          <TabsTrigger value="calendar">Vue calendrier</TabsTrigger>
-          <TabsTrigger value="tasks">Liste des tâches</TabsTrigger>
-        </TabsList>
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        {Object.entries(TERRAIN_TYPE_LABELS).map(([k, v]) => (
+          <span key={k} className="inline-flex items-center gap-1.5">
+            <span className={`h-2.5 w-2.5 rounded-sm ${TYPE_COLORS[k]}`} /> {v}
+          </span>
+        ))}
+      </div>
 
-        <TabsContent value="calendar" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="capitalize">{format(monthCursor, "MMMM yyyy", { locale: fr })}</CardTitle>
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" onClick={() => setMonthCursor((d) => addMonths(d, -1))}><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="outline" size="sm" onClick={() => setMonthCursor(startOfMonth(new Date()))}>Aujourd'hui</Button>
-                <Button variant="outline" size="icon" onClick={() => setMonthCursor((d) => addMonths(d, 1))}><ChevronRight className="h-4 w-4" /></Button>
+      <Card>
+        <CardContent className="p-3">
+          {vue === "semaine" ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[900px]">
+                <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, minmax(0,1fr))" }}>
+                  <div />
+                  {weekDays.map((d) => (
+                    <div
+                      key={d.toISOString()}
+                      className={`border-b p-2 text-center text-xs font-medium capitalize ${isSameDay(d, new Date()) ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+                    >
+                      {format(d, "EEE d", { locale: fr })}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, minmax(0,1fr))" }}>
+                  <div>
+                    {hours.map((h) => (
+                      <div key={h} className="relative text-[10px] text-muted-foreground" style={{ height: PX_PER_HOUR }}>
+                        <span className="absolute -top-1.5 right-2">{h}h</span>
+                      </div>
+                    ))}
+                  </div>
+                  {weekDays.map((d) => {
+                    const events = byDay.get(format(d, "yyyy-MM-dd")) ?? [];
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        className={`relative border-l ${isSameDay(d, new Date()) ? "bg-primary/5" : ""}`}
+                        style={{ height: (HOUR_END - HOUR_START + 1) * PX_PER_HOUR }}
+                      >
+                        {hours.map((h) => (
+                          <div key={h} className="border-b border-dashed border-muted" style={{ height: PX_PER_HOUR }} />
+                        ))}
+                        {events.map((e) => {
+                          const start = new Date(e.date_debut!);
+                          const end = e.date_fin ? new Date(e.date_fin) : addMinutes(start, 60);
+                          const mins = Math.max(30, differenceInMinutes(end, start));
+                          const top = ((start.getHours() + start.getMinutes() / 60) - HOUR_START) * PX_PER_HOUR;
+                          const height = (mins / 60) * PX_PER_HOUR;
+                          return (
+                            <button
+                              key={e.id}
+                              type="button"
+                              onClick={() => setDetail(e)}
+                              className={`absolute left-1 right-1 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm transition hover:opacity-90 ${TYPE_BADGE_CLASSES[e.type_activite]}`}
+                              style={{
+                                top: Math.max(0, top),
+                                height: Math.max(30, height),
+                                borderLeftColor: "currentColor",
+                              }}
+                              title={e.titre}
+                            >
+                              <div className="truncate font-semibold">{TERRAIN_TYPE_LABELS[e.type_activite] ?? e.titre}</div>
+                              <div className="truncate">{lieuOf(e) || e.titre}</div>
+                              <div className="truncate opacity-80">Agent : {agentOf(e)}</div>
+                              <div className="truncate opacity-80">
+                                {format(start, "HH:mm")} — {format(end, "HH:mm")}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1 text-xs font-medium text-muted-foreground mb-1">
+            </div>
+          ) : (
+            <>
+              <div className="mb-1 grid grid-cols-7 gap-1 text-xs font-medium text-muted-foreground">
                 {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
                   <div key={d} className="p-1 text-center">{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1">
-                {days.map((d) => {
+                {monthDays.map((d) => {
                   const key = format(d, "yyyy-MM-dd");
-                  const events = eventsByDay.get(key) ?? [];
+                  const events = byDay.get(key) ?? [];
                   const isToday = isSameDay(d, new Date());
-                  const inMonth = isSameMonth(d, monthCursor);
+                  const inMonth = isSameMonth(d, cursor);
                   return (
                     <div
                       key={key}
                       onClick={() => events.length > 0 && setDayDetail(d)}
-                      className={`min-h-[96px] rounded border p-1 text-xs transition-colors ${
-                        inMonth ? "bg-background" : "bg-muted/20"
-                      } ${isToday ? "border-primary/60 bg-primary/10" : ""} ${
-                        events.length > 0 ? "cursor-pointer hover:bg-muted/50" : ""
-                      }`}
+                      className={`min-h-[96px] rounded border p-1 text-xs ${inMonth ? "bg-background" : "bg-muted/20"} ${isToday ? "border-primary/60 bg-primary/10" : ""} ${events.length > 0 ? "cursor-pointer hover:bg-muted/50" : ""}`}
                     >
-                      <div className="mb-1 flex items-center justify-between">
-                        <span
-                          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-medium ${
-                            isToday
-                              ? "bg-primary text-primary-foreground"
-                              : inMonth
-                                ? "text-foreground"
-                                : "text-muted-foreground/50"
-                          }`}
-                        >
-                          {format(d, "d")}
-                        </span>
-                        {events.length > 0 && (
-                          <span className="flex items-center gap-0.5">
-                            {Array.from(new Set(events.map((e) => e.type_activite)))
-                              .slice(0, 3)
-                              .map((t) => (
-                                <span key={t} className={`h-1.5 w-1.5 rounded-full ${TYPE_COLORS[t] ?? "bg-gray-400"}`} />
-                              ))}
-                          </span>
-                        )}
-                      </div>
+                      <div className="mb-1 font-medium">{format(d, "d")}</div>
                       <div className="space-y-0.5">
-                        {events.slice(0, 2).map((e) => {
+                        {events.slice(0, 3).map((e) => {
                           const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
                           return (
                             <button
-                              type="button"
                               key={e.id}
+                              type="button"
                               onClick={(ev) => { ev.stopPropagation(); setDetail(e); }}
-                              className={`flex w-full items-center gap-1 rounded border px-1 py-0.5 text-left hover:opacity-80 ${TYPE_BADGE_CLASSES[e.type_activite] ?? TYPE_BADGE_CLASSES.autre}`}
-                              title={e.titre}
+                              className={`flex w-full items-center gap-1 rounded border px-1 py-0.5 text-left hover:opacity-80 ${TYPE_BADGE_CLASSES[e.type_activite]}`}
                             >
                               <Icon className="h-3 w-3 shrink-0" />
                               <span className="truncate">
-                                {e.date_debut ? format(new Date(e.date_debut), "HH:mm") + " " : ""}
-                                {e.titre}
+                                {format(new Date(e.date_debut!), "HH:mm")} {lieuOf(e) || e.titre}
                               </span>
                             </button>
                           );
                         })}
-                        {events.length > 2 && (
+                        {events.length > 3 && (
                           <button
                             type="button"
                             onClick={(ev) => { ev.stopPropagation(); setDayDetail(d); }}
                             className="w-full text-left text-[10px] font-medium text-primary hover:underline"
                           >
-                            +{events.length - 2} autre(s)
+                            +{events.length - 3} autre(s)
                           </button>
                         )}
                       </div>
@@ -403,55 +359,19 @@ function CalendrierPage() {
                   );
                 })}
               </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="tasks" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <TaskColumn
-              title="À faire"
-              targetStatut="a_faire"
-              items={tasksAFaire}
-              me={me}
-              coIds={myCoIds}
-              onOpen={setDetail}
-              onToggle={handleToggle}
-              onEdit={setEditing}
-              onDelete={handleDelete}
-              onDrop={handleDrop}
-              quickAdd={
-                <div className="mb-2 flex gap-2">
-                  <Input
-                    value={quickTitle}
-                    onChange={(e) => setQuickTitle(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(); }}
-                    placeholder="Ajouter une tâche..."
-                    className="h-8 text-sm"
-                  />
-                </div>
-              }
-            />
-            <TaskColumn title="Planifiée" targetStatut="planifiee" items={tasksPlanifiee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="En cours" targetStatut="en_cours" items={tasksEnCours} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-            <TaskColumn title="Terminée" targetStatut="terminee" items={tasksFait} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} done />
-            <TaskColumn title="Annulée" targetStatut="annulee" items={tasksAnnulee} me={me} coIds={myCoIds} onOpen={setDetail} onToggle={handleToggle} onEdit={setEditing} onDelete={handleDelete} onDrop={handleDrop} />
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {editing && (
-        <ActiviteDialog
-          open={!!editing}
-          setOpen={(o) => { if (!o) setEditing(null); }}
-          profiles={profiles}
-          defaultAssignee={editing.assigne_a}
-          defaults={{}}
-          initial={editing}
-          onSaved={() => { setEditing(null); load(); }}
-        />
-      )}
+      <NouvelleActiviteTerrainDialog
+        open={openNew}
+        setOpen={setOpenNew}
+        profiles={profiles}
+        defaultAgent={me?.id ?? ""}
+        defaultBien={search.bien_id}
+        onSaved={() => { setOpenNew(false); load(); }}
+      />
 
       <ActiviteDetailDialog
         open={!!detail}
@@ -460,7 +380,6 @@ function CalendrierPage() {
         me={me}
         role={me?.role ?? ""}
         profiles={profiles}
-        onEdit={(a) => setEditing(a)}
         onChanged={() => { setDetail(null); load(); }}
         onDeleted={() => { setDetail(null); load(); }}
       />
@@ -473,454 +392,166 @@ function CalendrierPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {(dayDetail ? (eventsByDay.get(format(dayDetail, "yyyy-MM-dd")) ?? []) : []).map((e) => {
-              const Icon = TYPE_ICONS[e.type_activite] ?? Circle;
-              const assignee = profiles.find((p) => p.id === e.assigne_a);
-              return (
-                <button
-                  type="button"
-                  key={e.id}
-                  onClick={() => { setDayDetail(null); setDetail(e); }}
-                  className="flex w-full items-start gap-3 rounded-md border p-2 text-left transition-colors hover:bg-muted/50"
-                >
-                  <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${TYPE_COLORS[e.type_activite] ?? "bg-gray-400"}`}>
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium">{e.titre}</span>
-                      <ActiviteTypeBadge type={e.type_activite} />
-                      {e.priorite === "urgente" && (
-                        <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>
-                      )}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {e.date_debut ? format(new Date(e.date_debut), "HH:mm") : "Toute la journée"}
-                      {assignee?.email ? ` · ${assignee.email.split("@")[0]}` : ""}
-                      {e.lieu ? ` · ${e.lieu}` : ""}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+            {(dayDetail ? byDay.get(format(dayDetail, "yyyy-MM-dd")) ?? [] : []).map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => { setDayDetail(null); setDetail(e); }}
+                className="flex w-full flex-col items-start gap-1 rounded-md border p-2 text-left hover:bg-muted/50"
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <ActiviteTypeBadge type={e.type_activite} />
+                  <span className="text-sm font-medium">{lieuOf(e) || e.titre}</span>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(e.date_debut!), "HH:mm")}
+                  {e.date_fin ? ` — ${format(new Date(e.date_fin), "HH:mm")}` : ""} · Agent : {agentOf(e)}
+                </span>
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
     </div>
-
   );
 }
 
-function TaskColumn({
-  title,
-  targetStatut,
-  items,
-  me,
-  coIds,
-
-  onOpen,
-  onToggle,
-  onEdit,
-  onDelete,
-  onDrop,
-  done = false,
-  quickAdd,
-}: {
-  title: string;
-  targetStatut: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee";
-  items: Activite[];
-  me: Profile | null;
-  coIds: Set<string>;
-  onOpen: (a: Activite) => void;
-  onToggle: (a: Activite, done: boolean) => void;
-  onEdit: (a: Activite) => void;
-  onDelete: (a: Activite) => void;
-  onDrop: (a: Activite, target: "a_faire" | "planifiee" | "en_cours" | "terminee" | "annulee") => void;
-  done?: boolean;
-  quickAdd?: React.ReactNode;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  return (
-    <Card
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOver(false);
-        const id = e.dataTransfer.getData("text/plain");
-        const a = items.find((x) => x.id === id);
-        // The dropped card may not exist in this column; caller lookup via parent items is unavailable, so rely on data
-        const dropped: Activite | undefined = a ?? (window as unknown as { __draggedActivite?: Activite }).__draggedActivite;
-        if (dropped) onDrop(dropped, targetStatut);
-      }}
-      className={dragOver ? "ring-2 ring-primary" : ""}
-    >
-      <CardHeader className="pb-2"><CardTitle className="text-base">{title} ({items.length})</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
-        {quickAdd}
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche.</p>
-        ) : items.map((a) => {
-          const perms = computeActivitePerms(a, me?.id ?? null, me?.role ?? "", coIds.has(a.id) && me ? [me.id] : []);
-          const isDoneCard = a.statut === "terminee";
-          return (
-            <div
-              key={a.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData("text/plain", a.id);
-                (window as unknown as { __draggedActivite?: Activite }).__draggedActivite = a;
-              }}
-              className={`flex items-start gap-2 rounded border p-2 cursor-pointer hover:bg-muted/40 ${a.priorite === "urgente" && !isDoneCard ? "border-red-400 bg-red-50 dark:bg-red-950/20" : ""}`}
-              onClick={() => onOpen(a)}
-            >
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={done}
-                  disabled={!perms.canChangeStatut}
-                  onCheckedChange={(v) => onToggle(a, !!v)}
-                  className="mt-0.5"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <ActiviteTypeBadge type={a.type_activite} />
-                  <span className={`text-sm font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{a.titre}</span>
-                  {a.priorite === "urgente" && <Badge className="bg-red-500 text-white hover:bg-red-500 text-[10px]">Urgente</Badge>}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {a.date_debut ? `${format(new Date(a.date_debut), "d MMM HH:mm", { locale: fr })} · ` : ""}
-                  {a.lieu ? `${a.lieu} · ` : ""}
-                  {STATUT_LABELS[a.statut] ?? a.statut}
-                  {a.recurrence && a.recurrence !== "aucune" ? ` · ↻ ${RECURRENCE_LABELS[a.recurrence]}` : ""}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                {perms.canEditAll && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)} aria-label="Modifier">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {perms.canDelete && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(a)} aria-label="Supprimer">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
-  );
-}
-
-function NewActiviteDialog(props: Omit<React.ComponentProps<typeof ActiviteDialog>, "initial">) {
-  return <ActiviteDialog {...props} />;
-}
-
-function ActiviteDialog({
+function NouvelleActiviteTerrainDialog({
   open,
   setOpen,
-  defaultAssignee,
-  defaults,
   profiles,
+  defaultAgent,
+  defaultBien,
   onSaved,
-  initial,
 }: {
   open: boolean;
   setOpen: (b: boolean) => void;
-  defaultAssignee: string;
-  defaults: { bien_id?: string; lot_id?: string; contrat_id?: string; contact_id?: string; transaction_id?: string };
   profiles: Profile[];
+  defaultAgent: string;
+  defaultBien?: string;
   onSaved: () => void;
-  initial?: Activite;
 }) {
-  const isEdit = !!initial;
-  const toLocal = (iso: string | null) => (iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "");
-  const [titre, setTitre] = useState(initial?.titre ?? "");
-  const [type, setType] = useState(initial?.type_activite ?? "tache");
-  const [dateDebut, setDateDebut] = useState(toLocal(initial?.date_debut ?? null));
-  const [dateFin, setDateFin] = useState(toLocal(initial?.date_fin ?? null));
-  const [assigne, setAssigne] = useState(initial?.assigne_a ?? defaultAssignee);
-  const [lieu, setLieu] = useState(initial?.lieu ?? "");
-  const [priorite, setPriorite] = useState(initial?.priorite ?? "normale");
-  const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [statut, setStatut] = useState(initial?.statut ?? "a_faire");
-  const [recurrence, setRecurrence] = useState<string>(initial?.recurrence ?? "aucune");
+  const [type, setType] = useState("visite");
+  const [bienId, setBienId] = useState(defaultBien ?? "");
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [heure, setHeure] = useState("09:00");
+  const [duree, setDuree] = useState("60");
+  const [agent, setAgent] = useState(defaultAgent);
+  const [notes, setNotes] = useState("");
+  const [biens, setBiens] = useState<Array<{ id: string; titre: string }>>([]);
   const [saving, setSaving] = useState(false);
-  const [coAssignes, setCoAssignes] = useState<string[]>([]);
-  const [biensLies, setBiensLies] = useState<string[]>([]);
-  const [biensOpts, setBiensOpts] = useState<LinkOpt[]>([]);
 
+  useEffect(() => { if (open) setAgent((a) => a || defaultAgent); }, [open, defaultAgent]);
 
-  // Lié à
-  const initialLieType: string = initial?.bien_id ? "bien"
-    : initial?.lot_id ? "lot"
-    : initial?.contrat_id ? "contrat"
-    : initial?.contact_id ? "contact"
-    : initial?.transaction_id ? "transaction"
-    : defaults.bien_id ? "bien"
-    : defaults.lot_id ? "lot"
-    : defaults.contrat_id ? "contrat"
-    : defaults.contact_id ? "contact"
-    : defaults.transaction_id ? "transaction"
-    : "none";
-  const initialLieId: string = initial?.bien_id ?? initial?.lot_id ?? initial?.contrat_id ?? initial?.contact_id ?? initial?.transaction_id
-    ?? defaults.bien_id ?? defaults.lot_id ?? defaults.contrat_id ?? defaults.contact_id ?? defaults.transaction_id ?? "";
-  const [lieType, setLieType] = useState<string>(initialLieType);
-  const [lieId, setLieId] = useState<string>(initialLieId);
-  const [linkOpts, setLinkOpts] = useState<LinkOpt[]>([]);
-
-  useEffect(() => { if (open && !isEdit) setAssigne(defaultAssignee); }, [open, defaultAssignee, isEdit]);
-
-  // Liste des biens (multi) + liaisons existantes
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data } = await supabase.from("biens").select("id, titre").order("titre").limit(1000);
-      setBiensOpts((data ?? []).map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
-      if (initial) {
-        const [aa, bb] = await Promise.all([fetchAssignesSupp(initial.id), fetchBiensLies(initial.id)]);
-        setCoAssignes(aa.filter((id) => id !== initial.assigne_a));
-        setBiensLies(bb);
-      } else {
-        setCoAssignes([]);
-        setBiensLies(defaults.bien_id ? [defaults.bien_id] : []);
-      }
+      const { data } = await supabase.from("biens").select("id, titre, adresse").order("titre").limit(1000);
+      setBiens(((data ?? []) as Array<{ id: string; titre: string | null; adresse: string | null }>).map((b) => ({
+        id: b.id,
+        titre: [b.titre, b.adresse].filter(Boolean).join(" · ") || b.id.slice(0, 8),
+      })));
     })();
-  }, [open, initial, defaults.bien_id]);
-
-
-  // Load link options for the selected "Lié à" type
-  useEffect(() => {
-    if (!open || lieType === "none") { setLinkOpts([]); return; }
-    (async () => {
-      if (lieType === "bien") {
-        const { data } = await supabase.from("biens").select("id, titre").order("titre").limit(500);
-        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: r.titre ?? r.id.slice(0, 8) })));
-      } else if (lieType === "lot") {
-        const { data } = await supabase.from("lots").select("id, label").order("label").limit(1000);
-        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: r.label ?? r.id.slice(0, 8) })));
-      } else if (lieType === "contrat") {
-        const { data } = await supabase.from("contrats").select("id, date_debut, statut").order("date_debut", { ascending: false }).limit(500);
-        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.date_debut ?? "sans date"} · ${r.statut ?? ""}` })));
-      } else if (lieType === "contact") {
-        const { data } = await supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(1000);
-        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.nom ?? ""} ${r.prenom ?? ""}`.trim() || r.id.slice(0, 8) })));
-      } else if (lieType === "transaction") {
-        const { data } = await supabase.from("transactions_commerciales").select("id, type_transaction, statut_opportunite").order("created_at", { ascending: false }).limit(500);
-        setLinkOpts((data ?? []).map((r) => ({ id: r.id, label: `${r.type_transaction ?? ""} · ${r.statut_opportunite ?? ""}` })));
-      }
-    })();
-  }, [open, lieType]);
-
-  const applyDateShortcut = (which: "today" | "tomorrow" | "week") => {
-    const now = new Date();
-    let target: Date;
-    if (which === "today") target = now;
-    else if (which === "tomorrow") target = addDays(now, 1);
-    else target = endOfWeek(now, { weekStartsOn: 1 });
-    target.setHours(9, 0, 0, 0);
-    setDateDebut(format(target, "yyyy-MM-dd'T'HH:mm"));
-  };
+  }, [open]);
 
   const save = async () => {
-    if (!titre.trim() || !assigne) {
-      toast.error("Titre et assigné requis");
-      return;
-    }
+    if (!bienId) return toast.error("Le bien concerné est obligatoire");
+    if (!agent) return toast.error("L'agent assigné est obligatoire");
     setSaving(true);
-    const principalBien = lieType === "bien" ? lieId || null : (biensLies[0] ?? null);
-    const link = {
-      bien_id: principalBien,
-      lot_id: lieType === "lot" ? lieId || null : null,
-      contrat_id: lieType === "contrat" ? lieId || null : null,
-      contact_id: lieType === "contact" ? lieId || null : null,
-      transaction_id: lieType === "transaction" ? lieId || null : null,
-    };
-    const payload = {
-      titre: titre.trim(),
-      type_activite: type,
-      date_debut: dateDebut ? new Date(dateDebut).toISOString() : null,
-      date_fin: dateFin ? new Date(dateFin).toISOString() : null,
-      assigne_a: assigne,
-      lieu: lieu.trim() || null,
-      priorite,
-      notes: notes.trim() || null,
-      recurrence,
-    };
-    const allBiens = Array.from(new Set([...biensLies, ...(principalBien ? [principalBien] : [])]));
-    let error;
-    let activiteId = initial?.id ?? null;
-    if (isEdit && initial) {
-      ({ error } = await supabase.from("activites").update({ ...payload, ...link, statut }).eq("id", initial.id));
-    } else {
-      const { data: u } = await supabase.auth.getUser();
-      const res = await supabase.from("activites").insert({
-        ...payload,
-        ...link,
+    const start = new Date(`${date}T${heure}`);
+    const end = addMinutes(start, Number(duree));
+    const bienLabel = biens.find((b) => b.id === bienId)?.titre ?? "";
+    const { data: u } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("activites")
+      .insert({
+        titre: `${TERRAIN_TYPE_LABELS[type]} — ${bienLabel.split(" · ")[0]}`,
+        type_activite: type,
+        date_debut: start.toISOString(),
+        date_fin: end.toISOString(),
+        assigne_a: agent,
         created_by: u.user?.id ?? null,
-        statut: type === "tache" ? "a_faire" : "planifiee",
-      }).select("id").single();
-      error = res.error;
-      activiteId = res.data?.id ?? null;
-    }
-    if (!error && activiteId) {
-      await Promise.all([
-        syncAssignes(activiteId, [assigne, ...coAssignes]),
-        syncBiensLies(activiteId, allBiens),
-      ]);
+        bien_id: bienId,
+        notes: notes.trim() || null,
+        priorite: "normale",
+        statut: "a_faire",
+      })
+      .select("id")
+      .single();
+    if (!error && data?.id) {
+      await Promise.all([syncAssignes(data.id, [agent]), syncBiensLies(data.id, [bienId])]);
     }
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(isEdit ? "Tâche mise à jour" : "Activité créée");
-    if (!isEdit) {
-      setTitre(""); setDateDebut(""); setDateFin(""); setLieu(""); setNotes(""); setPriorite("normale"); setType("tache"); setRecurrence("aucune");
-      setLieType("none"); setLieId(""); setCoAssignes([]); setBiensLies([]);
-    }
-    setOpen(false);
+    toast.success("Activité terrain planifiée");
+    setNotes("");
     onSaved();
   };
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {!isEdit && (
-        <DialogTrigger asChild>
-          <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle activité</Button>
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{isEdit ? "Modifier la tâche" : "Nouvelle activité / tâche"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Nouvelle activité terrain</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Titre</Label>
-            <Input value={titre} onChange={(e) => setTitre(e.target.value)} placeholder="Ex : Visite appartement" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Type</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Priorité</Label>
-              <Select value={priorite} onValueChange={setPriorite}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normale">Normale</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Début</Label>
-              <Input type="datetime-local" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
-            </div>
-            <div>
-              <Label>Fin</Label>
-              <Input type="datetime-local" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("today")}>Aujourd'hui</Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("tomorrow")}>Demain</Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => applyDateShortcut("week")}>Cette semaine</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Assigné à</Label>
-              <Select value={assigne} onValueChange={setAssigne}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.email ?? p.id}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Récurrence</Label>
-              <Select value={recurrence} onValueChange={setRecurrence}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(RECURRENCE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <Label>Type d'activité</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(TERRAIN_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <Label>Autres personnes assignées</Label>
-            <MultiSelect
-              values={coAssignes}
-              onChange={setCoAssignes}
-              options={profiles.filter((p) => p.id !== assigne).map((p) => ({ value: p.id, label: p.email ?? p.id }))}
-              placeholder="Ajouter un collaborateur..."
-              emptyLabel="Aucun collaborateur supplémentaire"
+            <Label>Bien concerné</Label>
+            <SearchableSelect
+              value={bienId}
+              onChange={setBienId}
+              options={biens.map((b) => ({ value: b.id, label: b.titre }))}
+              placeholder="Rechercher un bien..."
             />
           </div>
-          <div>
-            <Label>Biens concernés</Label>
-            <MultiSelect
-              values={biensLies}
-              onChange={setBiensLies}
-              options={biensOpts.map((b) => ({ value: b.id, label: b.label }))}
-              placeholder="Ajouter un bien..."
-              emptyLabel="Aucun bien lié"
-            />
-          </div>
-
-          {isEdit && (
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label>Statut</Label>
-              <Select value={statut} onValueChange={setStatut}>
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Heure de début</Label>
+              <Input type="time" value={heure} onChange={(e) => setHeure(e.target.value)} />
+            </div>
+            <div>
+              <Label>Durée</Label>
+              <Select value={duree} onValueChange={setDuree}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(STATUT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  {DUREES.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-          )}
-          <div>
-            <Label>Lieu</Label>
-            <Input value={lieu} onChange={(e) => setLieu(e.target.value)} />
           </div>
           <div>
-            <Label>Notes</Label>
+            <Label>Agent assigné</Label>
+            <Select value={agent} onValueChange={setAgent}>
+              <SelectTrigger><SelectValue placeholder="Choisir un agent" /></SelectTrigger>
+              <SelectContent>
+                {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{shortName(p.email)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Notes (facultatif)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
-          </div>
-
-          <div className="rounded-md border p-3 space-y-2 bg-muted/20">
-            <Label className="text-xs font-medium text-muted-foreground">Lié à</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={lieType} onValueChange={(v) => { setLieType(v); setLieId(""); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LIE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {lieType !== "none" && (
-                <SearchableSelect
-                  value={lieId}
-                  onChange={setLieId}
-                  options={linkOpts.map((o) => ({ value: o.id, label: o.label }))}
-                  placeholder="Rechercher..."
-                />
-              )}
-            </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button onClick={save} disabled={saving}>Enregistrer</Button>
+          <Button onClick={save} disabled={saving}>Planifier</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+// Conserve l'import de Card pour la structure de page.
+void CardHeader; void CardTitle;

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus, MapPin, ClipboardCheck, BellRing, Circle, type LucideIcon } from "lucide-react";
+import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus, MapPin, ClipboardCheck, BellRing, Circle, Banknote, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -48,17 +48,32 @@ export const RECURRENCE_LABELS: Record<string, string> = {
 export const TYPE_LABELS: Record<string, string> = {
   visite: "Visite",
   etat_des_lieux: "État des lieux",
+  recouvrement_terrain: "Recouvrement terrain",
   rendez_vous: "Rendez-vous",
   relance: "Relance",
   tache: "Tâche",
   autre: "Autre",
 };
 
+/** Types d'activité qui mobilisent physiquement un agent (planning terrain). */
+export const TERRAIN_TYPES = ["visite", "etat_des_lieux", "recouvrement_terrain"] as const;
+
+export const TERRAIN_TYPE_LABELS: Record<string, string> = {
+  visite: "Visite",
+  etat_des_lieux: "État des lieux",
+  recouvrement_terrain: "Recouvrement terrain",
+};
+
+export function isTerrain(type: string) {
+  return (TERRAIN_TYPES as readonly string[]).includes(type);
+}
+
 export const TYPE_COLORS: Record<string, string> = {
-  visite: "bg-blue-500",
-  etat_des_lieux: "bg-purple-500",
-  rendez_vous: "bg-emerald-500",
-  relance: "bg-orange-500",
+  visite: "bg-emerald-500",
+  etat_des_lieux: "bg-blue-500",
+  recouvrement_terrain: "bg-orange-500",
+  rendez_vous: "bg-teal-500",
+  relance: "bg-amber-500",
   tache: "bg-slate-600",
   autre: "bg-gray-400",
 };
@@ -67,6 +82,7 @@ export const TYPE_COLORS: Record<string, string> = {
 export const TYPE_ICONS: Record<string, LucideIcon> = {
   visite: MapPin,
   etat_des_lieux: ClipboardCheck,
+  recouvrement_terrain: Banknote,
   rendez_vous: CalendarClock,
   relance: BellRing,
   tache: ListTodo,
@@ -75,10 +91,11 @@ export const TYPE_ICONS: Record<string, LucideIcon> = {
 
 /** Classes de badge doux (fond teinté) par type d'activité. */
 export const TYPE_BADGE_CLASSES: Record<string, string> = {
-  visite: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900",
-  etat_des_lieux: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-900",
-  rendez_vous: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900",
-  relance: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-900",
+  visite: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900",
+  etat_des_lieux: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900",
+  recouvrement_terrain: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-900",
+  rendez_vous: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-900",
+  relance: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900",
   tache: "bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700",
   autre: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-800",
 };
@@ -98,11 +115,11 @@ export function ActiviteTypeBadge({ type, className = "" }: { type: string; clas
 
 export const STATUT_LABELS: Record<string, string> = {
   a_faire: "À faire",
-  planifiee: "Planifiée",
   en_cours: "En cours",
   terminee: "Terminée",
   annulee: "Annulée",
 };
+
 
 function linkFor(a: Activite): { to: string; label: string } | null {
   if (a.contrat_id) return { to: `/contrats/${a.contrat_id}`, label: "Contrat" };
@@ -428,7 +445,7 @@ export function NouvelleActiviteLieeDialog({
       contrat_id: contratId || null,
       contact_id: contactId || null,
       transaction_id: transactionId || null,
-      statut: type === "tache" ? "a_faire" : "planifiee",
+      statut: "a_faire",
     });
     setSaving(false);
     if (error) return toast.error(error.message);
