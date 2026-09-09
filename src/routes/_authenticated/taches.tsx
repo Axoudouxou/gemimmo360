@@ -467,20 +467,22 @@ function TacheDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Échéance (facultative)</Label>
-              <Input type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
-            </div>
-            <div>
-              <Label>Agent assigné</Label>
-              <Select value={agent} onValueChange={setAgent}>
-                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>
-                  {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{shortName(p.email)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label>Échéance (facultative)</Label>
+            <Input type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
+          </div>
+          <div>
+            <Label>Agents assignés</Label>
+            <MultiSelect
+              values={agents}
+              onChange={setAgents}
+              options={profiles.map((p) => ({ value: p.id, label: shortName(p.email) }))}
+              placeholder="Ajouter un agent..."
+              emptyLabel="Aucun agent assigné"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Le premier agent est le responsable ; les suivants sont co-assignés.
+            </p>
           </div>
           <div>
             <Label>Notes</Label>
