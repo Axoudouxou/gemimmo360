@@ -37,7 +37,8 @@ import {
   type Activite,
 } from "@/components/activites-widgets";
 import { ActiviteDetailDialog } from "@/components/activite-detail-dialog";
-import { syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
+import { fetchAssignesMap, syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
   head: () => ({
@@ -80,6 +81,7 @@ function CalendrierPage() {
   const [me, setMe] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [items, setItems] = useState<Activite[]>([]);
+  const [assignesMap, setAssignesMap] = useState<Record<string, string[]>>({});
   const [biensMap, setBiensMap] = useState<Record<string, string>>({});
   const [vue, setVue] = useState<Vue>("semaine");
   const [cursor, setCursor] = useState<Date>(new Date());
@@ -124,7 +126,9 @@ function CalendrierPage() {
       .gte("date_debut", rangeStart.toISOString())
       .lte("date_debut", addDays(rangeEnd, 1).toISOString())
       .order("date_debut", { ascending: true });
-    setItems((data ?? []) as Activite[]);
+    const rows = (data ?? []) as Activite[];
+    setItems(rows);
+    setAssignesMap(await fetchAssignesMap(rows.map((r) => r.id)));
   }, [rangeStart, rangeEnd]);
 
   useEffect(() => { load(); }, [load]);
@@ -139,10 +143,15 @@ function CalendrierPage() {
     () =>
       items.filter((a) => {
         if (typeFilter !== "all" && a.type_activite !== typeFilter) return false;
-        if (agentFilter !== "all" && a.assigne_a !== agentFilter) return false;
+        if (
+          agentFilter !== "all" &&
+          a.assigne_a !== agentFilter &&
+          !(assignesMap[a.id] ?? []).includes(agentFilter)
+        )
+          return false;
         return !!a.date_debut;
       }),
-    [items, typeFilter, agentFilter],
+    [items, typeFilter, agentFilter, assignesMap],
   );
 
   const weekDays = useMemo(
@@ -171,7 +180,11 @@ function CalendrierPage() {
   );
 
   const lieuOf = (a: Activite) => (a.bien_id ? biensMap[a.bien_id] || "" : a.lieu || "");
-  const agentOf = (a: Activite) => shortName(profiles.find((p) => p.id === a.assigne_a)?.email);
+  const agentOf = (a: Activite) => {
+    const ids = Array.from(new Set([a.assigne_a, ...(assignesMap[a.id] ?? [])].filter(Boolean)));
+    const names = ids.map((id) => shortName(profiles.find((p) => p.id === id)?.email));
+    return names.length > 0 ? names.join(", ") : "—";
+  };
 
   const step = (dir: 1 | -1) =>
     setCursor((d) => (vue === "semaine" ? addWeeks(d, dir) : addMonths(d, dir)));
@@ -295,7 +308,7 @@ function CalendrierPage() {
                             >
                               <div className="truncate font-semibold">{TERRAIN_TYPE_LABELS[e.type_activite] ?? e.titre}</div>
                               <div className="truncate">{lieuOf(e) || e.titre}</div>
-                              <div className="truncate opacity-80">Agent : {agentOf(e)}</div>
+                              <div className="truncate opacity-80">Agents : {agentOf(e)}</div>
                               <div className="truncate opacity-80">
                                 {format(start, "HH:mm")} — {format(end, "HH:mm")}
                               </div>
@@ -405,7 +418,7 @@ function CalendrierPage() {
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(e.date_debut!), "HH:mm")}
-                  {e.date_fin ? ` — ${format(new Date(e.date_fin), "HH:mm")}` : ""} · Agent : {agentOf(e)}
+                  {e.date_fin ? ` — ${format(new Date(e.date_fin), "HH:mm")}` : ""} · Agents : {agentOf(e)}
                 </span>
               </button>
             ))}
@@ -436,12 +449,14 @@ function NouvelleActiviteTerrainDialog({
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [heure, setHeure] = useState("09:00");
   const [duree, setDuree] = useState("60");
-  const [agent, setAgent] = useState(defaultAgent);
+  const [agents, setAgents] = useState<string[]>(defaultAgent ? [defaultAgent] : []);
   const [notes, setNotes] = useState("");
   const [biens, setBiens] = useState<Array<{ id: string; titre: string }>>([]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) setAgent((a) => a || defaultAgent); }, [open, defaultAgent]);
+  useEffect(() => {
+    if (open) setAgents((prev) => (prev.length > 0 ? prev : defaultAgent ? [defaultAgent] : []));
+  }, [open, defaultAgent]);
 
   useEffect(() => {
     if (!open) return;
@@ -456,7 +471,7 @@ function NouvelleActiviteTerrainDialog({
 
   const save = async () => {
     if (!bienId) return toast.error("Le bien concerné est obligatoire");
-    if (!agent) return toast.error("L'agent assigné est obligatoire");
+    if (agents.length === 0) return toast.error("Au moins un agent assigné est obligatoire");
     setSaving(true);
     const start = new Date(`${date}T${heure}`);
     const end = addMinutes(start, Number(duree));
@@ -469,7 +484,7 @@ function NouvelleActiviteTerrainDialog({
         type_activite: type,
         date_debut: start.toISOString(),
         date_fin: end.toISOString(),
-        assigne_a: agent,
+        assigne_a: agents[0],
         created_by: u.user?.id ?? null,
         bien_id: bienId,
         notes: notes.trim() || null,
@@ -479,7 +494,7 @@ function NouvelleActiviteTerrainDialog({
       .select("id")
       .single();
     if (!error && data?.id) {
-      await Promise.all([syncAssignes(data.id, [agent]), syncBiensLies(data.id, [bienId])]);
+      await Promise.all([syncAssignes(data.id, agents), syncBiensLies(data.id, [bienId])]);
     }
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -531,13 +546,17 @@ function NouvelleActiviteTerrainDialog({
             </div>
           </div>
           <div>
-            <Label>Agent assigné</Label>
-            <Select value={agent} onValueChange={setAgent}>
-              <SelectTrigger><SelectValue placeholder="Choisir un agent" /></SelectTrigger>
-              <SelectContent>
-                {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{shortName(p.email)}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Agents assignés</Label>
+            <MultiSelect
+              values={agents}
+              onChange={setAgents}
+              options={profiles.map((p) => ({ value: p.id, label: shortName(p.email) }))}
+              placeholder="Ajouter un agent..."
+              emptyLabel="Aucun agent assigné"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Le premier agent est le responsable ; les suivants sont co-assignés.
+            </p>
           </div>
           <div>
             <Label>Notes (facultatif)</Label>

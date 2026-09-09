@@ -22,6 +22,8 @@ import {
   type Activite,
 } from "@/components/activites-widgets";
 import { ActiviteDetailDialog } from "@/components/activite-detail-dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { fetchAssignesMap, fetchAssignesSupp, syncAssignes } from "@/lib/activite-liaisons";
 
 export const Route = createFileRoute("/_authenticated/taches")({
   head: () => ({
@@ -69,6 +71,7 @@ function TachesPage() {
   const [me, setMe] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [items, setItems] = useState<Activite[]>([]);
+  const [assignesMap, setAssignesMap] = useState<Record<string, string[]>>({});
   const [agentFilter, setAgentFilter] = useState("all");
   const [prioFilter, setPrioFilter] = useState("all");
   const [echFilter, setEchFilter] = useState("all");
@@ -100,7 +103,9 @@ function TachesPage() {
       .not("type_activite", "in", `(${(TERRAIN_TYPES as readonly string[]).join(",")})`)
       .order("date_fin", { ascending: true, nullsFirst: false })
       .limit(1000);
-    setItems((data ?? []) as Activite[]);
+    const rows = (data ?? []) as Activite[];
+    setItems(rows);
+    setAssignesMap(await fetchAssignesMap(rows.map((r) => r.id)));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -115,7 +120,12 @@ function TachesPage() {
     const today = startOfDay(new Date());
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
     return items.filter((a) => {
-      if (agentFilter !== "all" && a.assigne_a !== agentFilter) return false;
+      if (
+        agentFilter !== "all" &&
+        a.assigne_a !== agentFilter &&
+        !(assignesMap[a.id] ?? []).includes(agentFilter)
+      )
+        return false;
       if (prioFilter !== "all" && a.priorite !== prioFilter) return false;
       if (moduleFilter !== "all") {
         const ctx = contexteOf(a);
@@ -132,7 +142,13 @@ function TachesPage() {
       }
       return true;
     });
-  }, [items, agentFilter, prioFilter, echFilter, moduleFilter]);
+  }, [items, agentFilter, prioFilter, echFilter, moduleFilter, assignesMap]);
+
+  const agentsOf = (a: Activite) => {
+    const ids = Array.from(new Set([a.assigne_a, ...(assignesMap[a.id] ?? [])].filter(Boolean)));
+    const names = ids.map((id) => shortName(profiles.find((p) => p.id === id)?.email));
+    return names.length > 0 ? names.join(", ") : "—";
+  };
 
   const move = async (a: Activite, statut: Statut) => {
     if (a.statut === statut) return;
@@ -273,7 +289,7 @@ function TachesPage() {
                               {format(new Date(raw), "d MMM yyyy", { locale: fr })}
                             </span>
                           )}
-                          <span>{shortName(profiles.find((p) => p.id === a.assigne_a)?.email)}</span>
+                          <span>{agentsOf(a)}</span>
                           {ctx && (
                             <Link
                               to={ctx.to}
@@ -339,7 +355,7 @@ function TacheDialog({
   const [type, setType] = useState("tache");
   const [priorite, setPriorite] = useState("normale");
   const [echeance, setEcheance] = useState("");
-  const [agent, setAgent] = useState(defaultAgent);
+  const [agents, setAgents] = useState<string[]>(defaultAgent ? [defaultAgent] : []);
   const [notes, setNotes] = useState("");
   const [bienId, setBienId] = useState("");
   const [contactId, setContactId] = useState("");
@@ -355,7 +371,13 @@ function TacheDialog({
     setType(tache?.type_activite ?? "tache");
     setPriorite(tache?.priorite ?? "normale");
     setEcheance(tache?.date_fin ? format(new Date(tache.date_fin), "yyyy-MM-dd") : "");
-    setAgent(tache?.assigne_a ?? defaultAgent);
+    const principal = tache?.assigne_a ?? defaultAgent;
+    setAgents(principal ? [principal] : []);
+    if (tache) {
+      fetchAssignesSupp(tache.id).then((ids) =>
+        setAgents(Array.from(new Set([principal, ...ids].filter(Boolean)))),
+      );
+    }
     setNotes(tache?.notes ?? "");
     setBienId(tache?.bien_id ?? "");
     setContactId(tache?.contact_id ?? "");
@@ -381,30 +403,34 @@ function TacheDialog({
 
   const save = async () => {
     if (!titre.trim()) return toast.error("Le titre est obligatoire");
-    if (!agent) return toast.error("L'agent assigné est obligatoire");
+    if (agents.length === 0) return toast.error("Au moins un agent assigné est obligatoire");
     setSaving(true);
     const payload = {
       titre: titre.trim(),
       type_activite: type,
       priorite,
       date_fin: echeance ? new Date(`${echeance}T18:00`).toISOString() : null,
-      assigne_a: agent,
+      assigne_a: agents[0],
       notes: notes.trim() || null,
       bien_id: bienId || null,
       contact_id: contactId || null,
       contrat_id: contratId || null,
     };
     let error;
+    let savedId = tache?.id ?? null;
     if (tache) {
       ({ error } = await supabase.from("activites").update(payload).eq("id", tache.id));
     } else {
       const { data: u } = await supabase.auth.getUser();
-      ({ error } = await supabase.from("activites").insert({
-        ...payload,
-        created_by: u.user?.id ?? null,
-        statut: "a_faire",
-      }));
+      const res = await supabase
+        .from("activites")
+        .insert({ ...payload, created_by: u.user?.id ?? null, statut: "a_faire" })
+        .select("id")
+        .single();
+      error = res.error ?? undefined;
+      savedId = res.data?.id ?? null;
     }
+    if (!error && savedId) await syncAssignes(savedId, agents);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(tache ? "Tâche mise à jour" : "Tâche créée");
@@ -441,20 +467,22 @@ function TacheDialog({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Échéance (facultative)</Label>
-              <Input type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
-            </div>
-            <div>
-              <Label>Agent assigné</Label>
-              <Select value={agent} onValueChange={setAgent}>
-                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>
-                  {profiles.map((p) => <SelectItem key={p.id} value={p.id}>{shortName(p.email)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label>Échéance (facultative)</Label>
+            <Input type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
+          </div>
+          <div>
+            <Label>Agents assignés</Label>
+            <MultiSelect
+              values={agents}
+              onChange={setAgents}
+              options={profiles.map((p) => ({ value: p.id, label: shortName(p.email) }))}
+              placeholder="Ajouter un agent..."
+              emptyLabel="Aucun agent assigné"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Le premier agent est le responsable ; les suivants sont co-assignés.
+            </p>
           </div>
           <div>
             <Label>Notes</Label>
