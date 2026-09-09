@@ -148,7 +148,16 @@ function TachesPage() {
       }
       return true;
     });
-  }, [items, agentFilter, prioFilter, echFilter, moduleFilter, assignesMap]);
+  }, [items, agentFilter, prioFilter, echFilter, moduleFilter, assignesMap, showHistory]);
+
+  const hiddenCount = useMemo(() => {
+    const cutoff = new Date(startOfDay(new Date()).getTime() - 30 * 24 * 60 * 60 * 1000);
+    return items.filter((a) => {
+      if (a.statut !== "terminee" && a.statut !== "annulee") return false;
+      const raw = a.updated_at ?? a.created_at ?? echeanceOf(a);
+      return !raw || isBefore(new Date(raw), cutoff);
+    }).length;
+  }, [items]);
 
   const agentsOf = (a: Activite) => {
     const ids = Array.from(new Set([a.assigne_a, ...(assignesMap[a.id] ?? [])].filter(Boolean)));
