@@ -102,7 +102,7 @@ export function NotificationsBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-96">
+        <ScrollArea className="h-[400px]">
           {items.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               Aucune notification
