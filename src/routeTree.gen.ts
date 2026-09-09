@@ -22,6 +22,7 @@ import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authenticated/reclamations'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenticated/permissions'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticated/imports'
 import { Route as AuthenticatedImpayesRouteImport } from './routes/_authenticated/impayes'
 import { Route as AuthenticatedFiscaliteRouteImport } from './routes/_authenticated/fiscalite'
@@ -109,6 +110,12 @@ const AuthenticatedPermissionsRoute =
   AuthenticatedPermissionsRouteImport.update({
     id: '/permissions',
     path: '/permissions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedImportsRoute = AuthenticatedImportsRouteImport.update({
@@ -241,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
@@ -276,6 +284,7 @@ export interface FileRoutesByTo {
   '/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/impayes': typeof AuthenticatedImpayesRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/_authenticated/fiscalite': typeof AuthenticatedFiscaliteRoute
   '/_authenticated/impayes': typeof AuthenticatedImpayesRoute
   '/_authenticated/imports': typeof AuthenticatedImportsRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/permissions': typeof AuthenticatedPermissionsRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/reclamations': typeof AuthenticatedReclamationsRoute
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/fiscalite'
     | '/impayes'
     | '/imports'
+    | '/notifications'
     | '/permissions'
     | '/profil'
     | '/reclamations'
@@ -385,6 +396,7 @@ export interface FileRouteTypes {
     | '/fiscalite'
     | '/impayes'
     | '/imports'
+    | '/notifications'
     | '/permissions'
     | '/profil'
     | '/reclamations'
@@ -421,6 +433,7 @@ export interface FileRouteTypes {
     | '/_authenticated/fiscalite'
     | '/_authenticated/impayes'
     | '/_authenticated/imports'
+    | '/_authenticated/notifications'
     | '/_authenticated/permissions'
     | '/_authenticated/profil'
     | '/_authenticated/reclamations'
@@ -546,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/permissions'
       fullPath: '/permissions'
       preLoaderRoute: typeof AuthenticatedPermissionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/imports': {
@@ -709,6 +729,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFiscaliteRoute: typeof AuthenticatedFiscaliteRoute
   AuthenticatedImpayesRoute: typeof AuthenticatedImpayesRoute
   AuthenticatedImportsRoute: typeof AuthenticatedImportsRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedPermissionsRoute: typeof AuthenticatedPermissionsRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedReclamationsRoute: typeof AuthenticatedReclamationsRoute
@@ -736,6 +757,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFiscaliteRoute: AuthenticatedFiscaliteRoute,
   AuthenticatedImpayesRoute: AuthenticatedImpayesRoute,
   AuthenticatedImportsRoute: AuthenticatedImportsRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedPermissionsRoute: AuthenticatedPermissionsRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedReclamationsRoute: AuthenticatedReclamationsRoute,
