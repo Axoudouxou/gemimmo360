@@ -445,7 +445,7 @@ export function NouvelleActiviteLieeDialog({
       contrat_id: contratId || null,
       contact_id: contactId || null,
       transaction_id: transactionId || null,
-      statut: type === "tache" ? "a_faire" : "planifiee",
+      statut: "a_faire",
     });
     setSaving(false);
     if (error) return toast.error(error.message);
