@@ -18,6 +18,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedTravauxRouteImport } from './routes/_authenticated/travaux'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
+import { Route as AuthenticatedTachesRouteImport } from './routes/_authenticated/taches'
 import { Route as AuthenticatedReclamationsRouteImport } from './routes/_authenticated/reclamations'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenticated/permissions'
@@ -88,6 +89,11 @@ const AuthenticatedTransactionsRoute =
     path: '/transactions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTachesRoute = AuthenticatedTachesRouteImport.update({
+  id: '/taches',
+  path: '/taches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReclamationsRoute =
   AuthenticatedReclamationsRouteImport.update({
     id: '/reclamations',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByTo {
   '/permissions': typeof AuthenticatedPermissionsRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/reclamations': typeof AuthenticatedReclamationsRoute
+  '/taches': typeof AuthenticatedTachesRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/travaux': typeof AuthenticatedTravauxRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/_authenticated/permissions': typeof AuthenticatedPermissionsRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/reclamations': typeof AuthenticatedReclamationsRoute
+  '/_authenticated/taches': typeof AuthenticatedTachesRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/travaux': typeof AuthenticatedTravauxRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/permissions'
     | '/profil'
     | '/reclamations'
+    | '/taches'
     | '/transactions'
     | '/travaux'
     | '/users'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/permissions'
     | '/profil'
     | '/reclamations'
+    | '/taches'
     | '/transactions'
     | '/travaux'
     | '/users'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/_authenticated/permissions'
     | '/_authenticated/profil'
     | '/_authenticated/reclamations'
+    | '/_authenticated/taches'
     | '/_authenticated/transactions'
     | '/_authenticated/travaux'
     | '/_authenticated/users'
@@ -506,6 +518,13 @@ declare module '@tanstack/react-router' {
       path: '/transactions'
       fullPath: '/transactions'
       preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/taches': {
+      id: '/_authenticated/taches'
+      path: '/taches'
+      fullPath: '/taches'
+      preLoaderRoute: typeof AuthenticatedTachesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reclamations': {
@@ -693,6 +712,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPermissionsRoute: typeof AuthenticatedPermissionsRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedReclamationsRoute: typeof AuthenticatedReclamationsRoute
+  AuthenticatedTachesRoute: typeof AuthenticatedTachesRoute
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
   AuthenticatedTravauxRoute: typeof AuthenticatedTravauxRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
@@ -719,6 +739,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPermissionsRoute: AuthenticatedPermissionsRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedReclamationsRoute: AuthenticatedReclamationsRoute,
+  AuthenticatedTachesRoute: AuthenticatedTachesRoute,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
   AuthenticatedTravauxRoute: AuthenticatedTravauxRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
