@@ -401,6 +401,17 @@ function ChargesPage() {
     };
   };
 
+  /** Une mise à jour de l'application invalide les modules chargés à la demande : on recharge la page. */
+  const handleExportError = (e: unknown) => {
+    const msg = e instanceof Error ? e.message : "";
+    if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(msg)) {
+      toast.error("Une nouvelle version est disponible, la page se recharge…");
+      setTimeout(() => window.location.reload(), 1200);
+      return;
+    }
+    toast.error(msg || "Erreur lors de la génération");
+  };
+
   const handleExportDocx = async () => {
     const data = buildDecompteData();
     if (!data) return;
@@ -410,7 +421,7 @@ function ChargesPage() {
       await generateDecompteDocx(data);
       toast.success("Décompte généré");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
+      handleExportError(e);
     } finally {
       setExporting(false);
     }
@@ -425,7 +436,7 @@ function ChargesPage() {
       await exportDecompteXlsx(data);
       toast.success("Décompte Excel généré");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
+      handleExportError(e);
     } finally {
       setExporting(false);
     }
