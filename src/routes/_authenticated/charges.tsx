@@ -526,9 +526,15 @@ function ChargesPage() {
                   <CardTitle>Décompte propriétaire</CardTitle>
                   <CardDescription>Loyers encaissés − Charges − Travaux (dépense réelle) − Honoraires de fiscalité − Honoraires de gestion = Net à reverser.</CardDescription>
                 </div>
+                <div className="flex gap-2">
                 <Button size="sm" disabled={!decompte || exporting} onClick={handleExportDocx}>
                   <FileDown className="mr-2 h-4 w-4" /> {exporting ? "Génération..." : "Générer le décompte"}
                 </Button>
+                <Button size="sm" variant="outline" disabled={!decompte || exporting} onClick={handleExportXlsx}>
+                  <FileDown className="mr-2 h-4 w-4" /> Excel
+                </Button>
+                </div>
+
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
