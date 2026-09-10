@@ -84,7 +84,9 @@ function CalendrierPage() {
   const [assignesMap, setAssignesMap] = useState<Record<string, string[]>>({});
   const [biensMap, setBiensMap] = useState<Record<string, string>>({});
   const [vue, setVue] = useState<Vue>("semaine");
+  const navigate = useNavigate();
   const [cursor, setCursor] = useState<Date>(new Date());
+
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
