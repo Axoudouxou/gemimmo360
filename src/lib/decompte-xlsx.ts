@@ -83,7 +83,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
     r++;
   };
 
-  const total = (lib: string, dep?: number, rec?: number) => {
+  const total = (lib: string, dep?: number | string, rec?: number | string) => {
     const row = ws.getRow(r);
     row.values = [lib, "", dep ?? "", rec ?? ""];
     for (let i = 1; i <= LAST_COL; i++) {
@@ -97,34 +97,58 @@ export async function exportDecompteXlsx(d: DecompteData) {
   };
 
   const num = (v: unknown) => Number(v) || 0;
+  const f = (formula: string) => ({ formula, result: undefined } as unknown as number);
 
   section("LOYERS ENCAISSÉS");
+  const loyersStart = r;
   d.loyers.forEach((l) => ligne(`Loyer — ${l.locataire}`, l.echeance, undefined, num(l.montant)));
-  ligne("Montant facturé", "", undefined, num(d.loyersFactures ?? d.totalLoyers));
-  total("TOTAL ENCAISSÉ", undefined, num(d.totalLoyers));
+  const loyersEnd = r - 1;
+  const factureRow = r;
+  ligne("Montant facturé", "", undefined, 0);
+  const totalEncaisseRow = r;
+  total(
+    "TOTAL ENCAISSÉ",
+    undefined,
+    loyersEnd >= loyersStart ? f(`SUM(D${loyersStart}:D${loyersEnd})`) : num(d.totalLoyers),
+  );
   r++;
 
   const impayes = d.impayes ?? [];
+  let totalImpayesRow = 0;
   if (impayes.length) {
     section("IMPAYÉS");
+    const start = r;
     impayes.forEach((i) => ligne(`Impayé — ${i.locataire}`, i.echeance, undefined, num(i.montant)));
-    total("TOTAL IMPAYÉS", undefined, num(d.totalImpayes));
+    const end = r - 1;
+    totalImpayesRow = r;
+    total("TOTAL IMPAYÉS", undefined, f(`SUM(D${start}:D${end})`));
     r++;
   }
 
+  ws.getCell(factureRow, 4).value = f(
+    totalImpayesRow ? `D${totalEncaisseRow}+D${totalImpayesRow}` : `D${totalEncaisseRow}`,
+  ) as unknown as ExcelJS.CellValue;
+
   section("À DÉDUIRE");
-  ligne(`Honoraires de gérance (${d.tauxHonoraires} %)`, "", num(d.honorairesGestion));
+  const deduireStart = r;
+  ligne(
+    `Honoraires de gérance (${d.tauxHonoraires} %)`,
+    "",
+    f(`D${totalEncaisseRow}*${num(d.tauxHonoraires) / 100}`),
+  );
   d.charges.forEach((c) => ligne(c.libelle, c.detail ?? "Charges", num(c.montant)));
   d.travaux.forEach((t) => ligne(t.libelle, t.detail ?? "Travaux", num(t.montant)));
   d.honorairesFiscaux.forEach((h) => ligne(h.libelle, h.detail ?? "Fiscalité", num(h.montant)));
-  const totalDeduire =
-    num(d.honorairesGestion) + num(d.totalCharges) + num(d.totalTravaux) + num(d.totalHonorairesFiscaux);
-  total("TOTAL À DÉDUIRE", totalDeduire);
+  const deduireEnd = r - 1;
+  const totalDeduireRow = r;
+  total("TOTAL À DÉDUIRE", f(`SUM(C${deduireStart}:C${deduireEnd})`));
   r += 2;
 
   ws.mergeCells(r, 1, r, LAST_COL);
   const net = ws.getCell(r, 1);
-  net.value = `NET À REVERSER AU PROPRIÉTAIRE : ${Math.round(num(d.net)).toLocaleString("fr-FR").replace(/\u202f/g, " ")} FCFA`;
+  net.value = f(
+    `"NET À REVERSER AU PROPRIÉTAIRE : "&SUBSTITUTE(TEXT(D${totalEncaisseRow}-C${totalDeduireRow},"#,##0"),","," ")&" FCFA"`,
+  ) as unknown as ExcelJS.CellValue;
   net.font = { name: FONT, size: 13, bold: true, color: { argb: "FFFFFFFF" } };
   net.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERT } };
   net.alignment = { horizontal: "right", vertical: "middle" };
