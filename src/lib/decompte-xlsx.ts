@@ -34,7 +34,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
     ws.addImage(id, { tl: { col: 3, row: 0 }, ext: { width: 178, height: 106 } });
   }
 
-  let r = 7;
+  let r = 9;
   const bandeau = (text: string, size: number, bg: string, color: string) => {
     ws.mergeCells(r, 1, r, LAST_COL);
     const c = ws.getCell(r, 1);
