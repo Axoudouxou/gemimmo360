@@ -4,7 +4,7 @@ import type { DecompteData } from "@/lib/decompte-docx";
 const VERT = "FF8AB334";
 const GRIS = "FF4A4A4A";
 const VERT_CLAIR = "FFE7F0D6";
-const MONEY = '#,##0" FCFA"';
+const MONEY = '#\\ ##0" FCFA";-#\\ ##0" FCFA";"- FCFA"';
 const FONT = "Arial";
 const LAST_COL = 4;
 
@@ -49,7 +49,8 @@ export async function exportDecompteXlsx(d: DecompteData) {
   const today = new Date();
   const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
 
-  bandeau(`DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE N°${numero}`, 14, VERT, "FFFFFFFF");
+  bandeau("DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE", 14, VERT, "FFFFFFFF");
+  bandeau(`N°${numero}`, 12, "none", GRIS);
   bandeau(`${d.bienTitre}${d.bienAdresse ? ` — ${d.bienAdresse}` : ""}`, 11, "none", GRIS);
   bandeau(`Propriétaire : ${d.proprietaire} — Période : ${d.moisLabel}`, 10, "none", GRIS);
   r++;
