@@ -4,7 +4,7 @@ import type { DecompteData } from "@/lib/decompte-docx";
 const VERT = "FF8AB334";
 const GRIS = "FF4A4A4A";
 const VERT_CLAIR = "FFE7F0D6";
-const MONEY = '#,##0" FCFA"';
+const MONEY = '#\\ ##0" FCFA";-#\\ ##0" FCFA";"- FCFA"';
 const FONT = "Arial";
 const LAST_COL = 4;
 
@@ -34,7 +34,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
     ws.addImage(id, { tl: { col: 3, row: 0 }, ext: { width: 178, height: 106 } });
   }
 
-  let r = 7;
+  let r = 9;
   const bandeau = (text: string, size: number, bg: string, color: string) => {
     ws.mergeCells(r, 1, r, LAST_COL);
     const c = ws.getCell(r, 1);
@@ -49,7 +49,8 @@ export async function exportDecompteXlsx(d: DecompteData) {
   const today = new Date();
   const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
 
-  bandeau(`DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE N°${numero}`, 14, VERT, "FFFFFFFF");
+  bandeau("DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE", 14, VERT, "FFFFFFFF");
+  bandeau(`N°${numero}`, 12, "none", GRIS);
   bandeau(`${d.bienTitre}${d.bienAdresse ? ` — ${d.bienAdresse}` : ""}`, 11, "none", GRIS);
   bandeau(`Propriétaire : ${d.proprietaire} — Période : ${d.moisLabel}`, 10, "none", GRIS);
   r++;
@@ -149,9 +150,13 @@ export async function exportDecompteXlsx(d: DecompteData) {
 
   ws.mergeCells(r, 1, r, LAST_COL);
   const net = ws.getCell(r, 1);
-  net.value = f(
-    `"NET À REVERSER AU PROPRIÉTAIRE : "&SUBSTITUTE(TEXT(D${totalEncaisseRow}-C${totalDeduireRow},"#,##0"),","," ")&" FCFA"`,
-  ) as unknown as ExcelJS.CellValue;
+  const netVal = Math.round(
+    Number(d.net) ||
+      num(d.totalLoyers) -
+        (num(d.honorairesGestion) + num(d.totalCharges) + num(d.totalTravaux) + num(d.totalHonorairesFiscaux)),
+  );
+  const netTxt = netVal.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ");
+  net.value = `NET À REVERSER AU PROPRIÉTAIRE : ${netTxt} FCFA`;
   net.font = { name: FONT, size: 13, bold: true, color: { argb: "FFFFFFFF" } };
   net.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERT } };
   net.alignment = { horizontal: "right", vertical: "middle" };
