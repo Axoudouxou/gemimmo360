@@ -78,7 +78,7 @@ const FINANCE: NavItem[] = [
 ];
 
 const OPS: NavItem[] = [
-  { title: "Travaux", url: "/travaux", icon: Hammer, roles: NON_RECOUVREMENT, allowUserIds: [CHRISTELLE_KOUASSI_ID] },
+  { title: "Travaux", url: "/travaux", icon: Hammer, roles: [...NON_RECOUVREMENT, "recouvrement"], allowUserIds: [CHRISTELLE_KOUASSI_ID] },
   { title: "Réclamations", url: "/reclamations", icon: MessageSquareWarning, roles: NON_RECOUVREMENT, allowUserIds: [CHRISTELLE_KOUASSI_ID] },
 ];
 

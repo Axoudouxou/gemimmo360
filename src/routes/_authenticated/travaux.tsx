@@ -844,7 +844,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
           <div className="border-t pt-3">
             <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4" /> Documents</h4>
             <DocumentsSection
-              bucket="travaux-documents" recordId={travail.id} canWrite={canAct}
+              bucket="travaux-documents" recordId={travail.id} canWrite={canAct || role === "recouvrement"}
               description="Devis, factures, photos avant/après, rapports (PDF)."
             />
           </div>
