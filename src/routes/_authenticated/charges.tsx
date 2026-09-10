@@ -375,33 +375,39 @@ function ChargesPage() {
   }, [dBien, moisPeriode, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
 
 
-  const handleExportDocx = async () => {
-    if (!decompte || !dBien) return;
+  const buildDecompteData = () => {
+    if (!decompte || !dBien) return null;
     const bien = biens.find((b) => b.id === dBien);
     const bailleur = contacts.find((c) => c.id === bien?.bailleur_id);
+    return {
+      bienTitre: bien?.titre ?? "Bien",
+      bienAdresse: bien?.adresse ?? null,
+      proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
+      moisLabel: periodeLabel,
+      loyers: decompte.detailLoyers,
+      totalLoyers: decompte.loyersEncaisses,
+      loyersFactures: decompte.loyersAttendus,
+      impayes: decompte.detailImpayes,
+      totalImpayes: decompte.resteDu,
+      charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
+      totalCharges: decompte.totalCharges,
+      travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_prevu ?? t.budget_depense ?? 0) })),
+      totalTravaux: decompte.totalTravaux,
+      honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
+      totalHonorairesFiscaux: decompte.totalHonoFiscaux,
+      tauxHonoraires: Number(tauxHono) || 0,
+      honorairesGestion: decompte.honoraires,
+      net: decompte.net,
+    };
+  };
+
+  const handleExportDocx = async () => {
+    const data = buildDecompteData();
+    if (!data) return;
     setExporting(true);
     try {
       const { generateDecompteDocx } = await import("@/lib/decompte-docx");
-      await generateDecompteDocx({
-        bienTitre: bien?.titre ?? "Bien",
-        bienAdresse: bien?.adresse ?? null,
-        proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
-        moisLabel: periodeLabel,
-        loyers: decompte.detailLoyers,
-        totalLoyers: decompte.loyersEncaisses,
-        loyersFactures: decompte.loyersAttendus,
-        impayes: decompte.detailImpayes,
-        totalImpayes: decompte.resteDu,
-        charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
-        totalCharges: decompte.totalCharges,
-        travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_prevu ?? t.budget_depense ?? 0) })),
-        totalTravaux: decompte.totalTravaux,
-        honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
-        totalHonorairesFiscaux: decompte.totalHonoFiscaux,
-        tauxHonoraires: Number(tauxHono) || 0,
-        honorairesGestion: decompte.honoraires,
-        net: decompte.net,
-      });
+      await generateDecompteDocx(data);
       toast.success("Décompte généré");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
@@ -409,6 +415,22 @@ function ChargesPage() {
       setExporting(false);
     }
   };
+
+  const handleExportXlsx = async () => {
+    const data = buildDecompteData();
+    if (!data) return;
+    setExporting(true);
+    try {
+      const { exportDecompteXlsx } = await import("@/lib/decompte-xlsx");
+      exportDecompteXlsx(data);
+      toast.success("Décompte Excel généré");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
+    } finally {
+      setExporting(false);
+    }
+  };
+
 
   if (!checked) return null;
 
@@ -504,9 +526,15 @@ function ChargesPage() {
                   <CardTitle>Décompte propriétaire</CardTitle>
                   <CardDescription>Loyers encaissés − Charges − Travaux (dépense réelle) − Honoraires de fiscalité − Honoraires de gestion = Net à reverser.</CardDescription>
                 </div>
+                <div className="flex gap-2">
                 <Button size="sm" disabled={!decompte || exporting} onClick={handleExportDocx}>
                   <FileDown className="mr-2 h-4 w-4" /> {exporting ? "Génération..." : "Générer le décompte"}
                 </Button>
+                <Button size="sm" variant="outline" disabled={!decompte || exporting} onClick={handleExportXlsx}>
+                  <FileDown className="mr-2 h-4 w-4" /> Excel
+                </Button>
+                </div>
+
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
