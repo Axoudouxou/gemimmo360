@@ -233,15 +233,20 @@ function EcheancesPage() {
     [contrats, lots, biens, contacts],
   );
 
-  const handleExport = () => {
-    exportEcheancesXlsx(
-      filtered.map((e) => {
-        const { bien, locataire, gestionnaire } = contratLabel(e.contrat_id);
-        return { ...e, bien, locataire, gestionnaire };
-      }),
-    );
-    toast.success("Export Excel généré");
+  const handleExport = async () => {
+    try {
+      await exportEcheancesXlsx(
+        filtered.map((e) => {
+          const { bien, locataire, gestionnaire } = contratLabel(e.contrat_id);
+          return { ...e, bien, locataire, gestionnaire };
+        }),
+      );
+      toast.success("Export Excel généré");
+    } catch {
+      toast.error("Impossible de générer l'export Excel");
+    }
   };
+
 
   const SortHead = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
     <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort(k)}>
