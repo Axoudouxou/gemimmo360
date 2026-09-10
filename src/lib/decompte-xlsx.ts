@@ -71,7 +71,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
     r++;
   };
 
-  const ligne = (lib: string, det = "", dep?: number, rec?: number) => {
+  const ligne = (lib: string, det = "", dep?: number | string, rec?: number | string) => {
     const row = ws.getRow(r);
     row.values = [lib, det, dep ?? "", rec ?? ""];
     row.eachCell((c, i) => {
