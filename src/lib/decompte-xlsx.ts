@@ -46,7 +46,10 @@ export async function exportDecompteXlsx(d: DecompteData) {
     r++;
   };
 
-  bandeau("DÉCOMPTE DE REVERSEMENT", 14, VERT, "FFFFFFFF");
+  const today = new Date();
+  const numero = d.numero ?? `${String(today.getMonth() + 1).padStart(3, "0")}/GI/${today.getFullYear()}`;
+
+  bandeau(`DÉCOMPTE DE REVERSEMENT AU PROPRIÉTAIRE N°${numero}`, 14, VERT, "FFFFFFFF");
   bandeau(`${d.bienTitre}${d.bienAdresse ? ` — ${d.bienAdresse}` : ""}`, 11, "none", GRIS);
   bandeau(`Propriétaire : ${d.proprietaire} — Période : ${d.moisLabel}`, 10, "none", GRIS);
   r++;
