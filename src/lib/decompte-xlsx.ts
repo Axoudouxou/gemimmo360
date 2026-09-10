@@ -148,18 +148,25 @@ export async function exportDecompteXlsx(d: DecompteData) {
   total("TOTAL À DÉDUIRE", f(`SUM(C${deduireStart}:C${deduireEnd})`));
   r += 2;
 
-  ws.mergeCells(r, 1, r, LAST_COL);
-  const net = ws.getCell(r, 1);
   const netVal = Math.round(
     Number(d.net) ||
       num(d.totalLoyers) -
         (num(d.honorairesGestion) + num(d.totalCharges) + num(d.totalTravaux) + num(d.totalHonorairesFiscaux)),
   );
-  const netTxt = netVal.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ");
-  net.value = `NET À REVERSER AU PROPRIÉTAIRE : ${netTxt} FCFA`;
-  net.font = { name: FONT, size: 13, bold: true, color: { argb: "FFFFFFFF" } };
-  net.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERT } };
-  net.alignment = { horizontal: "right", vertical: "middle" };
+  ws.mergeCells(r, 1, r, LAST_COL - 1);
+  const net = ws.getCell(r, 1);
+  net.value = "NET À REVERSER AU PROPRIÉTAIRE";
+  const netCell = ws.getCell(r, LAST_COL);
+  netCell.value = {
+    formula: `D${totalEncaisseRow}-C${totalDeduireRow}`,
+    result: netVal,
+  } as unknown as ExcelJS.CellValue;
+  netCell.numFmt = MONEY;
+  for (const c of [net, netCell]) {
+    c.font = { name: FONT, size: 13, bold: true, color: { argb: "FFFFFFFF" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERT } };
+    c.alignment = { horizontal: "right", vertical: "middle" };
+  }
   ws.getRow(r).height = 24;
 
   const footer = [
