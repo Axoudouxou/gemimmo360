@@ -135,6 +135,7 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
       {
         key: "technique.documents",
         action: "Joindre / supprimer des documents (travaux, réclamations, contrats)",
+        note: "Recouvrement : documents des travaux uniquement (devis PDF)",
         access: perms([
           "admin",
           "direction",
@@ -143,6 +144,7 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
           "technique",
           "technico_commercial",
           "commercial",
+          "recouvrement",
         ]),
       },
     ],
