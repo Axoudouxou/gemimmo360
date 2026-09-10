@@ -422,7 +422,7 @@ function ChargesPage() {
     setExporting(true);
     try {
       const { exportDecompteXlsx } = await import("@/lib/decompte-xlsx");
-      exportDecompteXlsx(data);
+      await exportDecompteXlsx(data);
       toast.success("Décompte Excel généré");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur lors de la génération");
