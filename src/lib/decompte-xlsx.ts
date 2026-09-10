@@ -150,9 +150,13 @@ export async function exportDecompteXlsx(d: DecompteData) {
 
   ws.mergeCells(r, 1, r, LAST_COL);
   const net = ws.getCell(r, 1);
-  net.value = f(
-    `"NET À REVERSER AU PROPRIÉTAIRE : "&SUBSTITUTE(TEXT(D${totalEncaisseRow}-C${totalDeduireRow},"#,##0"),","," ")&" FCFA"`,
-  ) as unknown as ExcelJS.CellValue;
+  const netVal = Math.round(
+    Number(d.net) ||
+      num(d.totalLoyers) -
+        (num(d.honorairesGestion) + num(d.totalCharges) + num(d.totalTravaux) + num(d.totalHonorairesFiscaux)),
+  );
+  const netTxt = netVal.toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ");
+  net.value = `NET À REVERSER AU PROPRIÉTAIRE : ${netTxt} FCFA`;
   net.font = { name: FONT, size: 13, bold: true, color: { argb: "FFFFFFFF" } };
   net.fill = { type: "pattern", pattern: "solid", fgColor: { argb: VERT } };
   net.alignment = { horizontal: "right", vertical: "middle" };
