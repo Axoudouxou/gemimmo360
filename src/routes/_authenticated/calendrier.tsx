@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,7 +84,9 @@ function CalendrierPage() {
   const [assignesMap, setAssignesMap] = useState<Record<string, string[]>>({});
   const [biensMap, setBiensMap] = useState<Record<string, string>>({});
   const [vue, setVue] = useState<Vue>("semaine");
+  const navigate = useNavigate();
   const [cursor, setCursor] = useState<Date>(new Date());
+
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [openNew, setOpenNew] = useState(false);
@@ -134,10 +136,28 @@ function CalendrierPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    if (!search.open || items.length === 0) return;
-    const found = items.find((a) => a.id === search.open);
-    if (found) setDetail(found);
-  }, [search.open, items]);
+    const id = search.open;
+    if (!id) return;
+    const found = items.find((a) => a.id === id);
+    if (found) { setDetail(found); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("activites")
+        .select("id, type_activite, date_debut")
+        .eq("id", id)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const isTerrain = (TERRAIN_TYPES as readonly string[]).includes(data.type_activite);
+      if (!isTerrain) {
+        navigate({ to: "/taches", search: { open: id } });
+      } else if (data.date_debut) {
+        setCursor(new Date(data.date_debut));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [search.open, items, navigate]);
+
 
   const filtered = useMemo(
     () =>
