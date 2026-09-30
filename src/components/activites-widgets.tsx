@@ -433,6 +433,7 @@ export function NouvelleActiviteLieeDialog({
 
   const save = async () => {
     if (!titre.trim() || !assigne) return toast.error("Titre et assigné requis");
+    if (isTerrain(type) && !dateDebut) return toast.error("La date et l'heure sont obligatoires pour une activité terrain");
     setSaving(true);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("activites").insert({
