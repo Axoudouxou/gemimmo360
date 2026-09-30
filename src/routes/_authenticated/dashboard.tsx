@@ -370,7 +370,7 @@ function Dashboard() {
       {/* RECOUVREMENT */}
       {isRecouvrement && (
         <>
-          <Section title="Recouvrement" />
+          <Section title="Finance" />
           <RelancesStats />
           <ImpayesATraiter limit={10} />
           <div className="grid gap-4 lg:grid-cols-2">
