@@ -185,7 +185,7 @@ function ContratDetailPage() {
       const tasks: any[] = [
         {
           titre: `État des lieux de sortie – ${locLabel} – ${bienLotLabel}`,
-          type_activite: "tache",
+          type_activite: "etat_des_lieux",
           priorite: "urgente",
           statut: "a_faire",
           date_debut: dateFin,
