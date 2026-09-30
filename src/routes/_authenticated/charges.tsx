@@ -41,7 +41,7 @@ type Charge = {
   frequence: string; statut_imputation: string; decompte_mois: string | null;
 };
 type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
-type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; lot: { bien_id: string } | null };
+type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; lot: { bien_id: string; label: string | null; type_lot: string | null; surface: number | null } | null };
 type EcheanceRow = { id: string; contrat_id: string; periode: string; date_echeance: string | null; montant_du: number; montant_affecte: number; statut: string; etape_traitement: string | null };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
@@ -136,7 +136,7 @@ function ChargesPage() {
     ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
-      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label)"),
+      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label, type_lot, surface)"),
       supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
@@ -344,10 +344,16 @@ function ChargesPage() {
         const du = impayesMois
           .filter((i) => i.contrat_id === c.id)
           .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
-        const lotLabel = ((c as unknown as { lot?: { label?: string | null } | null }).lot?.label ?? "").trim();
+        const lot = c.lot;
+        const lotLabel = (lot?.label ?? "").trim();
+        const lotFallback = [
+          (lot?.type_lot ?? "").trim() || null,
+          lot?.surface ? `${Number(lot.surface)} m²` : null,
+        ].filter(Boolean).join(", ");
+        const lotIdentifiant = lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
         detailLoyers.push({
           locataire: nomLocataire(c.locataire_id),
-          lot: lotLabel,
+          lot: lotIdentifiant,
           echeance: monthLabel(mk),
           montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
         });
