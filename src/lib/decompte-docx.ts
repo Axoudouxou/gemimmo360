@@ -233,7 +233,7 @@ export async function generateDecompteDocx(d: DecompteData) {
 
   if (impayes.length) {
     rows.push(movRow("IMPAYÉS DU MOIS", undefined, undefined, true));
-    impayes.forEach((i) => rows.push(movRow(`Impayé — ${i.locataire} (${i.echeance})`, undefined, i.montant)));
+    impayes.forEach((i) => rows.push(movRow(`${i.lot || "Lot sans intitulé"}_${i.locataire} (${i.echeance})`, undefined, i.montant)));
     rows.push(movRow("TOTAL DES IMPAYÉS", undefined, totalImpayes, true));
   }
 
