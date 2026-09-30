@@ -52,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/calendrier")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { [k: string]: string | undefined } => ({
     bien_id: typeof s.bien_id === "string" ? s.bien_id : undefined,
     open: typeof s.open === "string" ? s.open : undefined,
   }),

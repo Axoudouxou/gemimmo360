@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/reclamations")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { [k: string]: string | undefined } => ({
     open: typeof s.open === "string" ? s.open : undefined,
   }),
   component: ReclamationsPage,
