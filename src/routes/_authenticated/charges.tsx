@@ -366,7 +366,12 @@ function ChargesPage() {
         const contrat = contratsBien.find((c) => c.id === i.contrat_id);
         const montant = Math.max(0, Number(i.montant_du) - Number(i.montant_affecte));
         if (montant > 0)
-          detailImpayes.push({ locataire: nomLocataire(contrat?.locataire_id), echeance: monthLabel(mk), montant });
+          detailImpayes.push({
+            locataire: nomLocataire(contrat?.locataire_id),
+            lot: contrat ? lotIdentifiantFor(contrat) : undefined,
+            echeance: monthLabel(mk),
+            montant,
+          });
       });
     }
 
