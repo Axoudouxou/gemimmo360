@@ -27,7 +27,7 @@ export type DecompteData = {
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
   loyersFactures?: number;
-  impayes?: { locataire: string; echeance: string; montant: number }[];
+  impayes?: { locataire: string; lot?: string; echeance: string; montant: number }[];
   totalImpayes?: number;
   charges: DecompteLigne[];
   totalCharges: number;
