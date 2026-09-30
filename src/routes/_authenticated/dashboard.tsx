@@ -75,7 +75,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Administrateur",
   direction: "Direction",
   gestion_locative: "Gestion locative",
-  recouvrement: "Recouvrement",
+  recouvrement: "Finance",
   technique: "Technique",
   juridique: "Juridique",
   commercial: "Commercial",
@@ -370,7 +370,7 @@ function Dashboard() {
       {/* RECOUVREMENT */}
       {isRecouvrement && (
         <>
-          <Section title="Recouvrement" />
+          <Section title="Finance" />
           <RelancesStats />
           <ImpayesATraiter limit={10} />
           <div className="grid gap-4 lg:grid-cols-2">

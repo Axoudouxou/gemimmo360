@@ -90,7 +90,7 @@ export function echeanceProgress(montant_du: number | string, montant_affecte: n
 }
 
 export const ETAPE_LABELS: Record<string, string> = {
-  recouvrement: "Recouvrement",
+  recouvrement: "Finance",
   mise_en_demeure: "Mise en demeure",
   contentieux: "Contentieux",
   transfere_juridique: "Transféré au juridique",

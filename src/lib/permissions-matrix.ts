@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const ROLES = [
   { key: "admin", label: "Admin" },
   { key: "direction", label: "Direction" },
-  { key: "recouvrement", label: "Recouvrement" },
+  { key: "recouvrement", label: "Finance" },
   { key: "gestion_locative", label: "Gestion loc." },
   { key: "commercial", label: "Commercial" },
   { key: "technico_commercial", label: "Technico-com." },

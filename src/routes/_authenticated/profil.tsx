@@ -19,7 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Administrateur",
   direction: "Direction",
   gestion_locative: "Gestion locative",
-  recouvrement: "Recouvrement",
+  recouvrement: "Finance",
   technique: "Technique",
   juridique: "Juridique",
   commercial: "Commercial",

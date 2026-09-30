@@ -141,7 +141,7 @@ const SECTIONS: Section[] = [
   },
   {
     role: "recouvrement",
-    label: "Recouvrement",
+    label: "Finance",
     processes: [
       {
         title: "Suivre les impayés",
