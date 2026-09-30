@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { BienQuickCreateDialog } from "@/components/bien-quick-create-dialog";
 import { CalendarClock, ListTodo, CheckCircle2, ArrowRight, Plus, MapPin, ClipboardCheck, BellRing, Circle, Banknote, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, endOfWeek } from "date-fns";
@@ -383,6 +384,8 @@ export function NouvelleActiviteLieeDialog({
   const [transactionId, setTransactionId] = useState<string>(defaults.transactionId ?? "");
 
   const [biens, setBiens] = useState<OptionRow[]>([]);
+  const [bienNewOpen, setBienNewOpen] = useState(false);
+  const [bienNew, setBienNew] = useState("");
   const [lots, setLots] = useState<OptionRow[]>([]);
   const [contrats, setContrats] = useState<OptionRow[]>([]);
   const [contacts, setContacts] = useState<OptionRow[]>([]);
@@ -459,8 +462,9 @@ export function NouvelleActiviteLieeDialog({
   };
 
   const LinkSelect = ({
-    label, value, onChange, options, prefilled,
+    label, value, onChange, options, prefilled, onCreate,
   }: {
+    onCreate?: (q: string) => void;
     label: string;
     value: string;
     onChange: (v: string) => void;
@@ -477,6 +481,8 @@ export function NouvelleActiviteLieeDialog({
         onChange={onChange}
         options={options.map((o) => ({ value: o.id, label: o.label }))}
         placeholder="Rechercher..."
+        onCreateOption={onCreate}
+        createLabel={onCreate ? (q) => `+ Créer "${q}" comme nouveau bien` : undefined}
       />
     </div>
   );
@@ -541,7 +547,9 @@ export function NouvelleActiviteLieeDialog({
 
           <div className="rounded-md border p-3 space-y-3 bg-muted/20">
             <p className="text-xs font-medium text-muted-foreground">Liaisons</p>
-            <LinkSelect label="Bien" value={bienId} onChange={setBienId} options={biens} prefilled={!!defaults.bienId} />
+            <LinkSelect label="Bien" value={bienId} onChange={setBienId} options={biens} prefilled={!!defaults.bienId} onCreate={(q) => { setBienNew(q); setBienNewOpen(true); }} />
+            <BienQuickCreateDialog open={bienNewOpen} onOpenChange={setBienNewOpen} initialTitre={bienNew}
+              onCreated={(b) => { setBiens((p) => [...p, { id: b.id, label: b.titre }]); setBienId(b.id); }} />
             <LinkSelect label="Lot" value={lotId} onChange={setLotId} options={lots} prefilled={!!defaults.lotId} />
             <LinkSelect label="Contrat" value={contratId} onChange={setContratId} options={contrats} prefilled={!!defaults.contratId} />
             <LinkSelect label="Contact" value={contactId} onChange={setContactId} options={contacts} prefilled={!!defaults.contactId} />
