@@ -38,6 +38,7 @@ import {
 } from "@/components/activites-widgets";
 import { ActiviteDetailDialog } from "@/components/activite-detail-dialog";
 import { fetchAssignesMap, syncAssignes, syncBiensLies } from "@/lib/activite-liaisons";
+import { BienQuickCreateDialog } from "@/components/bien-quick-create-dialog";
 import { MultiSelect } from "@/components/ui/multi-select";
 
 export const Route = createFileRoute("/_authenticated/calendrier")({
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/_authenticated/calendrier")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { [k: string]: string | undefined } => ({
     bien_id: typeof s.bien_id === "string" ? s.bien_id : undefined,
     open: typeof s.open === "string" ? s.open : undefined,
   }),
@@ -473,6 +474,8 @@ function NouvelleActiviteTerrainDialog({
   const [notes, setNotes] = useState("");
   const [biens, setBiens] = useState<Array<{ id: string; titre: string }>>([]);
   const [saving, setSaving] = useState(false);
+  const [bienNewOpen, setBienNewOpen] = useState(false);
+  const [bienNew, setBienNew] = useState("");
 
   useEffect(() => {
     if (open) setAgents((prev) => (prev.length > 0 ? prev : defaultAgent ? [defaultAgent] : []));
@@ -544,6 +547,17 @@ function NouvelleActiviteTerrainDialog({
               onChange={setBienId}
               options={biens.map((b) => ({ value: b.id, label: b.titre }))}
               placeholder="Rechercher un bien..."
+              onCreateOption={(q) => { setBienNew(q); setBienNewOpen(true); }}
+              createLabel={(q) => `+ Créer "${q}" comme nouveau bien`}
+            />
+            <BienQuickCreateDialog
+              open={bienNewOpen}
+              onOpenChange={setBienNewOpen}
+              initialTitre={bienNew}
+              onCreated={(b) => {
+                setBiens((prev) => [...prev, { id: b.id, titre: [b.titre, b.adresse].filter(Boolean).join(" · ") }]);
+                setBienId(b.id);
+              }}
             />
           </div>
           <div className="grid grid-cols-3 gap-3">

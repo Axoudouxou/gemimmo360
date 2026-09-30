@@ -136,7 +136,7 @@ function ChargesPage() {
     ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
-      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id)"),
+      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label)"),
       supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
@@ -291,7 +291,7 @@ function ChargesPage() {
     const lignes: ReturnType<typeof chargesDuMois> = [];
     const travauxMois: TravauxRow[] = [];
     const honoFiscauxMois: HonoraireFiscalRow[] = [];
-    const detailLoyers: { locataire: string; echeance: string; montant: number }[] = [];
+    const detailLoyers: { locataire: string; lot?: string; echeance: string; montant: number }[] = [];
     const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
 
     // Un contrat compte pour un mois s'il couvrait réellement ce mois (même s'il est résilié depuis).
@@ -344,8 +344,10 @@ function ChargesPage() {
         const du = impayesMois
           .filter((i) => i.contrat_id === c.id)
           .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
+        const lotLabel = ((c as unknown as { lot?: { label?: string | null } | null }).lot?.label ?? "").trim();
         detailLoyers.push({
           locataire: nomLocataire(c.locataire_id),
+          lot: lotLabel,
           echeance: monthLabel(mk),
           montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
         });
