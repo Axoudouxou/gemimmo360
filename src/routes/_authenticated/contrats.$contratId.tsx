@@ -91,7 +91,7 @@ function ContratDetailPage() {
       const [{ data: l }, { data: iData }, { data: eData }] = await Promise.all([
         supabase.from("lots").select("id, label, bien_id").eq("id", c.lot_id).maybeSingle(),
         supabase.from("impayes").select("id, contrat_id, montant_du, montant_paye, date_echeance, statut, date_derniere_relance, notes").eq("contrat_id", contratId).order("date_echeance", { ascending: false }),
-        supabase.from("etats_des_lieux").select("id, type, date_realisation, observations").eq("contrat_id", contratId).order("date_realisation", { ascending: false }),
+        supabase.from("etats_des_lieux").select("id, type, date_realisation, observations").or(`contrat_id.eq.${contratId},and(contrat_id.is.null,lot_id.eq.${c.lot_id})`).order("date_realisation", { ascending: false }),
       ]);
       setLot((l ?? null) as Lot | null);
       setImpayes((iData ?? []) as Impaye[]);
