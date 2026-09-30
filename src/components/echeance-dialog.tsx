@@ -282,7 +282,7 @@ export function EcheanceDialog({
               <Select value={service} onValueChange={setService}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recouvrement">Recouvrement</SelectItem>
+                  <SelectItem value="recouvrement">Finance</SelectItem>
                   <SelectItem value="juridique">Juridique</SelectItem>
                 </SelectContent>
               </Select>

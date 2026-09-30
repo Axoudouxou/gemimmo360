@@ -68,14 +68,14 @@ const STATUT_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const ETAPE_LABEL: Record<string, string> = {
-  recouvrement: "Recouvrement",
+  recouvrement: "Finance",
   transfere_juridique: "Transféré au juridique",
   mise_en_demeure: "Mise en demeure",
   procedure_judiciaire: "Procédure judiciaire",
   resolu: "Résolu",
 };
 const SERVICE_LABEL: Record<string, string> = {
-  recouvrement: "Recouvrement",
+  recouvrement: "Finance",
   juridique: "Juridique",
 };
 const CHAMP_LABEL: Record<string, string> = {

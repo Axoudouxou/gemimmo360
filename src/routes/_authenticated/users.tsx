@@ -46,7 +46,7 @@ const ROLES = [
   { value: "admin", label: "Administrateur" },
   { value: "direction", label: "Direction" },
   { value: "gestion_locative", label: "Gestion locative" },
-  { value: "recouvrement", label: "Recouvrement" },
+  { value: "recouvrement", label: "Finance" },
   { value: "technique", label: "Technique" },
   { value: "technico_commercial", label: "Technico-commercial" },
   { value: "juridique", label: "Juridique" },

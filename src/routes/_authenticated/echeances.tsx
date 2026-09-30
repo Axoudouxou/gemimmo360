@@ -344,7 +344,7 @@ function EcheancesPage() {
                   value: fService,
                   onChange: setFService,
                   options: [
-                    { value: "recouvrement", label: "Recouvrement" },
+                    { value: "recouvrement", label: "Finance" },
                     { value: "juridique", label: "Juridique" },
                   ],
                 },
