@@ -292,7 +292,7 @@ function ChargesPage() {
     const travauxMois: TravauxRow[] = [];
     const honoFiscauxMois: HonoraireFiscalRow[] = [];
     const detailLoyers: { locataire: string; lot?: string; echeance: string; montant: number }[] = [];
-    const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
+    const detailImpayes: { locataire: string; lot?: string; echeance: string; montant: number }[] = [];
 
     // Un contrat compte pour un mois s'il couvrait réellement ce mois (même s'il est résilié depuis).
     // Les contrats non engagés (brouillon, annulé…) ne génèrent jamais de loyer attendu.
