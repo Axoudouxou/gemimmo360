@@ -41,7 +41,7 @@ type Charge = {
   frequence: string; statut_imputation: string; decompte_mois: string | null;
 };
 type Bien = { id: string; titre: string; adresse?: string | null; bailleur_id?: string | null };
-type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; lot: { bien_id: string } | null };
+type ContratRow = { id: string; loyer_mensuel: number | null; statut: string; locataire_id: string | null; date_debut: string | null; date_fin: string | null; lot: { bien_id: string; label: string | null; type_lot: string | null; surface: number | null } | null };
 type EcheanceRow = { id: string; contrat_id: string; periode: string; date_echeance: string | null; montant_du: number; montant_affecte: number; statut: string; etape_traitement: string | null };
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
@@ -136,7 +136,7 @@ function ChargesPage() {
     ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
-      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label)"),
+      supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label, type_lot, surface)"),
       supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
