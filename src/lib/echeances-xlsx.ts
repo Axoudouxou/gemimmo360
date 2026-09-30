@@ -18,7 +18,8 @@ export type EcheanceExportRow = {
 const VERT = "FF8AB334";
 const GRIS = "FF4A4A4A";
 const VERT_CLAIR = "FFE7F0D6";
-const MONEY = '#,##0" FCFA"';
+const MONEY =
+  '[>=1000000]#\\ ##0\\ ##0" FCFA";[>=0]#\\ ##0" FCFA";-#\\ ##0" FCFA"';
 const FONT = "Arial";
 
 async function loadImage(path: string): Promise<ArrayBuffer | null> {
