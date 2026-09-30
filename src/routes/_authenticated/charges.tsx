@@ -344,10 +344,16 @@ function ChargesPage() {
         const du = impayesMois
           .filter((i) => i.contrat_id === c.id)
           .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
-        const lotLabel = ((c as unknown as { lot?: { label?: string | null } | null }).lot?.label ?? "").trim();
+        const lot = c.lot;
+        const lotLabel = (lot?.label ?? "").trim();
+        const lotFallback = [
+          (lot?.type_lot ?? "").trim() || null,
+          lot?.surface ? `${Number(lot.surface)} m²` : null,
+        ].filter(Boolean).join(", ");
+        const lotIdentifiant = lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
         detailLoyers.push({
           locataire: nomLocataire(c.locataire_id),
-          lot: lotLabel,
+          lot: lotIdentifiant,
           echeance: monthLabel(mk),
           montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
         });
