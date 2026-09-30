@@ -123,7 +123,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
   if (impayes.length) {
     section("IMPAYÉS");
     const start = r;
-    impayes.forEach((i) => ligne(`Impayé — ${i.locataire}`, i.echeance, undefined, num(i.montant)));
+    impayes.forEach((i) => ligne(`${(i as { lot?: string }).lot || "Lot sans intitulé"}_${i.locataire}`, i.echeance, undefined, num(i.montant)));
     const end = r - 1;
     totalImpayesRow = r;
     total("TOTAL IMPAYÉS", undefined, f(`SUM(D${start}:D${end})`));

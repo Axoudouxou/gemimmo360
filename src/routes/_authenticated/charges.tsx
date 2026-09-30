@@ -292,7 +292,7 @@ function ChargesPage() {
     const travauxMois: TravauxRow[] = [];
     const honoFiscauxMois: HonoraireFiscalRow[] = [];
     const detailLoyers: { locataire: string; lot?: string; echeance: string; montant: number }[] = [];
-    const detailImpayes: { locataire: string; echeance: string; montant: number }[] = [];
+    const detailImpayes: { locataire: string; lot?: string; echeance: string; montant: number }[] = [];
 
     // Un contrat compte pour un mois s'il couvrait réellement ce mois (même s'il est résilié depuis).
     // Les contrats non engagés (brouillon, annulé…) ne génèrent jamais de loyer attendu.
@@ -340,20 +340,23 @@ function ChargesPage() {
         );
       }
 
-      actifs.forEach((c) => {
-        const du = impayesMois
-          .filter((i) => i.contrat_id === c.id)
-          .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
+      const lotIdentifiantFor = (c: ContratRow) => {
         const lot = c.lot;
         const lotLabel = (lot?.label ?? "").trim();
         const lotFallback = [
           (lot?.type_lot ?? "").trim() || null,
           lot?.surface ? `${Number(lot.surface)} m²` : null,
         ].filter(Boolean).join(", ");
-        const lotIdentifiant = lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
+        return lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
+      };
+
+      actifs.forEach((c) => {
+        const du = impayesMois
+          .filter((i) => i.contrat_id === c.id)
+          .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
         detailLoyers.push({
           locataire: nomLocataire(c.locataire_id),
-          lot: lotIdentifiant,
+          lot: lotIdentifiantFor(c),
           echeance: monthLabel(mk),
           montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
         });
@@ -363,7 +366,12 @@ function ChargesPage() {
         const contrat = contratsBien.find((c) => c.id === i.contrat_id);
         const montant = Math.max(0, Number(i.montant_du) - Number(i.montant_affecte));
         if (montant > 0)
-          detailImpayes.push({ locataire: nomLocataire(contrat?.locataire_id), echeance: monthLabel(mk), montant });
+          detailImpayes.push({
+            locataire: nomLocataire(contrat?.locataire_id),
+            lot: contrat ? lotIdentifiantFor(contrat) : undefined,
+            echeance: monthLabel(mk),
+            montant,
+          });
       });
     }
 
