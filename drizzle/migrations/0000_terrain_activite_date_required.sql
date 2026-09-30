@@ -1,0 +1,1 @@
+ALTER TABLE public.activites ADD CONSTRAINT activites_terrain_date_required CHECK (type_activite NOT IN ('visite','etat_des_lieux','recouvrement_terrain') OR date_debut IS NOT NULL) NOT VALID;
