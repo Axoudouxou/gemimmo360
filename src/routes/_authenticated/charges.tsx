@@ -340,20 +340,23 @@ function ChargesPage() {
         );
       }
 
-      actifs.forEach((c) => {
-        const du = impayesMois
-          .filter((i) => i.contrat_id === c.id)
-          .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
+      const lotIdentifiantFor = (c: ContratRow) => {
         const lot = c.lot;
         const lotLabel = (lot?.label ?? "").trim();
         const lotFallback = [
           (lot?.type_lot ?? "").trim() || null,
           lot?.surface ? `${Number(lot.surface)} m²` : null,
         ].filter(Boolean).join(", ");
-        const lotIdentifiant = lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
+        return lotLabel || (lotFallback ? `Lot sans intitulé (${lotFallback})` : "Lot sans intitulé");
+      };
+
+      actifs.forEach((c) => {
+        const du = impayesMois
+          .filter((i) => i.contrat_id === c.id)
+          .reduce((s, i) => s + Math.max(0, Number(i.montant_du) - Number(i.montant_affecte)), 0);
         detailLoyers.push({
           locataire: nomLocataire(c.locataire_id),
-          lot: lotIdentifiant,
+          lot: lotIdentifiantFor(c),
           echeance: monthLabel(mk),
           montant: Math.max(0, (Number(c.loyer_mensuel) || 0) - du),
         });
