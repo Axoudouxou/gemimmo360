@@ -106,7 +106,7 @@ export async function exportDecompteXlsx(d: DecompteData) {
 
   section("LOYERS ENCAISSÉS");
   const loyersStart = r;
-  d.loyers.forEach((l) => ligne(`Loyer — ${l.locataire}`, l.echeance, undefined, num(l.montant)));
+  d.loyers.forEach((l) => ligne(`${(l as { lot?: string }).lot || "Loyer"}_${l.locataire}`, l.echeance, undefined, num(l.montant)));
   const loyersEnd = r - 1;
   const factureRow = r;
   ligne("Montant facturé", "", undefined, 0);
