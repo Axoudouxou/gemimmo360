@@ -1,0 +1,1 @@
+ALTER TABLE public.travaux ADD COLUMN IF NOT EXISTS date_reelle date;

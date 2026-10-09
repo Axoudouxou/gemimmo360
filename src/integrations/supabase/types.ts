@@ -1984,6 +1984,7 @@ export type Database = {
           date_fin: string | null
           date_intervention_prevue: string | null
           date_intervention_reelle: string | null
+          date_reelle: string | null
           description: string | null
           etat_des_lieux_id: string | null
           heure_intervention: string | null
@@ -2015,6 +2016,7 @@ export type Database = {
           date_fin?: string | null
           date_intervention_prevue?: string | null
           date_intervention_reelle?: string | null
+          date_reelle?: string | null
           description?: string | null
           etat_des_lieux_id?: string | null
           heure_intervention?: string | null
@@ -2046,6 +2048,7 @@ export type Database = {
           date_fin?: string | null
           date_intervention_prevue?: string | null
           date_intervention_reelle?: string | null
+          date_reelle?: string | null
           description?: string | null
           etat_des_lieux_id?: string | null
           heure_intervention?: string | null
