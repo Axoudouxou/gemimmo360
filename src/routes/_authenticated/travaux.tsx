@@ -57,6 +57,7 @@ type Travail = {
   date_debut: string | null; date_fin: string | null; date_echeance: string | null;
   date_intervention_prevue: string | null; heure_intervention: string | null;
   date_intervention_reelle: string | null; commentaire_intervention: string | null;
+  date_reelle: string | null;
   origine: string | null; charge_financiere: string | null;
   notes: string | null; motif_refus: string | null; reference_cheque: string | null;
   reclamation_id: string | null; etat_des_lieux_id: string | null;
@@ -357,6 +358,7 @@ function TravauxPage() {
                         <TableHead>Bien / Lot</TableHead>
                         <TableHead>Priorité</TableHead>
                         <TableHead>Échéance</TableHead>
+                        <TableHead>Date réelle</TableHead>
                         <TableHead>Responsable</TableHead>
                         <TableHead>À la charge de</TableHead>
                         <TableHead>Statut</TableHead>
@@ -382,6 +384,7 @@ function TravauxPage() {
                                 <span className={ech.late ? "font-medium text-destructive" : ech.today ? "font-medium text-orange-600" : ""}>{ech.label}</span>
                               ) : <span className="text-muted-foreground">—</span>}
                             </TableCell>
+                            <TableCell className="text-sm">{t.date_reelle ? fmtDate(t.date_reelle) : <span className="text-muted-foreground">—</span>}</TableCell>
                             <TableCell className="text-sm">{responsable(t.assigne_a)}</TableCell>
                             <TableCell className="text-sm">{t.charge_financiere ? CHARGE_LABEL[t.charge_financiere] ?? t.charge_financiere : "—"}</TableCell>
                             <TableCell><Badge className={STATUT_CLASS[t.statut] ?? ""}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge></TableCell>
@@ -927,6 +930,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
     date_intervention_prevue: initial?.date_intervention_prevue ?? "",
     heure_intervention: initial?.heure_intervention ?? "",
     date_intervention_reelle: initial?.date_intervention_reelle ?? "",
+    date_reelle: initial?.date_reelle ?? "",
     commentaire_intervention: initial?.commentaire_intervention ?? "",
     assigne_a: initial?.assigne_a ?? "",
     charge_financiere: initial?.charge_financiere ?? "",
@@ -960,6 +964,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
       date_intervention_prevue: form.date_intervention_prevue || null,
       heure_intervention: form.heure_intervention.trim() || null,
       date_intervention_reelle: form.date_intervention_reelle || null,
+      date_reelle: form.date_reelle || null,
       commentaire_intervention: form.commentaire_intervention.trim() || null,
       budget_prevu: form.budget_prevu ? Number(form.budget_prevu) : null,
       budget_depense: form.budget_depense ? Number(form.budget_depense) : 0,
@@ -974,6 +979,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
             charge_financiere: full.charge_financiere, date_debut: full.date_debut, date_fin: full.date_fin,
             date_echeance: full.date_echeance, date_intervention_prevue: full.date_intervention_prevue,
             heure_intervention: full.heure_intervention, date_intervention_reelle: full.date_intervention_reelle,
+            date_reelle: full.date_reelle,
             commentaire_intervention: full.commentaire_intervention,
             budget_prevu: full.budget_prevu, budget_depense: full.budget_depense,
             reference_cheque: full.reference_cheque, motif_refus: full.motif_refus,
@@ -1049,6 +1055,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
               <div className="grid gap-2"><Label>Début</Label><Input type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })} /></div>
               <div className="grid gap-2"><Label>Date de fin</Label><Input type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })} /></div>
             </div>
+            <div className="grid gap-2 sm:max-w-xs"><Label>Date réelle des travaux</Label><Input type="date" value={form.date_reelle} onChange={(e) => setForm({ ...form, date_reelle: e.target.value })} /></div>
             <div className="rounded-md border p-3">
               <div className="mb-2 text-sm font-semibold">Intervention</div>
               <div className="grid gap-3 sm:grid-cols-3">

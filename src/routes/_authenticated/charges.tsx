@@ -46,7 +46,7 @@ type EcheanceRow = { id: string; contrat_id: string; periode: string; date_echea
 type ContactRow = { id: string; nom: string; prenom: string | null };
 type TravauxRow = {
   id: string; bien_id: string; titre: string; budget_depense: number | null; budget_prevu: number | null; statut: string;
-  date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
+  date_reelle: string | null; date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
   charge_financiere: string | null;
 };
 type HonoraireFiscalRow = { id: string; bailleur_id: string; montant: number; type_honoraire: string; periode: string | null; statut: string };
@@ -139,7 +139,7 @@ function ChargesPage() {
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label, type_lot, surface)"),
       supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),
-      supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
+      supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_reelle, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
     ]);
     if (error) toast.error(error.message);
@@ -329,7 +329,7 @@ function ChargesPage() {
           if (t.bien_id !== dBien) return false;
           if (t.charge_financiere !== "bailleur") return false;
           if (!(Number(t.budget_depense) > 0)) return false;
-          const ref = t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
+          const ref = t.date_reelle ?? t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
           return !!ref && monthKey(ref) === mk;
         }),
       );
