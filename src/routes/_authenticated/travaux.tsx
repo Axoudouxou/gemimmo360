@@ -357,8 +357,7 @@ function TravauxPage() {
                         <TableHead>Travail</TableHead>
                         <TableHead>Bien / Lot</TableHead>
                         <TableHead>Priorité</TableHead>
-                        <TableHead>Échéance</TableHead>
-                        <TableHead>Date réelle</TableHead>
+                        <TableHead>Date de réalisation</TableHead>
                         <TableHead>Responsable</TableHead>
                         <TableHead>À la charge de</TableHead>
                         <TableHead>Statut</TableHead>
@@ -367,7 +366,6 @@ function TravauxPage() {
                     <TableBody>
                       {pageRows.map((t) => {
                         const bl = bienLot(t);
-                        const ech = echeanceInfo(echeanceDate(t));
                         return (
                           <TableRow key={t.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetail(t)}>
                             <TableCell>
@@ -379,11 +377,6 @@ function TravauxPage() {
                               {bl.lot && <div className="text-xs text-muted-foreground">{bl.lot}</div>}
                             </TableCell>
                             <TableCell><Badge className={PRIORITE_CLASS[t.priorite] ?? ""}>{PRIORITE_LABEL[t.priorite] ?? t.priorite}</Badge></TableCell>
-                            <TableCell className="text-sm">
-                              {ech ? (
-                                <span className={ech.late ? "font-medium text-destructive" : ech.today ? "font-medium text-orange-600" : ""}>{ech.label}</span>
-                              ) : <span className="text-muted-foreground">—</span>}
-                            </TableCell>
                             <TableCell className="text-sm">{t.date_reelle ? fmtDate(t.date_reelle) : <span className="text-muted-foreground">—</span>}</TableCell>
                             <TableCell className="text-sm">{responsable(t.assigne_a)}</TableCell>
                             <TableCell className="text-sm">{t.charge_financiere ? CHARGE_LABEL[t.charge_financiere] ?? t.charge_financiere : "—"}</TableCell>
@@ -398,7 +391,6 @@ function TravauxPage() {
                 <div className="space-y-2 md:hidden">
                   {pageRows.map((t) => {
                     const bl = bienLot(t);
-                    const ech = echeanceInfo(echeanceDate(t));
                     return (
                       <button key={t.id} type="button" onClick={() => setDetail(t)} className="w-full rounded-lg border bg-background p-3 text-left">
                         <div className="flex items-start justify-between gap-2">
@@ -410,7 +402,7 @@ function TravauxPage() {
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                           <Badge className={STATUT_CLASS[t.statut] ?? ""}>{STATUT_LABEL[t.statut] ?? t.statut}</Badge>
-                          {ech && <span className={ech.late ? "text-destructive font-medium" : ""}>{ech.label}</span>}
+                          <span className="text-muted-foreground">Date de réalisation : {fmtDate(t.date_reelle)}</span>
                           <span className="text-muted-foreground">{responsable(t.assigne_a)}</span>
                         </div>
                       </button>
@@ -536,6 +528,9 @@ const CHAMP_TRAVAUX_LABEL: Record<string, string> = {
   priorite: "Priorité",
   assigne_a: "Responsable",
   date_echeance: "Échéance",
+  date_debut: "Début prévu",
+  date_fin: "Fin prévue",
+  date_reelle: "Date de réalisation",
 };
 
 function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclams, edls, occupant, onClose, onEdit, onDeleted, onStatusChanged }: {
@@ -596,6 +591,11 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
   useEffect(() => { loadHistory(); }, [travail.id]);
 
   const patchTravail = async (patch: Record<string, unknown>, successMsg: string) => {
+    if ((patch.statut === "termine" && !travail.date_reelle && !patch.date_reelle) ||
+        (travail.statut === "termine" && patch.date_reelle === null)) {
+      toast.error("La date de réalisation est obligatoire pour un travail terminé");
+      return;
+    }
     setBusy(true);
     const { data, error } = await (supabase.from("travaux") as any).update(patch).eq("id", travail.id).select().maybeSingle();
     setBusy(false);
@@ -642,7 +642,12 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
 
   const changeStatut = async (v: string) => {
     if (v === "refuse") { setRefuseOpen(true); return; }
-    await patchTravail({ statut: v, ...(v === "termine" && !travail.date_fin ? { date_fin: todayISO() } : {}) }, "Statut mis à jour");
+    if (v === "termine" && !travail.date_reelle) {
+      toast.error("Renseignez la date de réalisation avant de terminer le travail");
+      onEdit();
+      return;
+    }
+    await patchTravail({ statut: v }, "Statut mis à jour");
   };
 
   const confirmRefus = async () => {
@@ -697,9 +702,11 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
                 </Select>
               </div>
               <div className="grid gap-1">
-                <Label className="text-xs text-muted-foreground">Échéance</Label>
-                <Input type="date" className="h-8" defaultValue={travail.date_echeance ?? ""}
-                  onChange={(e) => patchTravail({ date_echeance: e.target.value || null }, "Échéance mise à jour")} />
+                <Label htmlFor="detail-date-realisation" className="text-xs text-muted-foreground">Date de réalisation</Label>
+                <Input id="detail-date-realisation" type="date" className="h-8" value={travail.date_reelle ?? ""} disabled={busy}
+                  required={travail.statut === "termine"} aria-describedby="detail-date-realisation-help"
+                  onChange={(e) => patchTravail({ date_reelle: e.target.value || null }, "Date de réalisation mise à jour")} />
+                <p id="detail-date-realisation-help" className="text-xs text-muted-foreground">Date à laquelle les travaux ont été terminés. Utilisée dans les décomptes propriétaires.</p>
               </div>
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Planifier (intervention)</Label>
@@ -735,10 +742,11 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
             <div className="grid grid-cols-2 gap-2">
               <div><span className="text-muted-foreground">Référence : </span>{travail.reference ?? "—"}</div>
               <div><span className="text-muted-foreground">Catégorie : </span>{travail.categorie || "—"}</div>
-              <div><span className="text-muted-foreground">Créé le : </span>{fmtDate(travail.created_at.slice(0, 10))}</div>
+              <div><span className="text-muted-foreground">Date de saisie : </span>{fmtDate(travail.created_at.slice(0, 10))}</div>
               <div><span className="text-muted-foreground">Échéance : </span>{fmtDate(travail.date_echeance)}</div>
-              <div><span className="text-muted-foreground">Début : </span>{fmtDate(travail.date_debut)}</div>
-              <div><span className="text-muted-foreground">Date de fin : </span>{fmtDate(travail.date_fin)}</div>
+              <div><span className="text-muted-foreground">Début prévu : </span>{fmtDate(travail.date_debut)}</div>
+              <div><span className="text-muted-foreground">Fin prévue : </span>{fmtDate(travail.date_fin)}</div>
+              <div><span className="text-muted-foreground">Date de réalisation : </span>{fmtDate(travail.date_reelle)}</div>
             </div>
           </section>
 
@@ -782,7 +790,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
             <div className="grid grid-cols-2 gap-2">
               <div><span className="text-muted-foreground">Date prévue : </span>{fmtDate(travail.date_intervention_prevue)}</div>
               <div><span className="text-muted-foreground">Heure : </span>{travail.heure_intervention || "—"}</div>
-              <div><span className="text-muted-foreground">Date réelle : </span>{fmtDate(travail.date_intervention_reelle)}</div>
+              <div><span className="text-muted-foreground">Date réelle d’intervention : </span>{fmtDate(travail.date_intervention_reelle)}</div>
               <div><span className="text-muted-foreground">Coût estimé : </span>{fmtMoney(travail.budget_prevu)}</div>
               <div><span className="text-muted-foreground">Coût réel : </span>{fmtMoney(travail.budget_depense)}</div>
             </div>
@@ -947,6 +955,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
     if (!form.bien_id || !form.titre) return toast.error("Bien et titre obligatoires");
     if (!form.charge_financiere) return toast.error("Le champ « À la charge de » est obligatoire");
     if (form.statut === "refuse" && !form.motif_refus.trim()) return toast.error("Le motif du refus est obligatoire");
+    if (form.statut === "termine" && !form.date_reelle) return toast.error("La date de réalisation est obligatoire pour un travail terminé");
     setSaving(true);
     const full = {
       bien_id: form.bien_id,
@@ -960,7 +969,6 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
       charge_financiere: form.charge_financiere,
       date_debut: form.date_debut || null,
       date_fin: form.date_fin || null,
-      date_echeance: form.date_echeance || null,
       date_intervention_prevue: form.date_intervention_prevue || null,
       heure_intervention: form.heure_intervention.trim() || null,
       date_intervention_reelle: form.date_intervention_reelle || null,
@@ -972,12 +980,12 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
       reclamation_id: form.reclamation_id || null,
       motif_refus: form.statut === "refuse" ? form.motif_refus.trim() : (initial?.motif_refus ?? null),
     };
-    if (isEdit) {
+    if (initial) {
       const patch: Record<string, any> = limited
         ? {
             statut: full.statut, priorite: full.priorite, assigne_a: full.assigne_a,
             charge_financiere: full.charge_financiere, date_debut: full.date_debut, date_fin: full.date_fin,
-            date_echeance: full.date_echeance, date_intervention_prevue: full.date_intervention_prevue,
+            date_intervention_prevue: full.date_intervention_prevue,
             heure_intervention: full.heure_intervention, date_intervention_reelle: full.date_intervention_reelle,
             date_reelle: full.date_reelle,
             commentaire_intervention: full.commentaire_intervention,
@@ -985,7 +993,7 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
             reference_cheque: full.reference_cheque, motif_refus: full.motif_refus,
           }
         : full;
-      const { error } = await (supabase.from("travaux") as any).update(patch).eq("id", initial!.id);
+      const { error } = await (supabase.from("travaux") as any).update(patch).eq("id", initial.id);
       setSaving(false);
       if (error) return toast.error(error.message);
       toast.success("Modifié"); onSaved();
@@ -1051,17 +1059,21 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-2"><Label>Échéance</Label><Input type="date" value={form.date_echeance} onChange={(e) => setForm({ ...form, date_echeance: e.target.value })} /></div>
-              <div className="grid gap-2"><Label>Début</Label><Input type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })} /></div>
-              <div className="grid gap-2"><Label>Date de fin</Label><Input type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })} /></div>
+              <div className="grid gap-2"><Label htmlFor="travaux-date-saisie">Date de saisie</Label><Input id="travaux-date-saisie" type="date" value={initial?.created_at.slice(0, 10) ?? todayISO()} readOnly /></div>
+              <div className="grid gap-2"><Label htmlFor="travaux-debut-prevu">Début prévu</Label><Input id="travaux-debut-prevu" type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })} /></div>
+              <div className="grid gap-2"><Label htmlFor="travaux-fin-prevue">Fin prévue</Label><Input id="travaux-fin-prevue" type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })} /></div>
             </div>
-            <div className="grid gap-2 sm:max-w-xs"><Label>Date réelle des travaux</Label><Input type="date" value={form.date_reelle} onChange={(e) => setForm({ ...form, date_reelle: e.target.value })} /></div>
+            <div className="grid gap-2 sm:max-w-xs">
+              <Label htmlFor="travaux-date-realisation">Date de réalisation{form.statut === "termine" ? " *" : ""}</Label>
+              <Input id="travaux-date-realisation" type="date" required={form.statut === "termine"} aria-describedby="travaux-date-realisation-help" value={form.date_reelle} onChange={(e) => setForm({ ...form, date_reelle: e.target.value })} />
+              <p id="travaux-date-realisation-help" className="text-xs text-muted-foreground">Date à laquelle les travaux ont été terminés. Utilisée dans les décomptes propriétaires.</p>
+            </div>
             <div className="rounded-md border p-3">
               <div className="mb-2 text-sm font-semibold">Intervention</div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="grid gap-2"><Label>Date prévue</Label><Input type="date" value={form.date_intervention_prevue} onChange={(e) => setForm({ ...form, date_intervention_prevue: e.target.value })} /></div>
                 <div className="grid gap-2"><Label>Heure</Label><Input type="time" value={form.heure_intervention} onChange={(e) => setForm({ ...form, heure_intervention: e.target.value })} /></div>
-                <div className="grid gap-2"><Label>Date réelle</Label><Input type="date" value={form.date_intervention_reelle} onChange={(e) => setForm({ ...form, date_intervention_reelle: e.target.value })} /></div>
+                <div className="grid gap-2"><Label>Date réelle d’intervention</Label><Input type="date" value={form.date_intervention_reelle} onChange={(e) => setForm({ ...form, date_intervention_reelle: e.target.value })} /></div>
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2"><Label>Coût estimé (budget prévu)</Label><Input type="number" min="0" step="0.01" value={form.budget_prevu} onChange={(e) => setForm({ ...form, budget_prevu: e.target.value })} /></div>
