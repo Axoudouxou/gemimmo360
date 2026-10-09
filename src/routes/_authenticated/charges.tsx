@@ -49,6 +49,7 @@ type TravauxRow = {
   date_reelle: string | null; date_intervention_reelle: string | null; date_fin: string | null; date_echeance: string | null; updated_at: string;
   charge_financiere: string | null;
 };
+type DevisComplRow = { id: string; travaux_id: string; libelle: string; montant: number; date_realisation: string | null };
 type HonoraireFiscalRow = { id: string; bailleur_id: string; montant: number; type_honoraire: string; periode: string | null; statut: string };
 
 const monthKey = (d: string | Date) => {
@@ -78,6 +79,7 @@ function ChargesPage() {
   const [impayes, setImpayes] = useState<EcheanceRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [travaux, setTravaux] = useState<TravauxRow[]>([]);
+  const [devisCompl, setDevisCompl] = useState<DevisComplRow[]>([]);
   const [honoFiscaux, setHonoFiscaux] = useState<HonoraireFiscalRow[]>([]);
   const [exporting, setExporting] = useState(false);
   const [filterBien, setFilterBien] = useState<string>("all");
@@ -132,7 +134,7 @@ function ChargesPage() {
     setLoading(true);
     const [
       { data: cData, error }, { data: bData }, { data: ctData }, { data: imData },
-      { data: coData }, { data: trData }, { data: hfData },
+      { data: coData }, { data: trData }, { data: hfData }, { data: dcData },
     ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
       supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
@@ -141,6 +143,7 @@ function ChargesPage() {
       supabase.from("contacts").select("id, nom, prenom"),
       supabase.from("travaux").select("id, bien_id, titre, budget_depense, budget_prevu, statut, date_reelle, date_intervention_reelle, date_fin, date_echeance, updated_at, charge_financiere"),
       supabase.from("honoraires_fiscaux").select("id, bailleur_id, montant, type_honoraire, periode, statut"),
+      (supabase.from("travaux_devis_complementaires" as never) as any).select("id, travaux_id, libelle, montant, date_realisation"),
     ]);
     if (error) toast.error(error.message);
     else setCharges((cData ?? []) as unknown as Charge[]);
@@ -150,6 +153,7 @@ function ChargesPage() {
     setContacts((coData ?? []) as ContactRow[]);
     setTravaux((trData ?? []) as unknown as TravauxRow[]);
     setHonoFiscaux((hfData ?? []) as unknown as HonoraireFiscalRow[]);
+    setDevisCompl((dcData ?? []) as DevisComplRow[]);
     setLoading(false);
   };
   useEffect(() => {
@@ -333,6 +337,13 @@ function ChargesPage() {
           return !!ref && monthKey(ref) === mk;
         }),
       );
+      // Devis complémentaires : chacun rattaché au mois de sa propre date de réalisation
+      for (const dc of devisCompl) {
+        if (!dc.date_realisation || monthKey(dc.date_realisation) !== mk) continue;
+        const parent = travaux.find((t) => t.id === dc.travaux_id);
+        if (!parent || parent.bien_id !== dBien || parent.charge_financiere !== "bailleur") continue;
+        travauxMois.push({ ...parent, id: `dc-${dc.id}`, titre: `${parent.titre} – ${dc.libelle}`, budget_prevu: Number(dc.montant) || 0, budget_depense: Number(dc.montant) || 0 });
+      }
 
       if (bailleurId) {
         honoFiscauxMois.push(
@@ -388,7 +399,7 @@ function ChargesPage() {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dBien, moisPeriode, tauxHono, charges, contrats, impayes, travaux, honoFiscaux, contacts, biens]);
+  }, [dBien, moisPeriode, tauxHono, charges, contrats, impayes, travaux, devisCompl, honoFiscaux, contacts, biens]);
 
 
   const buildDecompteData = () => {

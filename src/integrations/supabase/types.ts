@@ -2128,6 +2128,47 @@ export type Database = {
           },
         ]
       }
+      travaux_devis_complementaires: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_realisation: string | null
+          id: string
+          libelle: string
+          montant: number
+          travaux_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_realisation?: string | null
+          id?: string
+          libelle: string
+          montant?: number
+          travaux_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_realisation?: string | null
+          id?: string
+          libelle?: string
+          montant?: number
+          travaux_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "travaux_devis_complementaires_travaux_id_fkey"
+            columns: ["travaux_id"]
+            isOneToOne: false
+            referencedRelation: "travaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       travaux_historique: {
         Row: {
           ancienne_valeur: string | null

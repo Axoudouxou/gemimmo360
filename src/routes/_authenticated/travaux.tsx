@@ -15,6 +15,7 @@ import {
   LayoutList, LayoutGrid, CalendarClock, User, Coins,
 } from "lucide-react";
 import { DocumentsSection } from "@/components/documents-section";
+import { DevisComplementaires } from "@/components/devis-complementaires";
 import { CommentSection, computePerms } from "@/components/comment-section";
 import { toast } from "sonner";
 import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
@@ -815,6 +816,12 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
             </div>
           )}
           {travail.notes && <div className="whitespace-pre-wrap rounded bg-muted/40 p-2 text-xs">{travail.notes}</div>}
+
+          <DevisComplementaires
+            travauxId={travail.id}
+            montantInitial={Number(travail.budget_prevu ?? travail.budget_depense ?? 0)}
+            canEdit={canAct && travail.statut !== "refuse" && travail.statut !== "annule"}
+          />
 
           {/* Liens */}
           <section className="rounded-md border p-3">
