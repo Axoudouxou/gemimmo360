@@ -37,13 +37,14 @@ export function BienQuickCreateDialog({
   const save = async () => {
     if (!titre.trim()) return toast.error("Le titre est obligatoire");
     setSaving(true);
+    const { data: userData } = await supabase.auth.getUser();
     const { data, error } = await supabase.from("biens").insert({
       titre: titre.trim(),
       adresse: adresse.trim() || null,
       type_bien: typeBien || null,
       statut: "vacant",
       bailleur_id: null,
-      gestionnaire_id: null,
+      gestionnaire_id: userData.user?.id ?? null,
     }).select("id, titre, adresse").single();
     setSaving(false);
     if (error) return toast.error(error.message);
