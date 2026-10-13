@@ -172,7 +172,7 @@ function TravauxPage() {
       enCours: travaux.filter((t) => t.statut === "en_cours").length,
       retard: travaux.filter(isLate).length,
       aValider: travaux.filter((t) => t.statut === "a_valider").length,
-      termines: travaux.filter((t) => t.statut === "termine" && (t.date_fin ?? t.date_intervention_reelle ?? t.created_at.slice(0, 10)) >= monthStart).length,
+      termines: travaux.filter((t) => t.statut === "termine" && (t.date_reelle ?? t.date_fin ?? t.date_intervention_reelle ?? t.created_at.slice(0, 10)) >= monthStart).length,
     };
   }, [travaux]);
 
