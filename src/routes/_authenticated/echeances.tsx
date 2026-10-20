@@ -16,6 +16,7 @@ import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
 import { QuittanceDialog } from "@/components/quittance-dialog";
 import {
   computeEcheanceStatut,
+  canWriteFinance,
   echeanceProgress,
   ETAPE_LABELS,
   fmtDate,
@@ -308,10 +309,12 @@ function EcheancesPage() {
                   <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" /> Enregistrer un paiement
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
-                    <FileText className="mr-2 h-4 w-4" /> Générer quittance
-                  </Button>
                 </>
+              )}
+              {canWriteFinance(role) && (
+                <Button size="sm" variant="outline" onClick={() => setQuittanceOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" /> Générer quittance
+                </Button>
               )}
               <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
                 <Download className="mr-2 h-4 w-4" /> Exporter Excel
