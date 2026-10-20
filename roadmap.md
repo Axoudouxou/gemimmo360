@@ -1,8 +1,8 @@
 # Roadmap — Refonte financière (échéances / paiements / affectations)
 
 ## Corrections de l’audit — production GEM
-- [x] Sauvegarde complète téléchargée, confirmée par Axelle avant intervention.
-- [ ] Bloc 1 — Statuts lots, enregistrements atomiques, quittances, pénalités et droits cohérents.
+- [ ] Sauvegarde complète téléchargée — export lancé, réception du mail et téléchargement non confirmés ; suspendre toute nouvelle modification.
+- [ ] Bloc 1 — Corrections déjà appliquées, contrôles partiels effectués ; validation finale suspendue jusqu’à confirmation du téléchargement de la sauvegarde.
 - [ ] Bloc 2 — Transactions et fin de bail (attend le feu vert après le bloc 1).
 - [ ] Bloc 3 — Transfert et suivi juridique (attend la validation du bloc précédent).
 - [ ] Bloc 4 — Travaux et états des lieux (attend la validation du bloc précédent).
