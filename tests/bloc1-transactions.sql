@@ -4,9 +4,9 @@ SELECT set_config('request.jwt.claim.sub','acba4cca-b17c-4478-94fd-8c6fffeadfbc'
 DO $$
 DECLARE _bien uuid; _lot uuid; _contact uuid; _contrat uuid; _e1 uuid; _e2 uuid; _payment uuid; _before integer; _after integer; _q jsonb; _expected jsonb;
 BEGIN
- INSERT INTO public.biens(titre,gestionnaire_id) VALUES('TEST BLOC1 rollback',auth.uid()) RETURNING id INTO _bien;
+ INSERT INTO public.biens(titre,gestionnaire_id) VALUES('TEST BLOC1 rollback','acba4cca-b17c-4478-94fd-8c6fffeadfbc') RETURNING id INTO _bien;
  INSERT INTO public.lots(bien_id,label,statut) VALUES(_bien,'TEST','vacant') RETURNING id INTO _lot;
- INSERT INTO public.contacts(nom,type_contact,gestionnaire_id) VALUES('TEST BLOC1','prospect',auth.uid()) RETURNING id INTO _contact;
+ INSERT INTO public.contacts(nom,type_contact,gestionnaire_id) VALUES('TEST BLOC1','prospect','acba4cca-b17c-4478-94fd-8c6fffeadfbc') RETURNING id INTO _contact;
  _contrat:=public.creer_contrat_atomique(jsonb_build_object('lot_id',_lot,'locataire_id',_contact,'statut','actif','date_debut','2026-10-01','loyer_mensuel',100000));
  IF (SELECT statut FROM public.lots WHERE id=_lot)<>'loue' OR (SELECT type_contact FROM public.contacts WHERE id=_contact)<>'locataire' THEN RAISE EXCEPTION 'Contract side effects missing'; END IF;
  INSERT INTO public.echeances(contrat_id,periode,date_echeance,montant_du) VALUES(_contrat,'2026-10-01','2026-10-10',100000) RETURNING id INTO _e1;
