@@ -17,6 +17,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { MOYENS_PAIEMENT, fmtMoney, fmtPeriode } from "@/lib/echeance-statut";
+import { atomicOperation } from "@/lib/atomic-operations";
 
 type EcheanceRow = {
   id: string;
@@ -102,49 +103,24 @@ export function PaiementDialog({
     }
 
     setSaving(true);
-    const { data: userRes } = await supabase.auth.getUser();
-    const { data: paiement, error } = await supabase
-      .from("paiements")
-      .insert({
-        contrat_id: contrat,
-        montant: m,
-        date_paiement: datePaiement,
-        moyen_paiement: moyen,
-        reference: reference.trim() || null,
-        notes: notes.trim() || null,
-        created_by: userRes.user?.id ?? null,
-      })
-      .select("id")
-      .single();
-
-    if (error || !paiement) {
-      setSaving(false);
-      return toast.error(error?.message ?? "Erreur d'enregistrement");
-    }
-
     const rows = Object.entries(manualAlloc)
       .filter(([, v]) => Number(v || 0) > 0)
       .map(([echeance_id, v]) => ({
-        paiement_id: paiement.id,
         echeance_id,
         montant: Number(v),
-        mode: "manuel",
-        created_by: userRes.user?.id ?? null,
       }));
-    if (rows.length) {
-      const { error: aErr } = await supabase.from("affectations").insert(rows);
-      if (aErr) {
-        setSaving(false);
-        return toast.error(aErr.message);
-      }
-    }
-
-    setSaving(false);
-    toast.success(
-      rows.length ? "Paiement enregistré et affecté" : "Paiement enregistré (aucune affectation)",
-    );
-    onOpenChange(false);
-    onSaved?.();
+    try {
+      await atomicOperation<string>("enregistrer_paiement_atomique", {
+        contrat_id: contrat, montant: m, date_paiement: datePaiement,
+        moyen_paiement: moyen, reference: reference.trim() || null,
+        notes: notes.trim() || null, affectations: rows,
+      });
+      toast.success(rows.length ? "Paiement enregistré et affecté" : "Paiement enregistré (aucune affectation)");
+      onOpenChange(false);
+      onSaved?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Paiement et affectations annulés.");
+    } finally { setSaving(false); }
   };
 
   return (

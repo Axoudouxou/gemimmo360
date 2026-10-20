@@ -8,6 +8,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { atomicOperation } from "@/lib/atomic-operations";
+import { lotStatutLabel, canCreateContract } from "@/lib/operational-rules";
 
 type Lot = { id: string; label: string; bien_id: string; statut: string };
 type Bien = { id: string; titre: string };
@@ -88,63 +90,31 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, filterByB
     e.preventDefault();
     if (!lotId) return toast.error("Sélectionner un lot");
     if (activeContrat && !confirmed) return toast.error("Merci de confirmer le remplacement du contrat actif");
+    if (mode === "nouveau" && !newLoc.nom.trim()) return toast.error("Le nom est obligatoire");
+    if (mode === "existant" && !existantId) return toast.error("Sélectionnez un locataire");
     setSaving(true);
-
-    let locId = existantId;
-    const { data: userRes } = await supabase.auth.getUser();
-    if (mode === "nouveau") {
-      if (!newLoc.nom.trim()) { setSaving(false); return toast.error("Le nom est obligatoire"); }
-      const { data: created, error: cErr } = await supabase.from("contacts").insert({
-        nom: newLoc.nom.trim(),
-        prenom: newLoc.prenom.trim() || null,
-        telephone: newLoc.telephone.trim() || null,
-        email: newLoc.email.trim() || null,
-        type_contact: "locataire",
-        type_entite: newLoc.type_entite,
-        gestionnaire_id: userRes.user?.id ?? null,
-      }).select("id").single();
-      if (cErr) { setSaving(false); return toast.error(cErr.message); }
-      locId = created.id;
-    }
-    if (!locId) { setSaving(false); return toast.error("Sélectionnez un locataire"); }
-
-    // Terminer l'ancien contrat actif si nécessaire
-    if (activeContrat) {
-      const today = new Date().toISOString().slice(0, 10);
-      const { error: endErr } = await supabase.from("contrats")
-        .update({ statut: "termine", date_fin: today })
-        .eq("id", activeContrat.id);
-      if (endErr) { setSaving(false); return toast.error("Impossible de terminer l'ancien contrat: " + endErr.message); }
-    }
-
-    const { data: newC, error } = await supabase.from("contrats").insert({
-      lot_id: lotId,
-      locataire_id: locId,
-      loyer_mensuel: form.loyer_mensuel ? Number(form.loyer_mensuel) : null,
-      depot_garantie: form.depot_garantie ? Number(form.depot_garantie) : null,
-      date_debut: form.date_debut || null,
-      statut: form.statut || "actif",
-      transaction_origine_id: transactionOrigineId ?? null,
-    }).select("id").single();
-    if (error) {
-      setSaving(false);
-      if ((error as { code?: string }).code === "23505") return toast.error("Ce lot a déjà un contrat actif en cours.");
-      return toast.error(error.message);
-    }
-    if ((form.statut || "actif") === "actif") {
-      await supabase.from("lots").update({ statut: "loue" }).eq("id", lotId);
-    }
-    // Auto-convert prospect → locataire
-    if (locId) {
-      const { data: c } = await supabase.from("contacts").select("type_contact").eq("id", locId).maybeSingle();
-      if (c?.type_contact === "prospect") {
-        await supabase.from("contacts").update({ type_contact: "locataire" }).eq("id", locId);
-      }
-    }
-    setSaving(false);
-    toast.success(activeContrat ? "Nouveau contrat créé, ancien terminé automatiquement" : "Contrat créé");
-    onOpenChange(false);
-    onCreated?.(newC!.id);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) throw new Error("Veuillez vous reconnecter.");
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+      if (!canCreateContract(profile?.role)) throw new Error("Votre profil ne peut pas créer de contrat.");
+      const id = await atomicOperation<string>("creer_contrat_atomique", {
+        lot_id: lotId,
+        locataire_id: mode === "existant" ? existantId : null,
+        nouveau_locataire: mode === "nouveau" ? newLoc : null,
+        ancien_contrat_id: activeContrat?.id ?? null,
+        loyer_mensuel: form.loyer_mensuel ? Number(form.loyer_mensuel) : null,
+        depot_garantie: form.depot_garantie ? Number(form.depot_garantie) : null,
+        date_debut: form.date_debut || null,
+        statut: form.statut || "actif",
+        transaction_origine_id: transactionOrigineId ?? null,
+      });
+      toast.success(activeContrat ? "Nouveau contrat créé, ancien terminé automatiquement" : "Contrat créé");
+      onOpenChange(false);
+      onCreated?.(id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Création annulée : aucune étape n'a été enregistrée.");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -164,7 +134,7 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, filterByB
                   onChange={setLotId}
                   options={lots.map((l) => ({
                     value: l.id,
-                    label: `${bienTitre(l.bien_id)} — ${l.label} (${l.statut})`,
+                    label: `${bienTitre(l.bien_id)} — ${l.label} (${lotStatutLabel(l.statut)})`,
                   }))}
                   placeholder={lots.length ? "Rechercher un lot..." : "Aucun lot disponible"}
                 />
