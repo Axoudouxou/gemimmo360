@@ -68,9 +68,9 @@ export function EcheanceDialog({
   const [appliquerPenalite, setAppliquerPenalite] = useState(false);
 
   const base = Number(montant) || 0;
-  const penalite = appliquerPenalite ? calcPenalite(base) : 0;
-  const totalDu = base + penalite;
   const retard = paiementEnRetard(mois || monthNow(), new Date().toISOString().slice(0, 10));
+  const penalite = appliquerPenalite && retard ? calcPenalite(base) : 0;
+  const totalDu = base + penalite;
 
   useEffect(() => {
     if (!open) return;
@@ -135,7 +135,7 @@ export function EcheanceDialog({
           service_en_charge: service,
           notes: noteFinale || null,
         })
-        .eq("id", echeance!.id);
+        .eq("id", echeance?.id ?? "");
       setSaving(false);
       if (upErr) {
         if (upErr.code === "23505")
@@ -244,8 +244,9 @@ export function EcheanceDialog({
           <div className="rounded-md border p-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <Checkbox
-                checked={appliquerPenalite}
-                onCheckedChange={(v) => setAppliquerPenalite(v === true)}
+                checked={appliquerPenalite && retard}
+                disabled={!retard}
+                onCheckedChange={(v) => setAppliquerPenalite(retard && v === true)}
                 className="mt-0.5"
               />
               <span className="text-sm">

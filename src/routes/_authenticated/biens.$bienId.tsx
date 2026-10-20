@@ -16,6 +16,7 @@ import { Building2, ArrowLeft, Plus, Pencil, UserCog, AlertCircle } from "lucide
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
+import { STATUTS_LOT } from "@/lib/operational-rules";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
   head: () => ({ meta: [{ title: "Fiche bien — Agence Immobilière" }] }),
@@ -36,11 +37,6 @@ const STATUTS_BIEN = [
   { value: "en_travaux", label: "En travaux" },
 ] as const;
 
-const STATUTS_LOT = [
-  { value: "vacant", label: "Vacant" },
-  { value: "loue", label: "Loué" },
-  { value: "en_travaux", label: "En travaux" },
-] as const;
 const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS_LOT.map((s) => [s.value, s.label]));
 
 type Bien = {

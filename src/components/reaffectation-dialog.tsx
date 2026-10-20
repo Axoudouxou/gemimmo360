@@ -13,6 +13,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { fmtDate, fmtMoney, fmtPeriode } from "@/lib/echeance-statut";
+import { atomicOperation } from "@/lib/atomic-operations";
 
 type Echeance = { id: string; periode: string; montant_du: number; montant_affecte: number };
 type Affectation = { id: string; echeance_id: string; montant: number };
@@ -77,37 +78,18 @@ export function ReaffectationDialog({
       return toast.error("Le total affecté dépasse le montant du paiement");
 
     setSaving(true);
-    const { data: userRes } = await supabase.auth.getUser();
-    const byEcheance = new Map(affectations.map((a) => [a.echeance_id, a]));
-
-    for (const e of echeances) {
-      const target = Number(values[e.id] || 0);
-      const existing = byEcheance.get(e.id);
-      if (existing && target <= 0) {
-        const { error } = await supabase.from("affectations").delete().eq("id", existing.id);
-        if (error) { setSaving(false); return toast.error(error.message); }
-      } else if (existing && Math.abs(target - Number(existing.montant)) > 0.001) {
-        const { error } = await supabase
-          .from("affectations")
-          .update({ montant: target })
-          .eq("id", existing.id);
-        if (error) { setSaving(false); return toast.error(error.message); }
-      } else if (!existing && target > 0) {
-        const { error } = await supabase.from("affectations").insert({
-          paiement_id: paiement.id,
-          echeance_id: e.id,
-          montant: target,
-          mode: "manuel",
-          created_by: userRes.user?.id ?? null,
-        });
-        if (error) { setSaving(false); return toast.error(error.message); }
-      }
-    }
-
-    setSaving(false);
-    toast.success("Affectation mise à jour");
-    onOpenChange(false);
-    onSaved?.();
+    try {
+      await atomicOperation("reaffecter_paiement_atomique", {
+        paiement_id: paiement.id,
+        attendues: affectations.map((a) => ({ id: a.id, echeance_id: a.echeance_id, montant: Number(a.montant) })),
+        affectations: echeances.map((e) => ({ echeance_id: e.id, montant: Number(values[e.id] || 0) })),
+      });
+      toast.success("Affectation mise à jour");
+      onOpenChange(false);
+      onSaved?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Réaffectation annulée, répartition précédente conservée.");
+    } finally { setSaving(false); }
   };
 
   return (

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, ArrowLeft, Plus } from "lucide-react";
 import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
 import { toast } from "sonner";
+import { canCreateContract } from "@/lib/operational-rules";
 
 export const Route = createFileRoute("/_authenticated/contrats/")({
   head: () => ({
@@ -69,7 +70,7 @@ function ContratsPage() {
     })();
   }, [navigate]);
 
-  const canWrite = !!role;
+  const canWrite = canCreateContract(role);
 
   const load = async () => {
     setLoading(true);

@@ -48,6 +48,7 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
     title: "Impayés & paiements",
     rows: [
       { key: "finance.read", action: "Consulter les impayés et la situation locative", access: perms([], ALL_ROLES) },
+      { key: "finance.quittance", action: "Émettre / rééditer une quittance", access: perms(FINANCE_WRITE) },
       {
         key: "finance.echeance_write",
         action: "Saisir / modifier un impayé",
@@ -82,27 +83,31 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
   {
     title: "Gestion locative",
     rows: [
-      { key: "locatif.base", action: "Biens, lots, contacts, contrats", access: perms(ALL_ROLES) },
+      { key: "locatif.base", action: "Consulter biens, lots, contacts et contrats", access: perms([], ALL_ROLES) },
+      { key: "locatif.contrat_create", action: "Créer un contrat (liste ou fiche lot)", access: perms(["admin", "direction", "juridique", "gestion_locative"]) },
+      { key: "locatif.contrat_edit", action: "Modifier un contrat / mettre fin au bail", access: perms(ALL_ROLES) },
       { key: "locatif.edl", action: "États des lieux (+ documents PDF)", access: perms(NON_RECOUVREMENT) },
       {
         key: "locatif.charges",
-        action: "Charges et décomptes",
+        action: "Créer / modifier des charges",
         access: perms([
           "admin",
           "direction",
           "gestion_locative",
           "commercial",
           "technico_commercial",
-          "technique",
-          "juridique",
           "recouvrement",
-        ]),
+        ], ["technique", "juridique"]),
       },
+      { key: "locatif.decompte_generate", action: "Générer un décompte propriétaire (Word / Excel)", access: perms(FINANCE_WRITE, ["commercial", "technico_commercial", "technique", "juridique"]) },
       {
         key: "locatif.transactions",
-        action: "Transactions commerciales",
-        access: perms(["admin", "direction", "commercial", "technico_commercial"]),
+        action: "Créer / modifier une transaction commerciale",
+        note: "Commercial et Technico-commercial : leurs transactions uniquement. Juridique : statut et notes uniquement (ligne suivante).",
+        access: perms(["admin", "direction", "commercial", "technico_commercial"], ["juridique"]),
       },
+      { key: "locatif.transaction_legal", action: "Transactions : modifier uniquement le statut et les notes", access: perms(["admin", "direction", "commercial", "technico_commercial", "juridique"]) },
+      { key: "locatif.transaction_delete", action: "Supprimer une transaction", note: "Commercial et Technico-commercial : leurs transactions uniquement.", access: perms(["admin", "direction", "commercial", "technico_commercial"]) },
       {
         key: "locatif.fiscalite",
         action: "Fiscalité (impôt foncier, honoraires)",
@@ -117,19 +122,18 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
       {
         key: "technique.travaux_write",
         action: "Créer / modifier des travaux",
-        note: "Technique : statut, assignation, dates, budget, commentaires uniquement",
+        note: "Selon les droits de la fiche ; Finance en consultation seule.",
         access: perms(
-          ["admin", "direction", "juridique", "gestion_locative"],
-          ["technique", "technico_commercial", "commercial"],
+          ["admin", "direction", "juridique", "gestion_locative", "technique", "technico_commercial", "commercial"],
+          ["recouvrement"],
         ),
       },
       {
         key: "technique.reclamation_write",
         action: "Créer / modifier une réclamation",
-        note: "Technique : statut, priorité, assignation, solution, documents",
+        note: "Selon les droits de la fiche ; Finance sans accès au module.",
         access: perms(
-          ["admin", "direction", "gestion_locative"],
-          ["technique", "technico_commercial", "commercial", "juridique"],
+          ["admin", "direction", "gestion_locative", "technique", "technico_commercial", "commercial", "juridique"],
         ),
       },
       {
@@ -167,6 +171,10 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
 
 export type Overrides = Record<string, Partial<Record<RoleKey, Level>>>;
 
+// Only this action is currently enforced through the configurable matrix.
+// Other rows report their real role guards, not ineffective stored overrides.
+export const isConfigurableAction = (key: string) => key === "finance.echeance_write";
+
 export async function fetchOverrides(): Promise<Overrides> {
   const { data } = await supabase.from("permissions_overrides").select("action_key, role, level");
   const out: Overrides = {};
@@ -184,7 +192,7 @@ export function levelFor(
   role: string | null | undefined,
 ): Level {
   if (!role) return "none";
-  const ov = overrides[actionKey]?.[role as RoleKey];
+  const ov = isConfigurableAction(actionKey) ? overrides[actionKey]?.[role as RoleKey] : undefined;
   if (ov) return ov;
   const row = DEFAULT_SECTIONS.flatMap((s) => s.rows).find((r) => r.key === actionKey);
   return row?.access[role as RoleKey] ?? "none";

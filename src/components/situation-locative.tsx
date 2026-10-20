@@ -238,6 +238,7 @@ export function SituationLocative({
   );
 
   const handleQuittance = async (e: Echeance) => {
+    if (!canWrite) return;
     const reste = Number(e.montant_du) - Number(e.montant_affecte);
     if (reste > 0) return toast.error("La période n'est pas intégralement soldée.");
     const dernier = reglementDe(e.id);
@@ -367,7 +368,7 @@ export function SituationLocative({
                               </TableCell>
                               <TableCell><Badge className={st.className}>{st.emoji} {st.label}</Badge></TableCell>
                               <TableCell className="whitespace-nowrap">
-                                {reste === 0 && Number(e.montant_du) > 0 ? (
+                                {canWrite && reste === 0 && Number(e.montant_du) > 0 ? (
                                   <Button
                                     variant="outline"
                                     size="sm"

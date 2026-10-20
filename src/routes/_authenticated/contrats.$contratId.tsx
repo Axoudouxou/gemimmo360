@@ -21,6 +21,7 @@ import { SituationLocative } from "@/components/situation-locative";
 import { canWriteFinance } from "@/lib/echeance-statut";
 
 import { toast } from "sonner";
+import { atomicOperation } from "@/lib/atomic-operations";
 
 export const Route = createFileRoute("/_authenticated/contrats/$contratId")({
   head: () => ({ meta: [{ title: "Fiche contrat — Agence Immobilière" }] }),
@@ -156,67 +157,14 @@ function ContratDetailPage() {
   const handleEnd = async () => {
     if (!contrat || !lot) return;
     setEndSaving(true);
-    const { error } = await supabase.from("contrats").update({ statut: "resilie", date_fin: endDate }).eq("id", contratId);
-    if (error) {
-      setEndSaving(false);
-      return toast.error(error.message);
-    }
-    await supabase.from("lots").update({ statut: "vacant" }).eq("id", lot.id);
-
-    // Créer les deux tâches automatiques
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const creator = userRes.user?.id ?? null;
-      const locLabel = locataire ? locName(locataire) : "locataire";
-      const bienLotLabel = `${bien?.titre ?? "bien"}${lot?.label ? ` – ${lot.label}` : ""}`;
-      const cautionLabel = contrat.depot_garantie != null
-        ? `${Number(contrat.depot_garantie).toLocaleString("fr-FR")} FCFA`
-        : "montant non renseigné";
-
-      const [{ data: techUser }, { data: recUser }] = await Promise.all([
-        supabase.from("profiles").select("id").in("role", ["technique", "technico_commercial"]).limit(1).maybeSingle(),
-        supabase.from("profiles").select("id").eq("role", "recouvrement").limit(1).maybeSingle(),
-      ]);
-
-      const dateFin = endDate;
-      const dateFinPlus45 = new Date(new Date(endDate).getTime() + 45 * 24 * 60 * 60 * 1000)
-        .toISOString().slice(0, 10);
-
-      const tasks: any[] = [
-        {
-          titre: `État des lieux de sortie – ${locLabel} – ${bienLotLabel}`,
-          type_activite: "etat_des_lieux",
-          priorite: "urgente",
-          statut: "a_faire",
-          date_debut: dateFin,
-          assigne_a: techUser?.id ?? null,
-          created_by: creator,
-          contrat_id: contratId,
-          bien_id: bien?.id ?? null,
-          lot_id: lot.id,
-        },
-        {
-          titre: `Décompte de sortie et remboursement caution – ${locLabel} – ${bienLotLabel} – Caution : ${cautionLabel}`,
-          type_activite: "tache",
-          priorite: "normale",
-          statut: "a_faire",
-          date_debut: dateFinPlus45,
-          assigne_a: recUser?.id ?? null,
-          created_by: creator,
-          contrat_id: contratId,
-          bien_id: bien?.id ?? null,
-          lot_id: lot.id,
-        },
-      ];
-      await supabase.from("activites").insert(tasks);
+      await atomicOperation("terminer_bail_atomique", { contrat_id: contratId, date_fin: endDate });
+      toast.success("Contrat résilié, lot mis à jour, tâches créées");
+      setEndOpen(false);
+      load();
     } catch (e) {
-      console.error("Création tâches résiliation:", e);
-    }
-
-    setEndSaving(false);
-    toast.success("Contrat résilié, lot repassé en vacant, tâches créées");
-    setEndOpen(false);
-    load();
+      toast.error(e instanceof Error ? e.message : "Fin de bail annulée : aucune étape n'a été enregistrée.");
+    } finally { setEndSaving(false); }
   };
 
   const locName = (l: Locataire) => l.type_entite === "entreprise" ? l.nom : `${l.nom}${l.prenom ? ` ${l.prenom}` : ""}`;

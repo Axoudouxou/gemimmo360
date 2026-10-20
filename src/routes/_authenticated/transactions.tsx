@@ -19,6 +19,7 @@ import { hasModuleAccess, FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
+import { canCreateContract, isLegalTransactionRole } from "@/lib/operational-rules";
 import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
@@ -57,7 +58,7 @@ const defaultExclusivite = (t: string): "" | "exclusif" | "non_exclusif" => {
   if (t === "mandat_vente" || t === "mandat_location") return "non_exclusif";
   return "";
 };
-const ALLOWED = ["admin", "direction", "commercial", "technico_commercial"] as const;
+const ALLOWED = ["admin", "direction", "commercial", "technico_commercial", "juridique"] as const;
 const COMMERCIAL_TYPES = ["prospect", "acheteur", "vendeur"];
 
 type Tx = {
@@ -202,6 +203,7 @@ function TransactionsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLegalTransactionRole(role)) return toast.error("Votre profil ne peut pas créer de transaction.");
     if (!form.contact_id) return toast.error("Le contact est obligatoire");
     if (!form.gestionnaire_id) return toast.error("Le gestionnaire est obligatoire");
     setSaving(true);
@@ -260,7 +262,7 @@ function TransactionsPage() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div><CardTitle>Transactions commerciales</CardTitle><CardDescription>Suivi des opportunités.</CardDescription></div>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-              <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>
+              {!isLegalTransactionRole(role) && <DialogTrigger asChild><Button size="sm"><Plus className="mr-2 h-4 w-4" /> Nouvelle</Button></DialogTrigger>}
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleCreate}>
                   <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle><DialogDescription>Prospect, bailleur, acheteur ou vendeur.</DialogDescription></DialogHeader>
@@ -439,10 +441,12 @@ function TransactionsPage() {
           onChanged={load}
           profiles={profiles}
           canEditGestionnaire={role === "admin" || role === "direction"}
+          legalOnly={isLegalTransactionRole(role)}
+          canCreateContrat={canCreateContract(role)}
           canDelete={
-            role === "admin" || role === "direction" || role === "juridique" ||
+            !isLegalTransactionRole(role) && (role === "admin" || role === "direction" ||
             ((role === "commercial" || role === "technico_commercial") && !!detail && detail.gestionnaire_id === uid) ||
-            (!!uid && FULL_ACCESS_USER_IDS.includes(uid))
+            (!!uid && FULL_ACCESS_USER_IDS.includes(uid)))
           }
         />
         <NouveauProspectMiniDialog
@@ -486,6 +490,8 @@ function TransactionDetailDialog({
   profiles,
   canEditGestionnaire,
   canDelete,
+  legalOnly,
+  canCreateContrat,
 }: {
   tx: Tx | null;
   onClose: () => void;
@@ -497,6 +503,8 @@ function TransactionDetailDialog({
   profiles: { id: string; email: string | null }[];
   canEditGestionnaire: boolean;
   canDelete: boolean;
+  legalOnly: boolean;
+  canCreateContrat: boolean;
 }) {
   const navigate = useNavigate();
   const [openNew, setOpenNew] = useState(false);
@@ -517,6 +525,7 @@ function TransactionDetailDialog({
     montant_estime: "",
     date_cloture_prevue: "",
     gestionnaire_id: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -534,6 +543,7 @@ function TransactionDetailDialog({
       montant_estime: tx.montant_estime != null ? String(tx.montant_estime) : "",
       date_cloture_prevue: tx.date_cloture_prevue ?? "",
       gestionnaire_id: tx.gestionnaire_id ?? "",
+      notes: tx.notes ?? "",
     });
   }, [tx]);
 
@@ -566,7 +576,7 @@ function TransactionDetailDialog({
     const motifFinal = edit.statut_opportunite === "perdu"
       ? (edit.motif_perdu === "autre" ? (edit.motif_perdu_autre.trim() || null) : (edit.motif_perdu || null))
       : null;
-    const payload = {
+    const payload = legalOnly ? { statut_opportunite: edit.statut_opportunite, notes: edit.notes.trim() || null } : {
       statut_opportunite: edit.statut_opportunite,
       exclusivite: isMandat(t) ? (edit.exclusivite || null) : null,
       motif_perdu: motifFinal,
@@ -580,7 +590,7 @@ function TransactionDetailDialog({
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
     if (error) { setSaving(false); return toast.error(error.message); }
     // Auto-conversion prospect → bailleur pour mandat_gestion gagné
-    if (edit.statut_opportunite === "gagne" && t === "mandat_gestion") {
+    if (!legalOnly && edit.statut_opportunite === "gagne" && t === "mandat_gestion") {
       const c = contacts.find((x) => x.id === tx.contact_id);
       if (c && c.type_contact === "prospect") {
         await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
@@ -611,8 +621,8 @@ function TransactionDetailDialog({
   };
 
   const isGagne = tx?.statut_opportunite === "gagne";
-  const showCreateBien = !!isGagne && !tx?.bien_id;
-  const showCreateContrat = isGagne
+  const showCreateBien = !legalOnly && !!isGagne && !tx?.bien_id;
+  const showCreateContrat = canCreateContrat && isGagne
     && !!tx?.bien_id
     && lotCount > 0
     && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre")
@@ -622,7 +632,7 @@ function TransactionDetailDialog({
     && lotCount === 0
     && (tx?.type_transaction === "mandat_location" || tx?.type_transaction === "offre");
   const showViewContrat = !!linkedContratId;
-  const showMarkSold = isGagne
+  const showMarkSold = !legalOnly && isGagne
     && tx?.type_transaction === "mandat_vente"
     && !!tx?.bien_id
     && bienStatut !== "vendu";
@@ -653,11 +663,11 @@ function TransactionDetailDialog({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2"><Label>Montant estimé (FCFA)</Label>
-                  <Input type="number" min="0" step="0.01" value={edit.montant_estime}
+                  <Input type="number" min="0" step="0.01" value={edit.montant_estime} disabled={legalOnly}
                     onChange={(e) => setEdit({ ...edit, montant_estime: e.target.value })} />
                 </div>
                 <div className="grid gap-2"><Label>Date de clôture prévue</Label>
-                  <Input type="date" value={edit.date_cloture_prevue}
+                  <Input type="date" value={edit.date_cloture_prevue} disabled={legalOnly}
                     onChange={(e) => setEdit({ ...edit, date_cloture_prevue: e.target.value })} />
                 </div>
               </div>
@@ -678,14 +688,14 @@ function TransactionDetailDialog({
               {edit.statut_opportunite === "perdu" && (
                 <>
                   <div className="grid gap-2"><Label>Motif de perte</Label>
-                    <Select value={edit.motif_perdu} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
+                    <Select value={edit.motif_perdu} disabled={legalOnly} onValueChange={(v) => setEdit({ ...edit, motif_perdu: v })}>
                       <SelectTrigger><SelectValue placeholder="Choisir un motif..." /></SelectTrigger>
                       <SelectContent>{MOTIFS_PERDU.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   {edit.motif_perdu === "autre" && (
                     <div className="grid gap-2"><Label>Précisez</Label>
-                      <Textarea rows={2} value={edit.motif_perdu_autre}
+                      <Textarea rows={2} disabled={legalOnly} value={edit.motif_perdu_autre}
                         onChange={(e) => setEdit({ ...edit, motif_perdu_autre: e.target.value })} />
                     </div>
                   )}
@@ -698,7 +708,7 @@ function TransactionDetailDialog({
                   <Select
                     value={edit.exclusivite || ""}
                     onValueChange={(v) => setEdit({ ...edit, exclusivite: v as "exclusif" | "non_exclusif" })}
-                    disabled={tx.type_transaction === "mandat_gestion"}
+                    disabled={legalOnly || tx.type_transaction === "mandat_gestion"}
                   >
                     <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
@@ -717,13 +727,13 @@ function TransactionDetailDialog({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Date de début du mandat</Label>
-                      <Input type="date" value={edit.date_debut_mandat}
+                      <Input type="date" value={edit.date_debut_mandat} disabled={legalOnly}
                         onChange={(e) => setEdit({ ...edit, date_debut_mandat: e.target.value })} />
                     </div>
                     <div className="grid gap-2">
                       <Label>Date de fin</Label>
                       <Input type="date" value={edit.date_fin_mandat}
-                        disabled={edit.duree_indeterminee}
+                        disabled={legalOnly || edit.duree_indeterminee}
                         onChange={(e) => setEdit({ ...edit, date_fin_mandat: e.target.value })} />
                     </div>
                   </div>
@@ -731,6 +741,7 @@ function TransactionDetailDialog({
                     <Checkbox
                       id="edit-duree-indet"
                       checked={edit.duree_indeterminee}
+                      disabled={legalOnly}
                       onCheckedChange={(v) => setEdit({ ...edit, duree_indeterminee: !!v, date_fin_mandat: v ? "" : edit.date_fin_mandat })}
                     />
                     <Label htmlFor="edit-duree-indet" className="cursor-pointer">Durée indéterminée</Label>
@@ -745,12 +756,14 @@ function TransactionDetailDialog({
               )}
 
 
-              {tx.notes && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Notes</div>
-                  <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{tx.notes}</div>
-                </div>
-              )}
+              {legalOnly ? <div className="grid gap-2">
+                <Label>Notes</Label>
+                <Textarea value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} rows={3} />
+              </div> : tx.notes && <div>
+                <div className="text-xs text-muted-foreground mb-1">Notes</div>
+                <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{tx.notes}</div>
+              </div>}
+
 
               <div className="rounded-md border p-3">
                 <div className="mb-2 flex items-center justify-between">

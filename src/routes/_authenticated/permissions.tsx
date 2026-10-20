@@ -10,6 +10,7 @@ import {
   ALL_ROLES,
   DEFAULT_SECTIONS,
   ROLES,
+  isConfigurableAction,
   fetchOverrides,
   type Level,
   type Overrides,
@@ -97,7 +98,7 @@ function PermissionsPage() {
   }, []);
 
   const effective = (actionKey: string, role: RoleKey): Level =>
-    draft[actionKey]?.[role] ?? defaultLevel(actionKey, role);
+    (isConfigurableAction(actionKey) ? draft[actionKey]?.[role] : undefined) ?? defaultLevel(actionKey, role);
 
   const setLevel = (actionKey: string, role: RoleKey, level: Level) => {
     setDraft((prev) => ({ ...prev, [actionKey]: { ...(prev[actionKey] ?? {}), [role]: level } }));
@@ -230,7 +231,7 @@ function PermissionsPage() {
                         </TableCell>
                         {ALL_ROLES.map((role) => (
                           <TableCell key={role} className="text-center">
-                            {editing ? (
+                            {editing && isConfigurableAction(row.key) ? (
                               <select
                                 className="h-8 rounded-md border border-input bg-background px-1 text-xs"
                                 value={effective(row.key, role)}

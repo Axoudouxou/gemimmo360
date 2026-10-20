@@ -25,10 +25,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { generateQuittanceDocx } from "@/lib/quittance-docx";
+import { atomicOperation } from "@/lib/atomic-operations";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MOYENS_PAIEMENT,
-  dateEcheanceForPeriode,
   fmtMoney,
   fmtPeriode,
   JOUR_ECHEANCE,
@@ -45,7 +45,7 @@ const monthNow = () => new Date().toISOString().slice(0, 7);
 /** Ajoute n mois à une période "YYYY-MM". */
 const addMonths = (mois: string, n: number) => {
   const [y, m] = mois.split("-").map(Number);
-  const d = new Date(Date.UTC(y!, (m! - 1) + n, 1));
+  const d = new Date(Date.UTC(y ?? 2026, ((m ?? 1) - 1) + n, 1));
   return d.toISOString().slice(0, 7);
 };
 
@@ -111,7 +111,7 @@ export function QuittanceDialog({
   const periodes = Array.from({ length: nb }, (_, i) => addMonths(mois, i));
   const base = Number(montant) || 0;
   const retard = paiementEnRetard(mois, datePaiement);
-  const penaliteMois = appliquerPenalite ? calcPenalite(base) : 0;
+  const penaliteMois = appliquerPenalite && retard ? calcPenalite(base) : 0;
   const totalMois = base + penaliteMois;
   const penalite = penaliteMois * nb;
   const totalPaye = totalMois * nb;
@@ -178,103 +178,24 @@ export function QuittanceDialog({
     const m = totalMois;
     setSaving(true);
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user?.id ?? null;
-
-      // 1. Une échéance par mois de la période quittancée (créée si absente)
-      const lignes: { echeanceId: string; reste: number; dejaSolde: boolean; periode: string }[] = [];
-      for (const p of periodes) {
-        const periode = `${p}-01`;
-        const { data: existing } = await supabase
-          .from("echeances")
-          .select("id, periode, montant_du, montant_affecte")
-          .eq("contrat_id", contrat)
-          .eq("periode", periode)
-          .maybeSingle();
-
-        if (existing) {
-          const reste = Number(existing.montant_du) - Number(existing.montant_affecte);
-          if (reste > 0 && m < reste) {
-            toast.error(
-              `${fmtPeriode(periode)} : le montant saisi (${fmtMoney(m)}) ne solde pas la période, il reste ${fmtMoney(reste)} dû.`,
-            );
-            setSaving(false);
-            return;
-          }
-          lignes.push({ echeanceId: existing.id, reste, dejaSolde: reste <= 0, periode });
-        } else {
-          const { data: created, error: cErr } = await supabase
-            .from("echeances")
-            .insert({
-              contrat_id: contrat,
-              periode,
-              date_echeance: dateEcheanceForPeriode(p),
-              montant_du: m,
-              statut: "impaye",
-              etape_traitement: "recouvrement",
-              service_en_charge: "recouvrement",
-              created_by: uid,
-            })
-            .select("id")
-            .single();
-          if (cErr || !created) throw new Error(cErr?.message ?? "Création de l'échéance impossible");
-          lignes.push({ echeanceId: created.id, reste: m, dejaSolde: false, periode });
-        }
-      }
-
-      // 2 & 3. Un paiement unique + affectation sur chaque mois non soldé
-      const aAffecter = lignes.filter((l) => !l.dejaSolde);
-      if (aAffecter.length > 0) {
-        const montantPaiement = m * aAffecter.length;
-        const { data: paiement, error: pErr } = await supabase
-          .from("paiements")
-          .insert({
-            contrat_id: contrat,
-            montant: montantPaiement,
-            date_paiement: datePaiement,
-            moyen_paiement: moyen,
-            reference: reference.trim() || null,
-            notes: penaliteMois > 0
-              ? `Quittance ${periodeLabel} — dont pénalité de retard 10% : ${fmtMoney(penaliteMois * aAffecter.length)}`
-              : `Quittance ${periodeLabel}`,
-            created_by: uid,
-          })
-          .select("id")
-          .single();
-        if (pErr || !paiement) throw new Error(pErr?.message ?? "Enregistrement du paiement impossible");
-
-        for (const l of aAffecter) {
-          const { error: aErr } = await supabase.from("affectations").insert({
-            paiement_id: paiement.id,
-            echeance_id: l.echeanceId,
-            montant: Math.min(m, l.reste > 0 ? l.reste : m),
-            mode: "manuel",
-            created_by: uid,
-          });
-          if (aErr) throw new Error(aErr.message);
-        }
-      }
-
-      // 4. Quittance (une par mois en base, un seul document pour la période)
-      const numeros: string[] = [];
-      let montantTotal = 0;
-      for (const l of lignes) {
-        const { data: q, error: qErr } = await supabase.rpc("emettre_quittance", {
-          _echeance_id: l.echeanceId,
-          _date_reglement: datePaiement,
-          _mode_reglement: MOYEN_LABELS[moyen] ?? moyen,
-          _locataire: infos.locataire,
-          _bien: infos.bien,
-          _lot: infos.lot ?? "",
-        });
-        if (qErr || !q) throw new Error(qErr?.message ?? "Émission de la quittance impossible");
-        const quittance = q as unknown as { numero_affiche: string; montant: number };
-        numeros.push(quittance.numero_affiche);
-        montantTotal += Number(quittance.montant);
-      }
-
+      const quittances = await atomicOperation<{ numero_affiche: string; montant: number; date_reglement: string; mode_reglement: string | null }[]>("generer_quittances_atomique", {
+        contrat_id: contrat,
+        periodes: periodes.map((p) => `${p}-01`),
+        montant_mois: m,
+        date_paiement: datePaiement,
+        moyen_paiement: moyen,
+        mode_reglement: MOYEN_LABELS[moyen] ?? moyen,
+        reference: reference.trim() || null,
+        notes: penaliteMois > 0
+          ? `Quittance ${periodeLabel} — dont pénalité de retard 10% : ${fmtMoney(penalite)}`
+          : `Quittance ${periodeLabel}`,
+        locataire: infos.locataire, bien: infos.bien, lot: infos.lot ?? "",
+      });
+      const numeros = quittances.map((q) => q.numero_affiche);
+      const montantTotal = quittances.reduce((total, q) => total + Number(q.montant), 0);
       const numeroDoc =
-        numeros.length > 1 ? `${numeros[0]} à ${numeros[numeros.length - 1]}` : numeros[0]!;
+        numeros.length > 1 ? `${numeros[0]} à ${numeros[numeros.length - 1]}` : numeros[0] ?? "";
+      try {
       await generateQuittanceDocx({
         numero: numeroDoc,
         dateEmission: datePaiement,
@@ -287,6 +208,11 @@ export function QuittanceDialog({
         resteAPayer: 0,
         penalite,
       });
+      } catch {
+        toast.error(`Quittance N° ${numeroDoc} enregistrée, mais téléchargement impossible. Rééditez-la sans nouveau paiement.`);
+        onSaved?.();
+        return;
+      }
       toast.success(`Quittance N° ${numeroDoc} générée`);
       onOpenChange(false);
       onSaved?.();
@@ -404,8 +330,9 @@ export function QuittanceDialog({
             <div className="rounded-md border p-3">
               <label className="flex items-start gap-3 cursor-pointer">
                 <Checkbox
-                  checked={appliquerPenalite}
-                  onCheckedChange={(v) => setAppliquerPenalite(v === true)}
+                  checked={appliquerPenalite && retard}
+                  disabled={!retard}
+                  onCheckedChange={(v) => setAppliquerPenalite(retard && v === true)}
                   className="mt-0.5"
                 />
                 <span className="text-sm">

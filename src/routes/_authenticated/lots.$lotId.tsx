@@ -16,6 +16,7 @@ import { ActivitesLiees } from "@/components/activites-widgets";
 import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
 import { NouvelEdlDialog } from "@/components/nouvel-edl-dialog";
 import { toast } from "sonner";
+import { canCreateContract, STATUTS_LOT, lotStatutLabel } from "@/lib/operational-rules";
 
 export const Route = createFileRoute("/_authenticated/lots/$lotId")({
   head: () => ({ meta: [{ title: "Fiche lot — Agence Immobilière" }] }),
@@ -47,7 +48,7 @@ function LotDetailPage() {
   const [contratOpen, setContratOpen] = useState(false);
   const [edlOpen, setEdlOpen] = useState(false);
 
-  const canCreateContrat = myRole === "admin" || myRole === "juridique";
+  const canCreateContrat = canCreateContract(myRole);
   const canCreateEdl = !!myRole && myRole !== "recouvrement" && myRole !== "en_attente";
   const canEditLot = ["admin", "juridique", "gestion_locative", "commercial", "technico_commercial"].includes(myRole);
 
@@ -146,7 +147,7 @@ function LotDetailPage() {
                   <div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <CardTitle>{lot.label}</CardTitle>
-                      <Badge>{lot.statut}</Badge>
+                      <Badge>{lotStatutLabel(lot.statut)}</Badge>
                       {isStale(lot.updated_at) && (
                         <Badge variant="outline" className="border-amber-500 text-amber-700">
                           <AlertCircle className="mr-1 h-3 w-3" /> À vérifier
@@ -190,9 +191,7 @@ function LotDetailPage() {
                               <Select value={editForm.statut} onValueChange={(v) => setEditForm({ ...editForm, statut: v })}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="vacant">Vacant</SelectItem>
-                                  <SelectItem value="loue">Loué</SelectItem>
-                                  <SelectItem value="indisponible">Indisponible</SelectItem>
+                                  {STATUTS_LOT.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>
