@@ -2,7 +2,7 @@
 
 ## Corrections de l’audit — production GEM
 - [x] Sauvegarde complète téléchargée — téléchargement confirmé par Axelle le 20 octobre 2026 ; reprise autorisée.
-- [ ] Bloc 1 — Corrections déjà appliquées ; reprise des contrôles finaux après confirmation de la sauvegarde, puis validation utilisateur.
+- [ ] Bloc 1 — Corrections appliquées ; règles et pages contrôlées. Validation complète des transactions bloquée : le compte de test SQL ne peut pas exécuter les opérations authentifiées. Aucun passage au bloc 2.
 - [ ] Bloc 2 — Transactions et fin de bail (attend le feu vert après le bloc 1).
 - [ ] Bloc 3 — Transfert et suivi juridique (attend la validation du bloc précédent).
 - [ ] Bloc 4 — Travaux et états des lieux (attend la validation du bloc précédent).
