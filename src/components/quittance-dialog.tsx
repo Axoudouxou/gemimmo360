@@ -182,6 +182,7 @@ export function QuittanceDialog({
         contrat_id: contrat,
         periodes: periodes.map((p) => `${p}-01`),
         montant_mois: m,
+        penalite_mois: penaliteMois,
         date_paiement: datePaiement,
         moyen_paiement: moyen,
         mode_reglement: MOYEN_LABELS[moyen] ?? moyen,
