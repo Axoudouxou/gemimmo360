@@ -99,14 +99,15 @@ export const DEFAULT_SECTIONS: MatrixSection[] = [
           "recouvrement",
         ], ["technique", "juridique"]),
       },
-      { key: "locatif.decompte_generate", action: "Générer un décompte propriétaire (Word / Excel)", access: perms(FINANCE_WRITE, ["commercial", "technico_commercial", "technique", "juridique"]) },
+      { key: "locatif.decompte_generate", action: "Générer un décompte propriétaire (Word / Excel)", access: perms(FINANCE_WRITE) },
       {
         key: "locatif.transactions",
         action: "Créer / modifier une transaction commerciale",
         note: "Commercial et Technico-commercial : leurs transactions uniquement. Juridique : statut et notes uniquement (ligne suivante).",
-        access: perms(["admin", "direction", "commercial", "technico_commercial"], ["juridique"]),
+        access: perms(["admin", "direction", "commercial", "technico_commercial"]),
       },
-      { key: "locatif.transaction_legal", action: "Transactions : modifier uniquement le statut et les notes", access: perms(["admin", "direction", "commercial", "technico_commercial", "juridique"]) },
+      { key: "locatif.transaction_read", action: "Consulter les transactions", note: "Commercial et Technico-commercial : leurs transactions uniquement. Juridique : toutes les transactions.", access: perms([], ["admin", "direction", "commercial", "technico_commercial", "juridique"]) },
+      { key: "locatif.transaction_legal", action: "Transactions : modifier uniquement le statut et les notes", note: "Juridique : aucune création ni suppression. Commercial et Technico-commercial : leurs transactions uniquement.", access: perms(["admin", "direction", "commercial", "technico_commercial", "juridique"]) },
       { key: "locatif.transaction_delete", action: "Supprimer une transaction", note: "Commercial et Technico-commercial : leurs transactions uniquement.", access: perms(["admin", "direction", "commercial", "technico_commercial"]) },
       {
         key: "locatif.fiscalite",
@@ -181,7 +182,8 @@ export async function fetchOverrides(): Promise<Overrides> {
   for (const row of data ?? []) {
     const key = row.action_key as string;
     out[key] = out[key] ?? {};
-    out[key]![row.role as RoleKey] = row.level as Level;
+    const entry = out[key];
+    if (entry) entry[row.role as RoleKey] = row.level as Level;
   }
   return out;
 }

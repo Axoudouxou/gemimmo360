@@ -29,6 +29,13 @@
       "when": 1792499782152,
       "tag": "0003_bloc1_atomic_operations_and_rights",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792501018492,
+      "tag": "0004_bloc1_receipt_balance_and_legal_guard",
+      "breakpoints": true
     }
   ]
 }
