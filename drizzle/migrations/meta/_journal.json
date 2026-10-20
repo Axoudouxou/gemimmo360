@@ -22,6 +22,13 @@
       "when": 1791546185378,
       "tag": "0002_travaux_devis_complementaires",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792499782152,
+      "tag": "0003_bloc1_atomic_operations_and_rights",
+      "breakpoints": true
     }
   ]
 }

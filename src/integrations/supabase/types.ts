@@ -2220,6 +2220,7 @@ export type Database = {
         Args: { _activite_id: string; _user_id: string }
         Returns: boolean
       }
+      creer_contrat_atomique: { Args: { _payload: Json }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2276,8 +2277,13 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      enregistrer_paiement_atomique: {
+        Args: { _payload: Json }
+        Returns: string
+      }
       generate_honoraires_reminders: { Args: never; Returns: undefined }
       generate_quarterly_if_tasks: { Args: never; Returns: undefined }
+      generer_quittances_atomique: { Args: { _payload: Json }; Returns: Json }
       get_juridique_assignee: { Args: never; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_christelle_kouassi: { Args: never; Returns: boolean }
@@ -2315,7 +2321,9 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reaffecter_paiement_atomique: { Args: { _payload: Json }; Returns: Json }
       recompute_echeance: { Args: { _echeance_id: string }; Returns: undefined }
+      terminer_bail_atomique: { Args: { _payload: Json }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
