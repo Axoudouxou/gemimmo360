@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, ArrowLeft, Plus, Pencil, Trash2, Repeat, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { hasModuleAccess } from "@/lib/access-overrides";
+import { canGenerateDecompte } from "@/lib/operational-rules";
 
 export const Route = createFileRoute("/_authenticated/charges")({
   head: () => ({
@@ -113,6 +114,7 @@ function ChargesPage() {
     () => hasModuleAccess(role, uid, WRITE_ROLES as unknown as readonly string[]),
     [role, uid],
   );
+  const canGenerate = canGenerateDecompte(role);
 
   useEffect(() => {
     (async () => {
@@ -440,6 +442,7 @@ function ChargesPage() {
   };
 
   const handleExportDocx = async () => {
+    if (!canGenerate) return toast.error("Votre profil ne peut pas générer de décompte.");
     const data = buildDecompteData();
     if (!data) return;
     setExporting(true);
@@ -455,6 +458,7 @@ function ChargesPage() {
   };
 
   const handleExportXlsx = async () => {
+    if (!canGenerate) return toast.error("Votre profil ne peut pas générer de décompte.");
     const data = buildDecompteData();
     if (!data) return;
     setExporting(true);
@@ -564,14 +568,14 @@ function ChargesPage() {
                   <CardTitle>Décompte propriétaire</CardTitle>
                   <CardDescription>Loyers encaissés − Charges − Travaux (dépense réelle) − Honoraires de fiscalité − Honoraires de gestion = Net à reverser.</CardDescription>
                 </div>
-                <div className="flex gap-2">
+                {canGenerate && <div className="flex gap-2">
                 <Button size="sm" disabled={!decompte || exporting} onClick={handleExportDocx}>
                   <FileDown className="mr-2 h-4 w-4" /> {exporting ? "Génération..." : "Générer le décompte"}
                 </Button>
                 <Button size="sm" variant="outline" disabled={!decompte || exporting} onClick={handleExportXlsx}>
                   <FileDown className="mr-2 h-4 w-4" /> Excel
                 </Button>
-                </div>
+                </div>}
 
               </CardHeader>
               <CardContent className="space-y-6">
