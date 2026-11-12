@@ -127,6 +127,7 @@ export type Database = {
       }
       activites: {
         Row: {
+          archive: boolean
           assigne_a: string
           bien_id: string | null
           contact_id: string | null
@@ -152,6 +153,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive?: boolean
           assigne_a: string
           bien_id?: string | null
           contact_id?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive?: boolean
           assigne_a?: string
           bien_id?: string | null
           contact_id?: string | null

@@ -1,0 +1,2 @@
+ALTER TABLE public.activites DROP CONSTRAINT activites_terrain_date_required;
+ALTER TABLE public.activites ADD CONSTRAINT activites_terrain_date_required CHECK (archive OR type_activite <> ALL (ARRAY['visite','etat_des_lieux','recouvrement_terrain']) OR date_debut IS NOT NULL) NOT VALID;

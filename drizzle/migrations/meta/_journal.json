@@ -85,6 +85,27 @@
       "when": 1794486279642,
       "tag": "0011_bloc5_rappel_stop_terminee",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794486473252,
+      "tag": "0012_archive_activites",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794486480410,
+      "tag": "0013_archive_activites_masquage",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794486489375,
+      "tag": "0014_terrain_date_sauf_archive",
+      "breakpoints": true
     }
   ]
 }
