@@ -20,3 +20,6 @@
 
 
 Décisions validées : historique complet depuis le début de chaque contrat ; dépôt de garantie hors échéances ; charges récurrentes inchangées.
+
+## Après les 6 blocs de l’audit
+- [ ] Matrice des accès entièrement pilotable par l’administrateur (chaque case modifiable et réellement appliquée, y compris côté serveur)
