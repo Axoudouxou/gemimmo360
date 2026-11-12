@@ -1,3 +1,4 @@
+import { coutTravail, recurrenceTombeCeMois } from "@/lib/operational-rules";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { FilterBar } from "@/components/filter-bar";
@@ -250,13 +251,17 @@ function ChargesPage() {
 
   /** Charges d'un bien pour un mois : charges rattachées + occurrences récurrentes manquantes */
   const chargesDuMois = (bienId: string, mk: string) => {
-    const directes = charges.filter((c) => c.bien_id === bienId && monthKey(c.mois_rattachement) === mk);
+    // Une charge déjà imputée à un autre décompte n'est jamais recomptée
+    const directes = charges.filter((c) => c.bien_id === bienId && monthKey(c.mois_rattachement) === mk
+      && !(c.statut_imputation === "imputee" && c.decompte_mois && monthKey(c.decompte_mois) !== mk));
     const debutMois = `${mk}-01`;
     const recurrentes = charges.filter((c) => {
       if (!c.recurrente || c.bien_id !== bienId) return false;
-      if (c.frequence !== "mensuelle") return false;
       const deb = c.recurrence_debut ?? c.mois_rattachement;
       if (monthKey(deb) > mk) return false;
+      const pas = c.frequence === "trimestrielle" ? 3 : c.frequence === "annuelle" ? 12 : c.frequence === "mensuelle" ? 1 : 0;
+      if (!pas) return false;
+      if (!recurrenceTombeCeMois(monthKey(deb), mk, pas)) return false;
       if (c.recurrence_fin && monthKey(c.recurrence_fin) < mk) return false;
       if (monthKey(c.mois_rattachement) === mk) return false; // déjà comptée
       return directes.every((d) => d.libelle.toLowerCase() !== c.libelle.toLowerCase());
@@ -334,7 +339,7 @@ function ChargesPage() {
         ...travaux.filter((t) => {
           if (t.bien_id !== dBien) return false;
           if (t.charge_financiere !== "bailleur") return false;
-          if (!(Number(t.budget_depense) > 0)) return false;
+          if (!(coutTravail(t).montant > 0)) return false;
           const ref = t.date_reelle ?? t.date_intervention_reelle ?? t.date_fin ?? t.date_echeance ?? t.updated_at;
           return !!ref && monthKey(ref) === mk;
         }),
@@ -344,7 +349,7 @@ function ChargesPage() {
         if (!dc.date_realisation || monthKey(dc.date_realisation) !== mk) continue;
         const parent = travaux.find((t) => t.id === dc.travaux_id);
         if (!parent || parent.bien_id !== dBien || parent.charge_financiere !== "bailleur") continue;
-        travauxMois.push({ ...parent, id: `dc-${dc.id}`, titre: `${parent.titre} – ${dc.libelle}`, budget_prevu: Number(dc.montant) || 0, budget_depense: Number(dc.montant) || 0 });
+        travauxMois.push({ ...parent, id: `dc-${dc.id}`, titre: `${parent.titre} – ${dc.libelle}`, budget_prevu: null, budget_depense: Number(dc.montant) || 0 });
       }
 
       if (bailleurId) {
@@ -391,7 +396,7 @@ function ChargesPage() {
     const loyersEncaisses = Math.max(0, loyersAttendus - resteDu);
     const totalCharges = lignes.reduce((s, c) => s + Number(c.montant), 0);
     const honoraires = Math.round((loyersEncaisses * (Number(tauxHono) || 0)) / 100);
-    const totalTravaux = travauxMois.reduce((s, t) => s + Number(t.budget_prevu ?? t.budget_depense ?? 0), 0);
+    const totalTravaux = travauxMois.reduce((s, t) => s + coutTravail(t).montant, 0);
     const totalHonoFiscaux = honoFiscauxMois.reduce((s, h) => s + Number(h.montant || 0), 0);
 
     return {
@@ -413,6 +418,7 @@ function ChargesPage() {
       bienAdresse: bien?.adresse ?? null,
       proprietaire: bailleur ? `${bailleur.nom} ${bailleur.prenom ?? ""}`.trim() : "Propriétaire",
       moisLabel: periodeLabel,
+      periodicite: dPeriodicite === "trimestre" ? ("trimestre" as const) : ("mois" as const),
       loyers: decompte.detailLoyers,
       totalLoyers: decompte.loyersEncaisses,
       loyersFactures: decompte.loyersAttendus,
@@ -420,7 +426,7 @@ function ChargesPage() {
       totalImpayes: decompte.resteDu,
       charges: decompte.lignes.map((c) => ({ libelle: c.libelle, detail: c.recurrente ? "Récurrente" : "Ponctuelle", montant: Number(c.montant) })),
       totalCharges: decompte.totalCharges,
-      travaux: decompte.travauxMois.map((t) => ({ libelle: t.titre, montant: Number(t.budget_prevu ?? t.budget_depense ?? 0) })),
+      travaux: decompte.travauxMois.map((t) => ({ libelle: `${t.titre} (${coutTravail(t).libelle})`, montant: coutTravail(t).montant })),
       totalTravaux: decompte.totalTravaux,
       honorairesFiscaux: decompte.honoFiscauxMois.map((h) => ({ libelle: h.type_honoraire, montant: Number(h.montant || 0) })),
       totalHonorairesFiscaux: decompte.totalHonoFiscaux,
@@ -441,12 +447,27 @@ function ChargesPage() {
     toast.error(msg || "Erreur lors de la génération");
   };
 
+  /** Enregistre le décompte (numéro unique par bien + période). Régénérer réutilise le numéro et les montants d'origine. */
+  const figerDecompte = async () => {
+    const data = buildDecompteData();
+    if (!data || !decompte || !dBien) return null;
+    const chargeIds = decompte.lignes.filter((c) => !c.virtuelle).map((c) => c.id);
+    const { data: row, error } = await supabase.rpc("enregistrer_decompte", {
+      _bien_id: dBien, _periodicite: data.periodicite, _periode_debut: `${moisPeriode[0]}-01`,
+      _donnees: data as never, _charge_ids: chargeIds,
+    });
+    if (error) throw error;
+    const r = row as unknown as { numero_affiche: string; donnees: typeof data };
+    void load();
+    return { ...r.donnees, numero: r.numero_affiche };
+  };
+
   const handleExportDocx = async () => {
     if (!canGenerate) return toast.error("Votre profil ne peut pas générer de décompte.");
-    const data = buildDecompteData();
-    if (!data) return;
     setExporting(true);
     try {
+      const data = await figerDecompte();
+      if (!data) return;
       const { generateDecompteDocx } = await import("@/lib/decompte-docx");
       await generateDecompteDocx(data);
       toast.success("Décompte généré");
@@ -459,10 +480,10 @@ function ChargesPage() {
 
   const handleExportXlsx = async () => {
     if (!canGenerate) return toast.error("Votre profil ne peut pas générer de décompte.");
-    const data = buildDecompteData();
-    if (!data) return;
     setExporting(true);
     try {
+      const data = await figerDecompte();
+      if (!data) return;
       const { exportDecompteXlsx } = await import("@/lib/decompte-xlsx");
       await exportDecompteXlsx(data);
       toast.success("Décompte Excel généré");
@@ -541,7 +562,7 @@ function ChargesPage() {
                         </TableCell>
                         <TableCell>
                           {c.statut_imputation === "imputee" ? (
-                            <Badge variant="secondary">Imputée {c.decompte_mois ? monthLabel(monthKey(c.decompte_mois)) : ""}</Badge>
+                            <Badge variant="secondary">Imputée au décompte de {c.decompte_mois ? monthLabel(monthKey(c.decompte_mois)) : ""}</Badge>
                           ) : <Badge variant="outline">À imputer</Badge>}
                         </TableCell>
                         {canWrite && (
@@ -643,7 +664,7 @@ function ChargesPage() {
                             <Table>
                               <TableHeader><TableRow><TableHead>Intitulé</TableHead><TableHead>Montant</TableHead></TableRow></TableHeader>
                               <TableBody>{decompte.travauxMois.map((t) => (
-                                <TableRow key={t.id}><TableCell>{t.titre}</TableCell><TableCell>{fmtMoney(Number(t.budget_prevu ?? t.budget_depense ?? 0))}</TableCell></TableRow>
+                                <TableRow key={t.id}><TableCell>{t.titre} <span className="text-muted-foreground">({coutTravail(t).libelle})</span></TableCell><TableCell>{fmtMoney(coutTravail(t).montant)}</TableCell></TableRow>
                               ))}</TableBody>
                             </Table>
                           </div>

@@ -779,6 +779,75 @@ export type Database = {
           },
         ]
       }
+      decompte_sequence: {
+        Row: {
+          annee: number
+          dernier_numero: number
+        }
+        Insert: {
+          annee: number
+          dernier_numero?: number
+        }
+        Update: {
+          annee?: number
+          dernier_numero?: number
+        }
+        Relationships: []
+      }
+      decomptes: {
+        Row: {
+          annee: number
+          bien_id: string
+          created_at: string
+          created_by: string | null
+          donnees: Json
+          id: string
+          numero: number
+          numero_affiche: string
+          periode_debut: string
+          periodicite: string
+        }
+        Insert: {
+          annee: number
+          bien_id: string
+          created_at?: string
+          created_by?: string | null
+          donnees: Json
+          id?: string
+          numero: number
+          numero_affiche: string
+          periode_debut: string
+          periodicite: string
+        }
+        Update: {
+          annee?: number
+          bien_id?: string
+          created_at?: string
+          created_by?: string | null
+          donnees?: Json
+          id?: string
+          numero?: number
+          numero_affiche?: string
+          periode_debut?: string
+          periodicite?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decomptes_bien_id_fkey"
+            columns: ["bien_id"]
+            isOneToOne: false
+            referencedRelation: "biens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decomptes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       echeances: {
         Row: {
           contrat_id: string
@@ -2444,6 +2513,33 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      enregistrer_decompte: {
+        Args: {
+          _bien_id: string
+          _charge_ids: string[]
+          _donnees: Json
+          _periode_debut: string
+          _periodicite: string
+        }
+        Returns: {
+          annee: number
+          bien_id: string
+          created_at: string
+          created_by: string | null
+          donnees: Json
+          id: string
+          numero: number
+          numero_affiche: string
+          periode_debut: string
+          periodicite: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "decomptes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       enregistrer_paiement_atomique: {
         Args: { _payload: Json }

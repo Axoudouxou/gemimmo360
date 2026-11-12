@@ -44,3 +44,14 @@ describe("Bloc 1 — règles opérationnelles", () => {
     assert.equal(calcPenalite(100000), 10000);
   });
 });
+import { coutTravail, recurrenceTombeCeMois } from "./operational-rules";
+test("décompte travaux : coût réel sinon estimé", () => {
+  assert.deepEqual(coutTravail({ budget_depense: 50000, budget_prevu: 80000 }), { montant: 50000, libelle: "coût réel" });
+  assert.deepEqual(coutTravail({ budget_depense: 0, budget_prevu: 80000 }), { montant: 80000, libelle: "coût estimé" });
+});
+test("charges trimestrielles et annuelles se répètent", () => {
+  assert.equal(recurrenceTombeCeMois("2026-01", "2026-04", 3), true);
+  assert.equal(recurrenceTombeCeMois("2026-01", "2026-02", 3), false);
+  assert.equal(recurrenceTombeCeMois("2026-01", "2027-01", 12), true);
+  assert.equal(recurrenceTombeCeMois("2026-01", "2026-07", 12), false);
+});

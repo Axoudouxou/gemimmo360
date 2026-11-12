@@ -24,6 +24,7 @@ export type DecompteData = {
   proprietaire: string;
   moisLabel: string;
   numero?: string;
+  periodicite?: "mois" | "trimestre";
   loyers: { locataire: string; echeance: string; montant: number }[];
   totalLoyers: number;
   loyersFactures?: number;
@@ -205,7 +206,7 @@ export async function generateDecompteDocx(d: DecompteData) {
   const totalImpayes = d.totalImpayes ?? impayes.reduce((s, i) => s + i.montant, 0);
 
   children.push(
-    p(`• Montant facturation des loyers du mois de ${d.moisLabel} : ${money(factures)}`, { after: 60 }),
+    p(`• Montant facturation des loyers ${d.periodicite === "trimestre" ? "du trimestre" : "du mois de"} ${d.moisLabel} : ${money(factures)}`, { after: 60 }),
     p(`• Montant des loyers encaissés : ${money(d.totalLoyers)}`, { after: totalImpayes > 0 ? 60 : 240 }),
   );
   if (totalImpayes > 0) {
@@ -232,7 +233,7 @@ export async function generateDecompteDocx(d: DecompteData) {
   rows.push(movRow("TOTAL encaissement de la période", undefined, d.totalLoyers, true));
 
   if (impayes.length) {
-    rows.push(movRow("IMPAYÉS DU MOIS", undefined, undefined, true));
+    rows.push(movRow(d.periodicite === "trimestre" ? "IMPAYÉS DU TRIMESTRE" : "IMPAYÉS DU MOIS", undefined, undefined, true));
     impayes.forEach((i) => rows.push(movRow(`${i.lot || "Lot sans intitulé"}_${i.locataire} (${i.echeance})`, undefined, i.montant)));
     rows.push(movRow("TOTAL DES IMPAYÉS", undefined, totalImpayes, true));
   }
