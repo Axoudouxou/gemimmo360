@@ -77,7 +77,7 @@ function ContratsPage() {
     const [{ data: cData, error }, { data: lData }, { data: bData }, { data: locData }] = await Promise.all([
       supabase.from("contrats").select("*").order("created_at", { ascending: false }),
       supabase.from("lots").select("id, label, bien_id").order("label"),
-      supabase.from("biens").select("id, titre").order("titre"),
+      supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
       supabase.from("contacts").select("id, nom, prenom").eq("type_contact", "locataire").eq("archive", false).order("nom"),
     ]);
     if (error) toast.error(error.message);

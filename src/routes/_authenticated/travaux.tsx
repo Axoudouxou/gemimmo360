@@ -119,7 +119,7 @@ function TravauxPage() {
     const [{ data: tData, error }, { data: bData }, { data: lData }, { data: pData }, { data: rData }, { data: eData }, { data: cData }] =
       await Promise.all([
         supabase.from("travaux").select("*").order("created_at", { ascending: false }),
-        supabase.from("biens").select("id, titre, adresse").order("titre"),
+        supabase.from("biens").select("id, titre, adresse").eq("archive", false).order("titre"),
         supabase.from("lots").select("id, label, bien_id").order("label"),
         supabase.from("profiles").select("id, email").order("email"),
         supabase.from("reclamations").select("id, reference, titre, bien_id").order("created_at", { ascending: false }).limit(500),

@@ -187,7 +187,7 @@ function ReclamationsPage() {
     setLoading(true);
     const [{ data: rData, error }, { data: bData }, { data: cData }, { data: pData }] = await Promise.all([
       (supabase.from("reclamations") as any).select("*").order("created_at", { ascending: false }),
-      supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
+      supabase.from("biens").select("id, titre, adresse, bailleur_id").eq("archive", false).order("titre"),
       supabase.from("contacts").select("id, nom, prenom, telephone, email, type_contact").order("nom"),
       supabase.from("profiles").select("id, email").order("email"),
     ]);

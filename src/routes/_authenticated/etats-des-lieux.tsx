@@ -96,7 +96,7 @@ function EDLPage() {
       supabase.from("etats_des_lieux").select("*").order("date_realisation", { ascending: false }),
       supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
       supabase.from("lots").select("id, label, bien_id").order("label"),
-      supabase.from("biens").select("id, titre").order("titre"),
+      supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
       supabase.from("contacts").select("id, nom, prenom"),
     ]);
     if (error) toast.error(error.message);

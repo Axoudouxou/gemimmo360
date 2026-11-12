@@ -102,7 +102,7 @@ function CalendrierPage() {
       if (prof) setMe(prof as Profile);
       const [{ data: all }, { data: biens }] = await Promise.all([
         supabase.from("profiles").select("id, email, role").order("email"),
-        supabase.from("biens").select("id, titre").order("titre").limit(1000),
+        supabase.from("biens").select("id, titre").eq("archive", false).order("titre").limit(1000),
       ]);
       setProfiles((all ?? []) as Profile[]);
       const map: Record<string, string> = {};
@@ -484,7 +484,7 @@ function NouvelleActiviteTerrainDialog({
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data } = await supabase.from("biens").select("id, titre, adresse").order("titre").limit(1000);
+      const { data } = await supabase.from("biens").select("id, titre, adresse").eq("archive", false).order("titre").limit(1000);
       setBiens(((data ?? []) as Array<{ id: string; titre: string | null; adresse: string | null }>).map((b) => ({
         id: b.id,
         titre: [b.titre, b.adresse].filter(Boolean).join(" · ") || b.id.slice(0, 8),

@@ -139,7 +139,7 @@ function ChargesPage() {
       { data: coData }, { data: trData }, { data: hfData }, { data: dcData },
     ] = await Promise.all([
       supabase.from("charges").select("*").order("mois_rattachement", { ascending: false }),
-      supabase.from("biens").select("id, titre, adresse, bailleur_id").order("titre"),
+      supabase.from("biens").select("id, titre, adresse, bailleur_id").eq("archive", false).order("titre"),
       supabase.from("contrats").select("id, loyer_mensuel, statut, locataire_id, date_debut, date_fin, lot:lots(bien_id, label, type_lot, surface)"),
       supabase.from("echeances").select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement"),
       supabase.from("contacts").select("id, nom, prenom"),

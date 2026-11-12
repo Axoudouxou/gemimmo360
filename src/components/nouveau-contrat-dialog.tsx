@@ -62,7 +62,7 @@ export function NouveauContratDialog({ open, onOpenChange, fixedLotId, filterByB
       const lotsQuery = supabase.from("lots").select("id, label, bien_id, statut").order("label");
       const [{ data: lData }, { data: bData }, { data: locData }] = await Promise.all([
         filterByBienId ? lotsQuery.eq("bien_id", filterByBienId) : lotsQuery,
-        supabase.from("biens").select("id, titre").order("titre"),
+        supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
         supabase.from("contacts").select("id, nom, prenom, type_entite").in("type_contact", ["locataire", "prospect"]).eq("archive", false).order("nom"),
       ]);
       setLots((lData ?? []) as Lot[]);

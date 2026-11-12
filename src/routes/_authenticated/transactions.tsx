@@ -128,7 +128,7 @@ function TransactionsPage() {
     const [{ data: tData, error }, { data: cData }, { data: bData }, { data: aData }] = await Promise.all([
       supabase.from("transactions_commerciales").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id, nom, prenom, type_contact").eq("archive", false).order("nom"),
-      supabase.from("biens").select("id, titre").order("titre"),
+      supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
       supabase.from("activites").select("*").not("transaction_id", "is", null),
     ]);
     if (error) toast.error(error.message);

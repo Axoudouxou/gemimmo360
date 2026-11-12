@@ -131,7 +131,7 @@ function FiscalitePage() {
   async function loadAll() {
     const [{ data: cs }, { data: bs }, { data: ifs }, { data: hs }] = await Promise.all([
       supabase.from("contacts").select("id, nom, prenom, type_contact").eq("type_contact", "bailleur").order("nom"),
-      supabase.from("biens").select("id, titre").order("titre"),
+      supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
       supabase.from("impots_fonciers").select("*").order("annee_fiscale", { ascending: false }).order("trimestre"),
       supabase.from("honoraires_fiscaux").select("*").order("created_at", { ascending: false }),
     ]);

@@ -410,7 +410,7 @@ export function NouvelleActiviteLieeDialog({
       if (u.user) setAssigne((prev) => prev || u.user!.id);
       const [p, b, l, ct, c, tx] = await Promise.all([
         supabase.from("profiles").select("id, email").order("email"),
-        supabase.from("biens").select("id, titre").order("titre").limit(300),
+        supabase.from("biens").select("id, titre").eq("archive", false).order("titre").limit(300),
         supabase.from("lots").select("id, label, bien_id").order("label").limit(500),
         supabase.from("contrats").select("id, lot_id, date_debut, statut").order("date_debut", { ascending: false }).limit(300),
         supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(500),

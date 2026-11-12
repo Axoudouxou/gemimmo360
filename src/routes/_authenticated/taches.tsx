@@ -407,7 +407,7 @@ function TacheDialog({
     if (!open) return;
     (async () => {
       const [b, c, ct] = await Promise.all([
-        supabase.from("biens").select("id, titre, adresse").order("titre").limit(1000),
+        supabase.from("biens").select("id, titre, adresse").eq("archive", false).order("titre").limit(1000),
         supabase.from("contacts").select("id, nom, prenom").eq("archive", false).order("nom").limit(1000),
         supabase.from("contrats").select("id, date_debut, statut").order("date_debut", { ascending: false }).limit(500),
       ]);
