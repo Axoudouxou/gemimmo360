@@ -2382,6 +2382,10 @@ export type Database = {
         Returns: boolean
       }
       creer_contrat_atomique: { Args: { _payload: Json }; Returns: string }
+      decider_travaux: {
+        Args: { _decision: string; _motif: string; _travaux_id: string }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2494,6 +2498,10 @@ export type Database = {
       reaffecter_paiement_atomique: { Args: { _payload: Json }; Returns: Json }
       recompute_echeance: { Args: { _echeance_id: string }; Returns: undefined }
       restaurer_bien: { Args: { _bien_id: string }; Returns: undefined }
+      soumettre_travaux_validation: {
+        Args: { _travaux_id: string }
+        Returns: undefined
+      }
       terminer_bail_atomique: { Args: { _payload: Json }; Returns: Json }
       transferer_echeance_juridique: {
         Args: { _echeance_id: string }

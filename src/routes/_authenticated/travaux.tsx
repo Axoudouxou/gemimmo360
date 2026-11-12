@@ -70,6 +70,8 @@ type Profile = { id: string; email: string | null };
 type Reclam = { id: string; reference: string | null; titre: string; bien_id: string };
 type Edl = { id: string; type: string; date_realisation: string; lot_id: string };
 
+/** Statuts réservés au circuit Soumettre / Valider / Refuser. */
+const CIRCUIT = ["a_valider", "valide", "refuse"];
 const KANBAN_COLS = ["a_qualifier", "a_valider", "valide", "planifie", "en_cours", "termine"];
 
 function TravauxPage() {
@@ -627,22 +629,23 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
     if (!travail.budget_prevu) return toast.error("Budget prévu requis");
     const { data: directions } = await supabase.from("profiles").select("id").eq("role", "direction").limit(1);
     const assignee = (directions ?? [])[0]?.id ?? null;
-    await patchTravail({ statut: "a_valider" }, "Soumis pour validation");
-    const { data: userRes } = await supabase.auth.getUser();
-    await supabase.from("activites").insert({
-      titre: `Validation devis – ${travail.titre} – ${bien?.titre ?? "—"} – ${fmtMoney(travail.budget_prevu)}`,
-      type_activite: "tache",
-      date_debut: new Date().toISOString(),
-      priorite: "urgente",
-      statut: "a_faire",
-      assigne_a: assignee,
-      created_by: userRes.user?.id ?? null,
-      travaux_id: travail.id,
-    } as never);
+    void assignee;
+    await runRpc("soumettre_travaux_validation", { _travaux_id: travail.id }, "Soumis pour validation");
+  };
+
+  const runRpc = async (fn: "soumettre_travaux_validation" | "decider_travaux", args: Record<string, unknown>, msg: string) => {
+    setBusy(true);
+    const { error } = await (supabase.rpc as any)(fn, args);
+    if (error) { setBusy(false); return toast.error(error.message); }
+    const { data } = await supabase.from("travaux").select("*").eq("id", travail.id).maybeSingle();
+    setBusy(false);
+    toast.success(msg);
+    if (data) onStatusChanged(data as unknown as Travail);
+    await loadHistory();
   };
 
   const changeStatut = async (v: string) => {
-    if (v === "refuse") { setRefuseOpen(true); return; }
+    if (CIRCUIT.includes(v)) return;
     if (v === "termine" && !travail.date_reelle) {
       toast.error("Renseignez la date de réalisation avant de terminer le travail");
       onEdit();
@@ -654,7 +657,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
   const confirmRefus = async () => {
     const finalMotif = motif === "Autre" ? motifAutre.trim() : motif;
     if (!finalMotif) return toast.error("Le motif du refus est obligatoire");
-    await patchTravail({ statut: "refuse", motif_refus: finalMotif }, "Travail refusé");
+    await runRpc("decider_travaux", { _travaux_id: travail.id, _decision: "refuse", _motif: finalMotif }, "Travail refusé");
     setRefuseOpen(false); setMotif(""); setMotifAutre("");
   };
 
@@ -680,9 +683,9 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
             <div className="grid gap-2 rounded-md border bg-muted/10 p-3 sm:grid-cols-3">
               <div className="grid gap-1">
                 <Label className="text-xs text-muted-foreground">Statut</Label>
-                <Select value={travail.statut} onValueChange={changeStatut} disabled={busy}>
+                <Select value={travail.statut} onValueChange={changeStatut} disabled={busy || travail.statut === "a_valider"}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                  <SelectContent>{TRAVAUX_STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{TRAVAUX_STATUTS.map((s) => <SelectItem key={s.value} value={s.value} disabled={CIRCUIT.includes(s.value)}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid gap-1">
@@ -904,7 +907,7 @@ function DetailDialog({ travail, uid, role, email, biens, lots, profiles, reclam
         </div>
         <DialogFooter className="gap-2">
           {canSubmit && <Button size="sm" variant="secondary" onClick={handleSubmit} disabled={busy}>Soumettre pour validation</Button>}
-          {canDecide && <Button size="sm" onClick={() => patchTravail({ statut: "valide", motif_refus: null }, "Devis validé")} disabled={busy}>Valider</Button>}
+          {canDecide && <Button size="sm" onClick={() => runRpc("decider_travaux", { _travaux_id: travail.id, _decision: "valide", _motif: null }, "Devis validé")} disabled={busy}>Valider</Button>}
           {canDecide && <Button size="sm" variant="destructive" onClick={() => setRefuseOpen(true)} disabled={busy}>Refuser</Button>}
           {perms.canDelete && <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
           {canAct && <Button size="sm" onClick={onEdit}><Pencil className="mr-2 h-4 w-4" /> Modifier</Button>}
@@ -1091,9 +1094,9 @@ function EditDialog({ initial, prefill, uid, role, biens, lots, profiles, reclam
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2"><Label>Statut</Label>
-                <Select value={form.statut} onValueChange={(v) => setForm({ ...form, statut: v })}>
+                <Select value={form.statut} onValueChange={(v) => setForm({ ...form, statut: v })} disabled={form.statut === "a_valider"}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TRAVAUX_STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{TRAVAUX_STATUTS.map((s) => <SelectItem key={s.value} value={s.value} disabled={CIRCUIT.includes(s.value)}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2"><Label>Réclamation associée</Label>

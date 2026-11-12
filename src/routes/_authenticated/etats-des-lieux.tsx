@@ -19,6 +19,11 @@ import { FULL_ACCESS_USER_IDS } from "@/lib/access-overrides";
 
 export const Route = createFileRoute("/_authenticated/etats-des-lieux")({
   head: () => ({ meta: [{ title: "États des lieux — Agence Immobilière" }] }),
+  validateSearch: (s: Record<string, unknown>): { nouveau?: string; lot?: string; contrat?: string } => ({
+    nouveau: typeof s.nouveau === "string" ? s.nouveau : undefined,
+    lot: typeof s.lot === "string" ? s.lot : undefined,
+    contrat: typeof s.contrat === "string" ? s.contrat : undefined,
+  }),
   component: EDLPage,
 });
 
@@ -109,6 +114,19 @@ function EDLPage() {
   };
   useEffect(() => { if (isOverride || (role && !(NO_ACCESS as readonly string[]).includes(role))) load(); }, [role, isOverride]);
 
+  // Ouverture du formulaire complet depuis une fiche lot ou contrat
+  const urlSearch = Route.useSearch();
+  const nav = useNavigate();
+  useEffect(() => {
+    if (!urlSearch.nouveau || loading || !canWrite) return;
+    setEditing(null);
+    setAnomalies([newAnomalie()]);
+    setForm((f) => ({ ...f, lot_id: urlSearch.lot ?? "", contrat_id: urlSearch.contrat ?? "" }));
+    setOpen(true);
+    nav({ to: "/etats-des-lieux", search: {}, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSearch.nouveau, loading, canWrite]);
+
   const lotLabel = (id: string) => {
     const l = lots.find((x) => x.id === id); if (!l) return "—";
     const b = biens.find((x) => x.id === l.bien_id)?.titre ?? "—";
@@ -178,6 +196,7 @@ function EDLPage() {
       type: form.type,
       date_realisation: form.date_realisation,
       observations: form.observations.trim() || null,
+      created_by: uid,
     }).select("id, date_realisation").single();
 
     if (error || !edl) { setSaving(false); return toast.error(error?.message ?? "Erreur"); }
@@ -200,6 +219,8 @@ function EDLPage() {
         origine: "etat_des_lieux",
         charge_financiere: a.responsable,
         etat_des_lieux_id: edl.id,
+        lot_id: form.lot_id,
+        assigne_a: role === "technique" || role === "technico_commercial" ? (userRes.user?.id ?? null) : null,
         notes: `Créé automatiquement depuis l'état des lieux du ${dateStr}`,
         created_by: userRes.user?.id ?? null,
       }));

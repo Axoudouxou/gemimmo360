@@ -14,7 +14,6 @@ import { Building2, ArrowLeft, Plus, AlertCircle, Pencil, FileText } from "lucid
 import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
-import { NouvelEdlDialog } from "@/components/nouvel-edl-dialog";
 import { toast } from "sonner";
 import { canCreateContract, STATUTS_LOT, lotStatutLabel } from "@/lib/operational-rules";
 
@@ -299,7 +298,7 @@ function LotDetailPage() {
                   <CardDescription>Tous les états des lieux enregistrés sur ce lot, avec ou sans contrat.</CardDescription>
                 </div>
                 {canCreateEdl && (
-                  <Button size="sm" onClick={() => setEdlOpen(true)}>
+                  <Button size="sm" onClick={() => navigate({ to: "/etats-des-lieux", search: { nouveau: "1", lot: lotId, contrat: actif?.id } })}>
                     <Plus className="mr-2 h-4 w-4" /> Nouvel état des lieux
                   </Button>
                 )}
@@ -354,7 +353,6 @@ function LotDetailPage() {
             )}
 
             <NouveauContratDialog open={contratOpen} onOpenChange={setContratOpen} fixedLotId={lotId} onCreated={() => load()} />
-            <NouvelEdlDialog open={edlOpen} onOpenChange={setEdlOpen} lotId={lotId} onCreated={() => load()} />
           </>
         )}
       </main>

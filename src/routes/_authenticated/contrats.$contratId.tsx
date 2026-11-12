@@ -372,9 +372,16 @@ function ContratDetailPage() {
             <ImpayeDetailDialog impaye={selectedImpaye} open={impayeOpen} onOpenChange={setImpayeOpen} />
 
             <Card>
-              <CardHeader>
-                <CardTitle>États des lieux</CardTitle>
-                <CardDescription>Entrée et sortie du logement.</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle>États des lieux</CardTitle>
+                  <CardDescription>Entrée et sortie du logement.</CardDescription>
+                </div>
+                {myRole && myRole !== "recouvrement" && contrat?.lot_id && (
+                  <Button size="sm" onClick={() => navigate({ to: "/etats-des-lieux", search: { nouveau: "1", lot: contrat.lot_id, contrat: contratId } })}>
+                    Nouvel état des lieux
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 {edls.length === 0 ? (
