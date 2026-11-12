@@ -42,8 +42,8 @@ export function ArchiveBienButton({ bienId, archived, activeCount, onDone }: {
           <DialogTitle>{archived ? "Restaurer le bien" : "Archiver le bien (fin de gestion)"}</DialogTitle>
           <DialogDescription>
             {archived
-              ? "Le bien réapparaîtra dans les listes. Les contrats clôturés restent résiliés."
-              : `Le bien et ses impayés seront masqués des listes et du tableau de bord. ${activeCount} contrat(s) actif(s) seront clôturés à la date de fin de gestion. Aucun historique n'est supprimé.`}
+              ? "Le bien réapparaîtra dans les listes. Contrats et locataires archivés avec lui seront restaurés ; les contrats clôturés restent résiliés."
+              : `Le bien et ses impayés seront masqués des listes et du tableau de bord. ${activeCount} contrat(s) actif(s) seront clôturés. Les contrats, locataires (sans autre location), travaux, réclamations et états des lieux du bien seront aussi archivés. Aucun historique n'est supprimé.`}
           </DialogDescription>
         </DialogHeader>
         {!archived && (

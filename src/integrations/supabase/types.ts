@@ -570,6 +570,7 @@ export type Database = {
       contacts: {
         Row: {
           archive: boolean
+          archive_bien_id: string | null
           created_at: string
           email: string | null
           fusionne_avec_id: string | null
@@ -588,6 +589,7 @@ export type Database = {
         }
         Insert: {
           archive?: boolean
+          archive_bien_id?: string | null
           created_at?: string
           email?: string | null
           fusionne_avec_id?: string | null
@@ -606,6 +608,7 @@ export type Database = {
         }
         Update: {
           archive?: boolean
+          archive_bien_id?: string | null
           created_at?: string
           email?: string | null
           fusionne_avec_id?: string | null
@@ -705,6 +708,7 @@ export type Database = {
       }
       contrats: {
         Row: {
+          archive: boolean
           created_at: string
           date_debut: string | null
           date_fin: string | null
@@ -719,6 +723,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive?: boolean
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null
@@ -733,6 +738,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive?: boolean
           created_at?: string
           date_debut?: string | null
           date_fin?: string | null

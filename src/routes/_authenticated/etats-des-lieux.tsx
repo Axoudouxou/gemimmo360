@@ -93,7 +93,7 @@ function EDLPage() {
   const load = async () => {
     setLoading(true);
     const [{ data: eData, error }, { data: cData }, { data: lData }, { data: bData }, { data: coData }] = await Promise.all([
-      supabase.from("etats_des_lieux").select("*").order("date_realisation", { ascending: false }),
+      supabase.from("etats_des_lieux").select("*, lot_arch:lots!inner(biens!inner(archive))").eq("lot_arch.biens.archive", false).order("date_realisation", { ascending: false }),
       supabase.from("contrats").select("id, lot_id, locataire_id, statut"),
       supabase.from("lots").select("id, label, bien_id").order("label"),
       supabase.from("biens").select("id, titre").eq("archive", false).order("titre"),
