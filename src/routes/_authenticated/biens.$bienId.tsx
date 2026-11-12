@@ -17,6 +17,7 @@ import { DeleteZone } from "@/components/delete-zone";
 import { ActivitesLiees } from "@/components/activites-widgets";
 import { toast } from "sonner";
 import { STATUTS_LOT } from "@/lib/operational-rules";
+import { ArchiveBienButton } from "@/components/archive-bien-button";
 
 export const Route = createFileRoute("/_authenticated/biens/$bienId")({
   head: () => ({ meta: [{ title: "Fiche bien — Agence Immobilière" }] }),
@@ -42,7 +43,7 @@ const STATUT_LABEL: Record<string, string> = Object.fromEntries(STATUTS_LOT.map(
 type Bien = {
   id: string; titre: string; adresse: string | null; type_bien: string | null; statut: string;
   surface: number | null; notes: string | null; bailleur_id: string | null; gestionnaire_id: string | null;
-  updated_at: string | null;
+  updated_at: string | null; archive?: boolean; date_fin_gestion?: string | null; motif_archivage?: string | null;
 };
 type Bailleur = { id: string; nom: string; prenom: string | null };
 type Lot = { id: string; bien_id: string; label: string; type_lot: string | null; statut: string; surface: number | null; notes: string | null };
@@ -95,7 +96,7 @@ function BienDetailPage() {
       setMyRole(p?.role ?? "");
     }
     const [{ data: bData, error: bErr }, { data: lData }, { data: tData }, { data: rData }, { data: bDataList, error: bListErr }, { data: chData }] = await Promise.all([
-      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id, updated_at").eq("id", bienId).maybeSingle(),
+      supabase.from("biens").select("id, titre, adresse, type_bien, statut, surface, notes, bailleur_id, gestionnaire_id, updated_at, archive, date_fin_gestion, motif_archivage").eq("id", bienId).maybeSingle(),
       supabase.from("lots").select("*").eq("bien_id", bienId).order("label"),
       supabase.from("travaux").select("id, titre, statut, date_debut, date_fin, budget_prevu").eq("bien_id", bienId).order("date_debut", { ascending: false }),
       supabase.from("reclamations").select("id, titre, statut, priorite, created_at").eq("bien_id", bienId).order("created_at", { ascending: false }),
@@ -260,6 +261,9 @@ function BienDetailPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <CardTitle>{bien.titre}</CardTitle>
                     <Badge variant="secondary">Immeuble</Badge>
+                    {bien.archive && (
+                      <Badge variant="destructive">Archivé{bien.date_fin_gestion ? ` — fin de gestion ${new Date(bien.date_fin_gestion).toLocaleDateString("fr-FR")}` : ""}</Badge>
+                    )}
                     {hasMandatGem && (
                       <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Sous mandat GEM</Badge>
                     )}
@@ -273,6 +277,9 @@ function BienDetailPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
                   <ActivitesLiees bienId={bienId} />
+                  {(myRole === "admin" || myRole === "direction") && (
+                    <ArchiveBienButton bienId={bienId} archived={!!bien.archive} activeCount={activeContrats.length} onDone={load} />
+                  )}
                   {myRole === "admin" && (
                     <Dialog open={gestOpen} onOpenChange={(o) => (o ? openGestionnaire() : setGestOpen(false))}>
                       <DialogTrigger asChild>

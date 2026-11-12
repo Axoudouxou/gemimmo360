@@ -475,7 +475,7 @@ export function ListeARelancer({ limit = 8 }: { limit?: number }) {
     (async () => {
       const todayIso = new Date().toISOString().slice(0, 10);
       const { data } = await supabase
-        .from("echeances")
+        .from("echeances_actives")
         .select("id, contrat_id, montant_du, montant_affecte, date_echeance, etape_traitement, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))")
         .lt("date_echeance", todayIso)
         .neq("statut", "solde")
@@ -1126,7 +1126,7 @@ export function FilActualiteEquipe({ userId, role }: { userId: string | null; ro
 
       // 8) Impayés transférés au juridique (événement à forte valeur)
       const { data: imps } = await supabase
-        .from("echeances")
+        .from("echeances_actives")
         .select("id, contrat_id, service_en_charge, created_at")
         .eq("service_en_charge", "juridique")
         .order("created_at", { ascending: false })

@@ -328,6 +328,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "affectations_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: false
+            referencedRelation: "echeances_actives"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "affectations_paiement_id_fkey"
             columns: ["paiement_id"]
             isOneToOne: false
@@ -390,11 +397,14 @@ export type Database = {
       biens: {
         Row: {
           adresse: string | null
+          archive: boolean
           bailleur_id: string | null
           created_at: string
+          date_fin_gestion: string | null
           gestionnaire_id: string | null
           id: string
           id_externe: string | null
+          motif_archivage: string | null
           notes: string | null
           source: string
           statut: string
@@ -406,11 +416,14 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          archive?: boolean
           bailleur_id?: string | null
           created_at?: string
+          date_fin_gestion?: string | null
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
+          motif_archivage?: string | null
           notes?: string | null
           source?: string
           statut?: string
@@ -422,11 +435,14 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          archive?: boolean
           bailleur_id?: string | null
           created_at?: string
+          date_fin_gestion?: string | null
           gestionnaire_id?: string | null
           id?: string
           id_externe?: string | null
+          motif_archivage?: string | null
           notes?: string | null
           source?: string
           statut?: string
@@ -1693,6 +1709,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quittances_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: true
+            referencedRelation: "echeances_actives"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quittances_emise_par_fkey"
             columns: ["emise_par"]
             isOneToOne: false
@@ -2209,11 +2232,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      echeances_actives: {
+        Row: {
+          contrat_id: string | null
+          created_at: string | null
+          created_by: string | null
+          date_acte_commissaire: string | null
+          date_assignation: string | null
+          date_derniere_relance: string | null
+          date_echeance: string | null
+          date_mise_en_demeure: string | null
+          etape_traitement: string | null
+          id: string | null
+          impaye_origine_id: string | null
+          montant_affecte: number | null
+          montant_du: number | null
+          notes: string | null
+          periode: string | null
+          service_en_charge: string | null
+          statut: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "echeances_contrat_id_fkey"
+            columns: ["contrat_id"]
+            isOneToOne: false
+            referencedRelation: "contrats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeances_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeances_impaye_origine_id_fkey"
+            columns: ["impaye_origine_id"]
+            isOneToOne: false
+            referencedRelation: "impayes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       affecter_paiement_fifo: {
         Args: { _paiement_id: string }
+        Returns: number
+      }
+      archiver_bien: {
+        Args: { _bien_id: string; _date: string; _motif: string }
         Returns: number
       }
       can_access_activite: {
@@ -2323,6 +2394,7 @@ export type Database = {
       }
       reaffecter_paiement_atomique: { Args: { _payload: Json }; Returns: Json }
       recompute_echeance: { Args: { _echeance_id: string }; Returns: undefined }
+      restaurer_bien: { Args: { _bien_id: string }; Returns: undefined }
       terminer_bail_atomique: { Args: { _payload: Json }; Returns: Json }
     }
     Enums: {

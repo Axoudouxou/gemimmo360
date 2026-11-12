@@ -36,6 +36,13 @@
       "when": 1792501018492,
       "tag": "0004_bloc1_receipt_balance_and_legal_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794484861379,
+      "tag": "0005_archivage_biens",
+      "breakpoints": true
     }
   ]
 }

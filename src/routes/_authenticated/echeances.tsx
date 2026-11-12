@@ -70,6 +70,7 @@ function EcheancesPage() {
   const navigate = useNavigate();
   const [role, setRole] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [echeances, setEcheances] = useState<Echeance[]>([]);
   const [contrats, setContrats] = useState<Contrat[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
@@ -120,7 +121,7 @@ function EcheancesPage() {
       { data: pData },
     ] = await Promise.all([
       supabase
-        .from("echeances")
+        .from((showArchived ? "echeances" : "echeances_actives") as "echeances")
         .select(
           "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement, service_en_charge, date_derniere_relance",
         )
@@ -146,7 +147,7 @@ function EcheancesPage() {
   useEffect(() => {
     if (role && !(READ_BLOCKED as readonly string[]).includes(role)) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
+  }, [role, showArchived]);
 
   const contratLabel = (id: string) => {
     const c = contrats.find((x) => x.id === id);
@@ -322,6 +323,10 @@ function EcheancesPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <label className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+              Inclure les biens archivés
+            </label>
             <FilterBar
               search={search}
               onSearchChange={setSearch}

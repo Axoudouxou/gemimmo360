@@ -169,10 +169,10 @@ function Dashboard() {
         biens, contacts, contratsActifs, echeancesRes, lotsTotal, lotsLoues, lotsVacants,
         contratsEch, travaux, reclamations,
       ] = await Promise.all([
-        supabase.from("biens").select("id", { count: "exact", head: true }),
+        supabase.from("biens").select("id", { count: "exact", head: true }).eq("archive", false),
         supabase.from("contacts").select("id", { count: "exact", head: true }).eq("archive", false),
         supabase.from("contrats").select("id", { count: "exact", head: true }).eq("statut", "actif"),
-        supabase.from("echeances").select("id, montant_du, montant_affecte, date_echeance, statut, etape_traitement, date_derniere_relance"),
+        supabase.from("echeances_actives").select("id, montant_du, montant_affecte, date_echeance, statut, etape_traitement, date_derniere_relance"),
         supabase.from("lots").select("id", { count: "exact", head: true }),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "loue"),
         supabase.from("lots").select("id", { count: "exact", head: true }).eq("statut", "vacant"),
@@ -227,7 +227,7 @@ function Dashboard() {
         };
         addPairs(byPhone); addPairs(byName);
         const [b6, l6, c6] = await Promise.all([
-          supabase.from("biens").select("id", { count: "exact", head: true }).lt("updated_at", sixMonthsAgoStr),
+          supabase.from("biens").select("id", { count: "exact", head: true }).eq("archive", false).lt("updated_at", sixMonthsAgoStr),
           supabase.from("lots").select("id", { count: "exact", head: true }).lt("updated_at", sixMonthsAgoStr),
           supabase.from("contrats").select("id", { count: "exact", head: true }).lt("updated_at", sixMonthsAgoStr),
         ]);

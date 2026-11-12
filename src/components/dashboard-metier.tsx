@@ -84,7 +84,7 @@ export function PilotageFinancierMois() {
     (async () => {
       const [{ data: ech }, { data: ctr }] = await Promise.all([
         supabase
-          .from("echeances")
+          .from("echeances_actives")
           .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement"),
         supabase.from("contrats").select("id, loyer_mensuel").eq("statut", "actif"),
       ]);
@@ -126,7 +126,7 @@ export function ImpayesATraiter({ limit = 10 }: { limit?: number }) {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("echeances")
+        .from("echeances_actives")
         .select(
           "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement, service_en_charge, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))",
         )
@@ -199,7 +199,7 @@ export function RelancesStats() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("echeances")
+        .from("echeances_actives")
         .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement, date_derniere_relance");
       const rows = ((data ?? []) as Ech[]).filter(nonSolde);
       const weekStart = (() => {
@@ -230,7 +230,7 @@ export function ContentieuxJuridiqueList({ limit = 8 }: { limit?: number }) {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("echeances")
+        .from("echeances_actives")
         .select(
           "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement, service_en_charge, contrats(locataire:contacts!contrats_locataire_id_fkey(nom, prenom))",
         )
@@ -719,7 +719,7 @@ export function DecomptesEtQuittances() {
       const end = monthEnd();
       const [{ data: echs }, { data: quittances }] = await Promise.all([
         supabase
-          .from("echeances")
+          .from("echeances_actives")
           .select("id, contrat_id, periode, date_echeance, montant_du, montant_affecte, etape_traitement")
           .gte("periode", start)
           .lte("periode", end),
