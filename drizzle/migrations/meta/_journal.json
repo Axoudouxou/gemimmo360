@@ -57,6 +57,13 @@
       "when": 1794485582594,
       "tag": "0007_bloc2_fin_de_bail",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794485878054,
+      "tag": "0008_bloc3_suivi_juridique",
+      "breakpoints": true
     }
   ]
 }

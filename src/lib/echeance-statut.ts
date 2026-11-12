@@ -1,6 +1,6 @@
 export type EcheanceStatutKey = "solde" | "juridique" | "partiel" | "impaye" | "a_venir";
 
-export const ETAPES_JURIDIQUE = ["mise_en_demeure", "contentieux", "transfere_juridique"] as const;
+export const ETAPES_JURIDIQUE = ["mise_en_demeure", "contentieux", "transfere_juridique", "procedure_judiciaire"] as const;
 
 /** Jour limite de paiement du loyer, identique pour tous les contrats. */
 export const JOUR_ECHEANCE = 10;
@@ -94,6 +94,7 @@ export const ETAPE_LABELS: Record<string, string> = {
   mise_en_demeure: "Mise en demeure",
   contentieux: "Contentieux",
   transfere_juridique: "Transféré au juridique",
+  procedure_judiciaire: "Procédure judiciaire",
   resolu: "Résolu",
 };
 

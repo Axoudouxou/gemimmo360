@@ -861,6 +861,51 @@ export type Database = {
           },
         ]
       }
+      echeances_historique: {
+        Row: {
+          ancienne_valeur: string | null
+          auteur: string | null
+          champ: string
+          created_at: string
+          echeance_id: string
+          id: string
+          nouvelle_valeur: string | null
+        }
+        Insert: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ: string
+          created_at?: string
+          echeance_id: string
+          id?: string
+          nouvelle_valeur?: string | null
+        }
+        Update: {
+          ancienne_valeur?: string | null
+          auteur?: string | null
+          champ?: string
+          created_at?: string
+          echeance_id?: string
+          id?: string
+          nouvelle_valeur?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "echeances_historique_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: false
+            referencedRelation: "echeances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeances_historique_echeance_id_fkey"
+            columns: ["echeance_id"]
+            isOneToOne: false
+            referencedRelation: "echeances_actives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -2408,6 +2453,15 @@ export type Database = {
         Args: { _from_etape: string; _impaye_id: string; _note: string }
         Returns: undefined
       }
+      maj_dates_juridiques: {
+        Args: {
+          _acte: string
+          _assignation: string
+          _echeance_id: string
+          _mise_en_demeure: string
+        }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -2441,6 +2495,10 @@ export type Database = {
       recompute_echeance: { Args: { _echeance_id: string }; Returns: undefined }
       restaurer_bien: { Args: { _bien_id: string }; Returns: undefined }
       terminer_bail_atomique: { Args: { _payload: Json }; Returns: Json }
+      transferer_echeance_juridique: {
+        Args: { _echeance_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

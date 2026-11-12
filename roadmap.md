@@ -23,3 +23,4 @@ Décisions validées : historique complet depuis le début de chaque contrat ; d
 
 ## Après les 6 blocs de l’audit
 - [ ] Matrice des accès entièrement pilotable par l’administrateur (chaque case modifiable et réellement appliquée, y compris côté serveur)
+- [x] Bloc 3 — transfert au juridique, dates juridiques, procédure judiciaire, historique des statuts (en attente de validation)

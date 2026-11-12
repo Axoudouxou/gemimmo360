@@ -13,6 +13,7 @@ import { exportEcheancesXlsx } from "@/lib/echeances-xlsx";
 import { toast } from "sonner";
 import { PaiementDialog } from "@/components/paiement-dialog";
 import { EcheanceDialog, type EcheanceRow } from "@/components/echeance-dialog";
+import { SuiviJuridiqueDialog, type SuiviEcheance } from "@/components/suivi-juridique-dialog";
 import { QuittanceDialog } from "@/components/quittance-dialog";
 import {
   computeEcheanceStatut,
@@ -57,6 +58,9 @@ type Echeance = {
   etape_traitement: string | null;
   service_en_charge: string | null;
   date_derniere_relance: string | null;
+  date_mise_en_demeure: string | null;
+  date_acte_commissaire: string | null;
+  date_assignation: string | null;
 };
 type Contrat = { id: string; lot_id: string; locataire_id: string | null; statut: string };
 type Lot = { id: string; label: string; bien_id: string };
@@ -109,6 +113,16 @@ function EcheancesPage() {
   const [editEch, setEditEch] = useState<EcheanceRow | null>(null);
   const { canWrite: matrixWrite } = useAccessLevel("finance.echeance_write", role);
   const canWrite = matrixWrite;
+  const [suivi, setSuivi] = useState<SuiviEcheance | null>(null);
+  const canTransfer = ["admin", "direction", "recouvrement", "gestion_locative"].includes(role ?? "");
+  const canEditLegal = ["admin", "direction", "juridique"].includes(role ?? "");
+  const transferer = async (id: string) => {
+    if (!window.confirm("Transférer cet impayé au service juridique ?")) return;
+    const { error } = await supabase.rpc("transferer_echeance_juridique", { _echeance_id: id });
+    if (error) return toast.error(error.message);
+    toast.success("Impayé transféré au juridique");
+    load();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -123,7 +137,7 @@ function EcheancesPage() {
       supabase
         .from((showArchived ? "echeances" : "echeances_actives") as "echeances")
         .select(
-          "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement, service_en_charge, date_derniere_relance",
+          "id, contrat_id, periode, date_echeance, montant_du, montant_affecte, statut, etape_traitement, service_en_charge, date_derniere_relance, date_mise_en_demeure, date_acte_commissaire, date_assignation",
         )
         .neq("statut", "solde")
         .order("periode", { ascending: true })
@@ -380,7 +394,7 @@ function EcheancesPage() {
                       <SortHead k="statut">Statut</SortHead>
                       <TableHead>Étape</TableHead>
                       <TableHead>Dernière relance</TableHead>
-                      {canWrite && <TableHead className="text-right">Actions</TableHead>}
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -415,17 +429,19 @@ function EcheancesPage() {
                             {ETAPE_LABELS[e.etape_traitement ?? "recouvrement"] ?? e.etape_traitement}
                           </TableCell>
                           <TableCell>{fmtDate(e.date_derniere_relance)}</TableCell>
-                          {canWrite && (
-                            <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
-                              <Button
+                          <TableCell className="text-right whitespace-nowrap space-x-1" onClick={(ev) => ev.stopPropagation()}>
+                              {canTransfer && (e.service_en_charge ?? "recouvrement") === "recouvrement" && st.key !== "solde" && (
+                                <Button variant="outline" size="sm" onClick={() => transferer(e.id)}>Transférer au juridique</Button>
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => setSuivi(e)}>Suivi</Button>
+                              {canWrite && <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setEditEch(e as unknown as EcheanceRow)}
                               >
                                 Modifier
-                              </Button>
+                              </Button>}
                             </TableCell>
-                          )}
                         </TableRow>
                       );
                     })}
@@ -435,6 +451,9 @@ function EcheancesPage() {
             )}
           </CardContent>
         </Card>
+
+        <SuiviJuridiqueDialog echeance={suivi} onOpenChange={(o) => !o && setSuivi(null)} canEditLegal={canEditLegal}
+          onSaved={() => { setSuivi(null); load(); }} />
 
         <EcheanceDialog
           open={!!editEch}
