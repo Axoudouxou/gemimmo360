@@ -1894,6 +1894,45 @@ export type Database = {
           },
         ]
       }
+      reglages_fin_bail: {
+        Row: {
+          finance_user_id: string | null
+          id: number
+          technique_user_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          finance_user_id?: string | null
+          id?: number
+          technique_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          finance_user_id?: string | null
+          id?: number
+          technique_user_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reglages_fin_bail_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reglages_fin_bail_technique_user_id_fkey"
+            columns: ["technique_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string

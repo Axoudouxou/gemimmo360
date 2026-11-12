@@ -21,6 +21,7 @@ import { fr } from "date-fns/locale";
 import { NouvelleActiviteLieeDialog, TYPE_LABELS, TYPE_COLORS, STATUT_LABELS, type Activite } from "@/components/activites-widgets";
 import { canCreateContract, isLegalTransactionRole } from "@/lib/operational-rules";
 import { NouveauContratDialog } from "@/components/nouveau-contrat-dialog";
+import { MentionTextarea, notifyNewMentions } from "@/components/mention-textarea";
 
 export const Route = createFileRoute("/_authenticated/transactions")({
   head: () => ({ meta: [{ title: "Transactions — Agence Immobilière" }] }),
@@ -224,9 +225,18 @@ function TransactionsPage() {
       date_cloture_prevue: form.date_cloture_prevue || null,
       gestionnaire_id: form.gestionnaire_id,
     };
-    const { error } = await supabase.from("transactions_commerciales").insert(payload);
+    const { data: created, error } = await supabase.from("transactions_commerciales").insert(payload).select("id").single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+    // Création directe en « Gagné » avec mandat de gestion : prospect → bailleur
+    if (form.statut_opportunite === "gagne" && t === "mandat_gestion") {
+      const c = contacts.find((x) => x.id === form.contact_id);
+      if (c?.type_contact === "prospect") {
+        const { error: cErr } = await supabase.from("contacts").update({ type_contact: "bailleur" }).eq("id", c.id);
+        if (cErr) toast.error(`Transaction créée, mais conversion en bailleur impossible : ${cErr.message}`);
+      }
+    }
+    if (created) await notifyNewMentions(null, payload.notes, { link: "/transactions", entityType: "transaction", entityId: created.id, entityTitle: "une transaction" });
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success("Transaction enregistrée"); setOpen(false); resetForm(); load();
   };
 
@@ -391,7 +401,7 @@ function TransactionsPage() {
                       </>
                     )}
 
-                    <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                    <div className="grid gap-2"><Label htmlFor="notes">Notes</Label><MentionTextarea id="notes" rows={3} value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} /></div>
                     <p className="text-xs text-muted-foreground">Les visites sont désormais des activités liées à la transaction (créées depuis la fiche détail).</p>
                   </div>
                   <DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={saving}>{saving ? "..." : "Enregistrer"}</Button></DialogFooter>
@@ -586,9 +596,11 @@ function TransactionDetailDialog({
       montant_estime: edit.montant_estime ? Number(edit.montant_estime) : null,
       date_cloture_prevue: edit.date_cloture_prevue || null,
       gestionnaire_id: edit.gestionnaire_id || null,
+      notes: edit.notes.trim() || null,
     };
     const { error } = await supabase.from("transactions_commerciales").update(payload).eq("id", tx.id);
     if (error) { setSaving(false); return toast.error(error.message); }
+    await notifyNewMentions(tx.notes, payload.notes, { link: "/transactions", entityType: "transaction", entityId: tx.id, entityTitle: "une transaction" });
     // Auto-conversion prospect → bailleur pour mandat_gestion gagné
     if (!legalOnly && edit.statut_opportunite === "gagne" && t === "mandat_gestion") {
       const c = contacts.find((x) => x.id === tx.contact_id);
@@ -756,13 +768,10 @@ function TransactionDetailDialog({
               )}
 
 
-              {legalOnly ? <div className="grid gap-2">
+              <div className="grid gap-2">
                 <Label>Notes</Label>
-                <Textarea value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} rows={3} />
-              </div> : tx.notes && <div>
-                <div className="text-xs text-muted-foreground mb-1">Notes</div>
-                <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{tx.notes}</div>
-              </div>}
+                <MentionTextarea value={edit.notes} onChange={(v) => setEdit({ ...edit, notes: v })} rows={3} />
+              </div>
 
 
               <div className="rounded-md border p-3">

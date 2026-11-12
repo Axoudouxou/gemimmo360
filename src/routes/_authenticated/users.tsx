@@ -1,3 +1,4 @@
+import { ReglagesFinBail } from "@/components/reglages-fin-bail";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -259,6 +260,7 @@ function UsersPage() {
             )}
           </CardContent>
         </Card>
+        <ReglagesFinBail />
       </main>
     </div>
   );

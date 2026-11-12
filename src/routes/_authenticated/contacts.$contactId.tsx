@@ -41,10 +41,11 @@ type Lot = { id: string; label: string; bien_id: string; statut: string };
 type Contrat = { id: string; lot_id: string; loyer_mensuel: number | null; date_debut: string | null; date_fin: string | null; statut: string };
 type Gestionnaire = { id: string; email: string | null; role: string };
 
-const TYPE_LABEL: Record<string, string> = { bailleur: "Bailleur", locataire: "Locataire", prospect: "Prospect", prestataire: "Prestataire" };
+const TYPE_LABEL: Record<string, string> = { bailleur: "Bailleur", locataire: "Locataire", ancien_locataire: "Ancien locataire", prospect: "Prospect", prestataire: "Prestataire" };
 const TYPES_CONTACT = [
   { value: "bailleur", label: "Bailleur" },
   { value: "locataire", label: "Locataire" },
+  { value: "ancien_locataire", label: "Ancien locataire" },
   { value: "prospect", label: "Prospect" },
   { value: "prestataire", label: "Prestataire" },
 ] as const;

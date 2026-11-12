@@ -50,6 +50,13 @@
       "when": 1794485309002,
       "tag": "0006_archivage_bien_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794485582594,
+      "tag": "0007_bloc2_fin_de_bail",
+      "breakpoints": true
     }
   ]
 }

@@ -36,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/contacts/")({
 const TYPES = [
   { value: "bailleur", label: "Bailleur" },
   { value: "locataire", label: "Locataire" },
+  { value: "ancien_locataire", label: "Ancien locataire" },
   { value: "prospect", label: "Prospect" },
   { value: "prestataire", label: "Prestataire" },
 ] as const;
