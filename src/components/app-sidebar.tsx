@@ -40,6 +40,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { supabase } from "@/integrations/supabase/client";
+import { moduleForPath, useModuleAccess } from "@/lib/module-access";
 
 type NavItem = {
   title: string;
@@ -116,8 +117,13 @@ export function AppSidebar() {
     navigate({ to: "/auth", replace: true });
   };
 
+  const access = useModuleAccess();
   const filter = (items: NavItem[]) =>
-    items.filter((i) => !i.roles || i.roles.includes(role) || (i.allowUserIds?.includes(userId) ?? false));
+    items.filter((i) => {
+      const mod = moduleForPath(i.url);
+      if (mod && access.ready && access.levelOf(mod.key) === "none") return false;
+      return !i.roles || i.roles.includes(role) || (i.allowUserIds?.includes(userId) ?? false);
+    });
 
   const renderGroup = (label: string, items: NavItem[]) => {
     const visible = filter(items);

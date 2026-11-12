@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ModuleGate } from "@/components/module-gate";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationsBell } from "@/components/notifications-bell";
 
@@ -102,7 +103,7 @@ function AuthenticatedLayout() {
             </div>
           </header>
           <main className="flex-1">
-            <Outlet />
+            <ModuleGate><Outlet /></ModuleGate>
           </main>
         </div>
       </div>

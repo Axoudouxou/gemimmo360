@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check, Minus, Eye, Loader2, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
+import { ModuleAccessEditor } from "@/components/module-access-editor";
 import {
   ALL_ROLES,
   DEFAULT_SECTIONS,
@@ -186,6 +187,9 @@ function PermissionsPage() {
         écrans qui s'appuient sur la matrice.
       </p>
 
+      <ModuleAccessEditor />
+
+      <h2 className="mt-8 text-lg font-semibold">Détail des actions par rôle</h2>
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
         <span className="inline-flex items-center gap-2">
           <Check className="h-4 w-4 text-emerald-600" /> Création et modification

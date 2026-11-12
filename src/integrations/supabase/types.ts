@@ -1591,6 +1591,38 @@ export type Database = {
           },
         ]
       }
+      module_access: {
+        Row: {
+          level: string
+          module: string
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          level: string
+          module: string
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          level?: string
+          module?: string
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_access_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -2565,6 +2597,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      module_level: { Args: { _module: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string
