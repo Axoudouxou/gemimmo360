@@ -71,6 +71,20 @@
       "when": 1794486072124,
       "tag": "0009_bloc4_circuit_validation_travaux",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794486264509,
+      "tag": "0010_bloc5_statut_terminee",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794486279642,
+      "tag": "0011_bloc5_rappel_stop_terminee",
+      "breakpoints": true
     }
   ]
 }
