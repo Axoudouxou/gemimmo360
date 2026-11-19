@@ -120,6 +120,13 @@
       "when": 1794486799507,
       "tag": "0016_matrice_acces_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795081994589,
+      "tag": "0017_gem_finance_sync",
+      "breakpoints": true
     }
   ]
 }

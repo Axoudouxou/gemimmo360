@@ -800,36 +800,45 @@ export type Database = {
           bien_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           donnees: Json
           id: string
           numero: number
           numero_affiche: string
+          pdf_path: string | null
           periode_debut: string
           periodicite: string
+          updated_at: string
         }
         Insert: {
           annee: number
           bien_id: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           donnees: Json
           id?: string
           numero: number
           numero_affiche: string
+          pdf_path?: string | null
           periode_debut: string
           periodicite: string
+          updated_at?: string
         }
         Update: {
           annee?: number
           bien_id?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           donnees?: Json
           id?: string
           numero?: number
           numero_affiche?: string
+          pdf_path?: string | null
           periode_debut?: string
           periodicite?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2481,6 +2490,10 @@ export type Database = {
         Args: { _bien_id: string; _date: string; _motif: string }
         Returns: number
       }
+      attacher_pdf_decompte: {
+        Args: { _decompte_id: string; _path: string }
+        Returns: undefined
+      }
       can_access_activite: {
         Args: { _activite_id: string; _user_id: string }
         Returns: boolean
@@ -2559,12 +2572,15 @@ export type Database = {
           bien_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           donnees: Json
           id: string
           numero: number
           numero_affiche: string
+          pdf_path: string | null
           periode_debut: string
           periodicite: string
+          updated_at: string
         }
         SetofOptions: {
           from: "*"

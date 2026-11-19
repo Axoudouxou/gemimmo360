@@ -41,6 +41,7 @@ import { Route as AuthenticatedContratsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedContratsContratIdRouteImport } from './routes/_authenticated/contrats.$contratId'
 import { Route as AuthenticatedLotsLotIdRouteImport } from './routes/_authenticated/lots.$lotId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicGemFinanceSyncRouteImport } from './routes/api/public/gem-finance/sync'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -214,6 +215,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicGemFinanceSyncRoute = ApiPublicGemFinanceSyncRouteImport.update({
+  id: '/api/public/gem-finance/sync',
+  path: '/api/public/gem-finance/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/biens/': typeof AuthenticatedBiensIndexRoute
   '/contacts/': typeof AuthenticatedContactsIndexRoute
   '/contrats/': typeof AuthenticatedContratsIndexRoute
+  '/api/public/gem-finance/sync': typeof ApiPublicGemFinanceSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/biens': typeof AuthenticatedBiensIndexRoute
   '/contacts': typeof AuthenticatedContactsIndexRoute
   '/contrats': typeof AuthenticatedContratsIndexRoute
+  '/api/public/gem-finance/sync': typeof ApiPublicGemFinanceSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -339,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/biens/': typeof AuthenticatedBiensIndexRoute
   '/_authenticated/contacts/': typeof AuthenticatedContactsIndexRoute
   '/_authenticated/contrats/': typeof AuthenticatedContratsIndexRoute
+  '/api/public/gem-finance/sync': typeof ApiPublicGemFinanceSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/biens/'
     | '/contacts/'
     | '/contrats/'
+    | '/api/public/gem-finance/sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/biens'
     | '/contacts'
     | '/contrats'
+    | '/api/public/gem-finance/sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/_authenticated/biens/'
     | '/_authenticated/contacts/'
     | '/_authenticated/contrats/'
+    | '/api/public/gem-finance/sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -463,6 +475,7 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicGemFinanceSyncRoute: typeof ApiPublicGemFinanceSyncRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -694,6 +707,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/gem-finance/sync': {
+      id: '/api/public/gem-finance/sync'
+      path: '/api/public/gem-finance/sync'
+      fullPath: '/api/public/gem-finance/sync'
+      preLoaderRoute: typeof ApiPublicGemFinanceSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -785,6 +805,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicGemFinanceSyncRoute: ApiPublicGemFinanceSyncRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,

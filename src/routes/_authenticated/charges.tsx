@@ -457,7 +457,19 @@ function ChargesPage() {
       _donnees: data as never, _charge_ids: chargeIds,
     });
     if (error) throw error;
-    const r = row as unknown as { numero_affiche: string; donnees: typeof data };
+    const r = row as unknown as { id: string; numero_affiche: string; donnees: typeof data; pdf_path: string | null };
+    if (!r.pdf_path) {
+      // PDF archivé à la validation (lu par GEM Finance) ; un échec n'empêche pas l'export Word/Excel.
+      try {
+        const { buildDecomptePdf } = await import("@/lib/decompte-pdf");
+        const blob = await buildDecomptePdf({ ...r.donnees, numero: r.numero_affiche });
+        const path = `${r.id}.pdf`;
+        const up = await supabase.storage.from("decomptes-pdf").upload(path, blob, { contentType: "application/pdf", upsert: false });
+        if (!up.error || /exists|Duplicate/i.test(up.error.message)) {
+          await supabase.rpc("attacher_pdf_decompte", { _decompte_id: r.id, _path: path });
+        }
+      } catch (e) { console.error("PDF décompte", e); }
+    }
     void load();
     return { ...r.donnees, numero: r.numero_affiche };
   };
